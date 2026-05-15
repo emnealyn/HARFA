@@ -1,9 +1,15 @@
 package com.example.harpapp.navigation
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.harpapp.ui.components.NavBar
 import com.example.harpapp.ui.screens.home.HomeScreen
 import com.example.harpapp.ui.screens.settings.SettingsScreen
 import com.example.harpapp.ui.screens.song.SongScreen
@@ -14,25 +20,47 @@ import com.example.harpapp.ui.screens.bluetooth.BluetoothScreen
 fun AppNavGraph() {
 
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-    NavHost(
-        navController = navController,
-        startDestination = Routes.HOME
-    ) {
-        composable(Routes.SPLASH) {
-            SplashScreen()
+    Scaffold(
+        bottomBar = {
+            if (currentRoute in listOf(Routes.HOME, Routes.SETTINGS, Routes.SONG)) {
+                NavBar(
+                    currentRoute = currentRoute,
+                    onNavigate = { route ->
+                        navController.navigate(route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+            }
         }
-        composable(Routes.HOME) {
-            HomeScreen()
-        }
-        composable(Routes.SETTINGS) {
-            SettingsScreen()
-        }
-        composable(Routes.SONG) {
-            SongScreen()
-        }
-        composable(Routes.BLUETOOTH) {
-            BluetoothScreen()
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = Routes.HOME,
+            modifier = androidx.compose.ui.Modifier.padding(innerPadding)
+        ) {
+            composable(Routes.SPLASH) {
+                SplashScreen()
+            }
+            composable(Routes.HOME) {
+                HomeScreen()
+            }
+            composable(Routes.SETTINGS) {
+                SettingsScreen()
+            }
+            composable(Routes.SONG) {
+                SongScreen()
+            }
+            composable(Routes.BLUETOOTH) {
+                BluetoothScreen()
+            }
         }
     }
 }

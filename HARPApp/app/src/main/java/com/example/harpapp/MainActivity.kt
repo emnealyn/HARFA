@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.example.harpapp.navigation.AppNavGraph
+import com.example.harpapp.ui.theme.HARPAppTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -11,7 +12,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            AppNavGraph()
+            HARPAppTheme {
+                AppNavGraph()
+            }
         }
     }
 }
