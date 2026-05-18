@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.harpapp.ui.components.SongList
 import com.example.harpapp.ui.theme.HARPAppTheme
+import android.annotation.SuppressLint
+import com.example.harpapp.ui.theme.HARPAppTheme
 
 @Composable
 fun HomeScreen(
@@ -33,5 +35,15 @@ fun HomeScreen(
                 viewModel.playSongPreview(song.id)
             }
         )
+    }
+}
+
+
+@SuppressLint("ViewModelConstructorInComposable")
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun HomeScreenPreview() {
+    HARPAppTheme {
+        HomeScreen(viewModel = HomeViewModel())
     }
 }
