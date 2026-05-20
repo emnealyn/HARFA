@@ -1,5 +1,6 @@
 package com.example.harpapp.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +24,7 @@ import com.example.harpapp.ui.theme.HARPAppTheme
 fun SongList(
     songs: List<Song>,
     onSongPreviewClick: (Song) -> Unit,
+    onSongClick: (Song) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (songs.isEmpty()) {
@@ -35,7 +37,8 @@ fun SongList(
             items(songs) { song ->
                 SongItem(
                     song = song,
-                    onPreviewClick = { onSongPreviewClick(song) }
+                    onPreviewClick = { onSongPreviewClick(song) },
+                    modifier = Modifier.clickable { onSongClick(song) }
                 )
             }
         }
@@ -52,6 +55,6 @@ fun SongListNormalPreview() {
             com.example.harpapp.data.Song(1, "Wildest Dreams", "Taylor Swift", com.example.harpapp.data.Difficulty.MEDIUM, "2:55", ""),
             com.example.harpapp.data.Song(2, "Let It Go", "Idina Menzel", com.example.harpapp.data.Difficulty.EASY, "3:45", "")
         )
-        SongList(songs = testSongs, onSongPreviewClick = {})
+        SongList(songs = testSongs, onSongPreviewClick = {}, onSongClick = {})
     }
 }
