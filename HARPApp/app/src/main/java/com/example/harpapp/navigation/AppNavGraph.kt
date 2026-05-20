@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+// remember is not needed here
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -17,15 +18,20 @@ import com.example.harpapp.ui.screens.song.SongScreen
 import com.example.harpapp.ui.screens.splash.SplashScreen
 import com.example.harpapp.ui.screens.bluetooth.BluetoothScreen
 import com.example.harpapp.viewmodel.HomeViewModel
+import com.example.harpapp.viewmodel.SettingsViewModel
 
 @Composable
-fun AppNavGraph() {
+fun AppNavGraph(
+    settingsViewModel: SettingsViewModel
+) {
 
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     val homeViewModel: HomeViewModel = viewModel()
+
+    // settingsViewModel is provided by caller (MainActivity)
 
     Scaffold(
         bottomBar = {
@@ -62,7 +68,7 @@ fun AppNavGraph() {
                 )
             }
             composable(Routes.SETTINGS) {
-                SettingsScreen()
+                SettingsScreen(viewModel = settingsViewModel)
             }
             composable(Routes.SONG) {
                 SongScreen()
