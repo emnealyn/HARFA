@@ -67,7 +67,7 @@ class HomeViewModel: ViewModel() {
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
+        initialValue = _allSongs.value
     )
 
     fun onSearchQueryChanged(newQuery: String) {

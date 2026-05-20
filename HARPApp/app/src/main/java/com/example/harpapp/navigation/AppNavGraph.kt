@@ -60,7 +60,12 @@ fun AppNavGraph(
                 SplashScreen()
             }
             composable(Routes.HOME) {
-                HomeScreen(viewModel = homeViewModel)
+                HomeScreen(
+                    viewModel = homeViewModel,
+                    onNavigateToSong = { songID ->
+                        navController.navigate(Routes.SONG)
+                    }
+                )
             }
             composable(Routes.SETTINGS) {
                 SettingsScreen(viewModel = settingsViewModel)
