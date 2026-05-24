@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.harpapp.ui.components.SongList
 import com.example.harpapp.ui.theme.HARPAppTheme
 import android.annotation.SuppressLint
+import android.app.Application
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
@@ -24,6 +25,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.harpapp.data.Difficulty
+import com.example.harpapp.data.Song
 import com.example.harpapp.ui.theme.HARPAppTheme
 
 @Composable
@@ -34,6 +37,26 @@ fun HomeScreen(
 ) {
     val songs by viewModel.filteredSongs.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+
+    HomeContent(
+        songs = songs,
+        searchQuery = searchQuery,
+        onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
+        onSongClick = onNavigateToSong,
+        onSongPreviewClick = { song -> viewModel.playSongPreview(song.id) },
+        modifier = modifier
+    )
+}
+
+@Composable
+fun HomeContent(
+    songs: List<Song>,
+    searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
+    onSongClick: (Int) -> Unit,
+    onSongPreviewClick: (Song) -> Unit,
+    modifier: Modifier = Modifier
+) {
 
     Column(
         modifier = modifier
@@ -49,9 +72,7 @@ fun HomeScreen(
 
         OutlinedTextField(
             value = searchQuery,
-            onValueChange = { newText ->
-                viewModel.onSearchQueryChanged(newText)
-            },
+            onValueChange = onSearchQueryChanged,
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text(text = "Search for song or artist...") },
             leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search") },
@@ -68,23 +89,25 @@ fun HomeScreen(
         )
         SongList(
             songs = songs,
-            onSongPreviewClick = { song ->
-                viewModel.playSongPreview(song.id)
-            },
-            onSongClick = {song ->
-                onNavigateToSong(song.id)
-            },
+            onSongPreviewClick = onSongPreviewClick,
+            onSongClick = { song -> onSongClick(song.id) },
             modifier = Modifier.weight(1f)
         )
     }
 }
 
-
-@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun HomeScreenPreview() {
     HARPAppTheme {
-        HomeScreen(viewModel = HomeViewModel(), onNavigateToSong = {})
+        HomeContent(
+            songs = listOf(
+                Song(1, "Test Song", "Artist", Difficulty.EASY, "3:00", "")
+            ),
+            searchQuery = "",
+            onSearchQueryChanged = {},
+            onSongClick = {},
+            onSongPreviewClick = {}
+        )
     }
 }
