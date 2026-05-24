@@ -35,7 +35,7 @@ fun AppNavGraph(
 
     Scaffold(
         bottomBar = {
-            if (currentRoute in listOf(Routes.HOME, Routes.SETTINGS, Routes.SONG)) {
+            if (currentRoute in listOf(Routes.HOME, Routes.SETTINGS, Routes.SONG, Routes.BLUETOOTH)) {
                 NavBar(
                     currentRoute = currentRoute,
                     onNavigate = { route ->
@@ -68,7 +68,10 @@ fun AppNavGraph(
                 )
             }
             composable(Routes.SETTINGS) {
-                SettingsScreen(viewModel = settingsViewModel)
+                SettingsScreen(
+                    viewModel = settingsViewModel,
+                    onNavigateToBluetooth = { navController.navigate(Routes.BLUETOOTH) }
+                )
             }
             composable(Routes.SONG) {
                 SongScreen()

@@ -1,8 +1,11 @@
 package com.example.harpapp.ui.screens.settings
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,7 +18,8 @@ import com.example.harpapp.viewmodel.SettingsViewModel
 
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel
+    viewModel: SettingsViewModel,
+    onNavigateToBluetooth: () -> Unit
 ) {
     val mode by viewModel.themeMode.collectAsState()
 
@@ -31,5 +35,14 @@ fun SettingsScreen(
             onModeSelected = { viewModel.setThemeMode(it) },
             modifier = Modifier.fillMaxWidth()
         )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Button(
+            onClick = onNavigateToBluetooth,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Ustawienia Bluetooth")
+        }
     }
 }
