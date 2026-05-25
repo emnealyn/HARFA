@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     implementation(libs.core.ktx)
+    implementation(libs.androidx.benchmark.traceprocessor)
     ksp(libs.room.compiler)
 
     testImplementation(libs.junit)

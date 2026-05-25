@@ -6,7 +6,8 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,13 +18,15 @@ import java.io.IOException
 import java.util.UUID
 
 @SuppressLint("MissingPermission")
-class BluetoothViewModel : ViewModel() {
+class BluetoothViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     private val _connectedDeviceName = MutableStateFlow<String?>(null)
     val connectedDeviceName: StateFlow<String?> = _connectedDeviceName.asStateFlow()
+    
+    private val prefs = application.getSharedPreferences("bluetooth_prefs", Context.MODE_PRIVATE)
 
     private val _pairedDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
     val pairedDevices: StateFlow<List<BluetoothDevice>> = _pairedDevices.asStateFlow()
@@ -35,6 +38,13 @@ class BluetoothViewModel : ViewModel() {
     private val TARGET_MAC_ADDRESSES = listOf(
         "20:E7:C8:5A:67:4E"
     )
+
+    init {
+        val lastDevice = prefs.getString("last_device_name", null)
+        if (lastDevice != null) {
+            _connectedDeviceName.value = lastDevice
+        }
+    }
 
     fun fetchPairedDevices(context: Context) {
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -58,12 +68,15 @@ class BluetoothViewModel : ViewModel() {
                 bluetoothSocket = socket
                 socket.connect()
 
+                val nameToSave = device.name ?: device.address
                 _isConnected.value = true
-                _connectedDeviceName.value = device.name ?: device.address
+                _connectedDeviceName.value = nameToSave
+                prefs.edit().putString("last_device_name", nameToSave).apply()
             } catch (e: IOException) {
                 e.printStackTrace()
                 _isConnected.value = false
-                _connectedDeviceName.value = null
+                val lastDevice = prefs.getString("last_device_name", null)
+                _connectedDeviceName.value = lastDevice
             }
         }
     }
@@ -76,7 +89,7 @@ class BluetoothViewModel : ViewModel() {
         } finally {
             bluetoothSocket = null
             _isConnected.value = false
-            _connectedDeviceName.value = null
+            // We do not clear _connectedDeviceName here because we want to remember it
         }
     }
 

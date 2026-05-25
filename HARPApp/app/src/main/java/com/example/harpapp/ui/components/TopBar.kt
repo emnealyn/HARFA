@@ -1,5 +1,6 @@
 package com.example.harpapp.ui.components
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BluetoothConnected
@@ -9,6 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import com.example.harpapp.ui.theme.DarkRed
 import com.example.harpapp.ui.theme.HARPAppTheme
 
@@ -19,7 +23,8 @@ fun TopBar(
     onBackClick: () -> Unit,
     isBluetoothConnected: Boolean,
     onBluetoothClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    connectedDeviceName: String? = null
     ){
     CenterAlignedTopAppBar(
         title = {
@@ -39,20 +44,36 @@ fun TopBar(
             }
         },
         actions = {
-            IconButton(onClick = onBluetoothClick) {
-                Icon(
-                    imageVector = if (isBluetoothConnected) {
-                        Icons.Default.BluetoothConnected
-                    } else {
-                        Icons.Default.BluetoothDisabled
-                    },
-                    contentDescription = "Status Bluetooth",
-                    tint = if (isBluetoothConnected) {
-                        Color.Green
-                    } else {
-                        Color.White.copy(alpha = 0.5f)
-                    }
-                )
+            Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                if (connectedDeviceName != null) {
+                    Text(
+                        text = connectedDeviceName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if(isBluetoothConnected) { Color.Green.copy(alpha = 0.7f)
+                        } else { Color.White.copy(alpha = 0.5f) },
+                        modifier = Modifier
+                    )
+                }
+
+                IconButton(
+                    onClick = onBluetoothClick,
+                    modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = if (isBluetoothConnected) {
+                            Icons.Default.BluetoothConnected
+                        } else {
+                            Icons.Default.BluetoothDisabled
+                        },
+                        contentDescription = "Status Bluetooth",
+                        tint = if (isBluetoothConnected) {
+                            Color.Green
+                        } else {
+                            Color.White.copy(alpha = 0.5f)
+                        }
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -73,4 +94,3 @@ fun HarpTopAppBarConnectedPreview() {
         )
     }
 }
-

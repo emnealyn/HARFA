@@ -19,6 +19,9 @@ import com.example.harpapp.ui.screens.splash.SplashScreen
 import com.example.harpapp.ui.screens.bluetooth.BluetoothScreen
 import com.example.harpapp.viewmodel.HomeViewModel
 import com.example.harpapp.viewmodel.SettingsViewModel
+import com.example.harpapp.viewmodel.BluetoothViewModel
+import androidx.compose.runtime.collectAsState
+import com.example.harpapp.ui.components.TopBar
 
 @Composable
 fun AppNavGraph(
@@ -30,10 +33,34 @@ fun AppNavGraph(
     val currentRoute = navBackStackEntry?.destination?.route
 
     val homeViewModel: HomeViewModel = viewModel()
+    val bluetoothViewModel: BluetoothViewModel = viewModel()
+    val isBluetoothConnected by bluetoothViewModel.isConnected.collectAsState()
+    val connectedDeviceName by bluetoothViewModel.connectedDeviceName.collectAsState()
 
-    // settingsViewModel is provided by caller (MainActivity)
 
     Scaffold(
+        topBar = {
+            val title = when (currentRoute) {
+                Routes.HOME -> "HARPApp"
+                Routes.SETTINGS -> "Settings"
+                Routes.SONG -> "Song Details"
+                Routes.BLUETOOTH -> "Bluetooth"
+                else -> "HARPApp"
+            }
+            if (currentRoute != Routes.SPLASH) {
+                TopBar(
+                    title = title,
+                    onBackClick = {
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    },
+                    isBluetoothConnected = isBluetoothConnected,
+                    onBluetoothClick = { navController.navigate(Routes.BLUETOOTH) },
+                    connectedDeviceName = connectedDeviceName
+                )
+            }
+        },
         bottomBar = {
             if (currentRoute in listOf(Routes.HOME, Routes.SETTINGS, Routes.SONG, Routes.BLUETOOTH)) {
                 NavBar(
@@ -77,7 +104,7 @@ fun AppNavGraph(
                 SongScreen()
             }
             composable(Routes.BLUETOOTH) {
-                BluetoothScreen()
+                BluetoothScreen(viewModel = bluetoothViewModel)
             }
         }
     }
