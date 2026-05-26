@@ -40,6 +40,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.code.gson:gson:2.11.0")
     implementation(libs.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -58,6 +59,7 @@ dependencies {
     implementation(libs.room.ktx)
     implementation(libs.core.ktx)
     implementation(libs.androidx.benchmark.traceprocessor)
+    implementation(libs.androidx.ui)
     ksp(libs.room.compiler)
 
     testImplementation(libs.junit)

@@ -9,8 +9,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.example.harpapp.model.Song
+import com.example.harpapp.model.Difficulty
+import com.example.harpapp.model.LyricNote
 
-@Database(entities = [Song::class], version = 1, exportSchema = false)
+@Database(entities = [Song::class], version = 5, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -27,8 +30,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "harp_database"
                 )
-                    .fallbackToDestructiveMigration()
-                    .addCallback(AppDatabaseCallback(scope))
+                    .fallbackToDestructiveMigration(true)
+                    .addCallback(AppDatabaseCallback(scope, context.applicationContext))
                     .build()
 
                 INSTANCE = instance
@@ -39,6 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     private class AppDatabaseCallback(
         private val scope: CoroutineScope,
+        private val context: Context
     ) : RoomDatabase.Callback() {
 
         override fun onCreate(db: SupportSQLiteDatabase) {
@@ -50,51 +54,156 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
+            super.onDestructiveMigration(db)
+            INSTANCE?.let { database ->
+                scope.launch(Dispatchers.IO) {
+                    prepopulateDatabase(database.songDao())
+                }
+            }
+        }
+
         suspend fun prepopulateDatabase(songDao: SongDao) {
             val initialSongs = listOf(
                 Song(
-                    title = "Wildest Dreams",
-                    artist = "Taylor Swift",
+                    title = "Another Love",
+                    artist = "Tom Odell",
                     difficulty = Difficulty.MEDIUM,
-                    duration = "2:55",
-                    lyricsWithNotes = """
-                        He said, "Let's get out of this town"
-                        D  D  A C D  FF#  D A C
-                        Drive out of the city, away from the crowds"
-                        F  A  C  D  F#  F
-                        I thought Heaven can't help me now
-                        D  D  A  D
-                        Nothing lasts forever
-                        D  F#  C  C  C
-                        But this is gonna take me down
-                        FFD  CCCC
-                        He's so tall and handsome as hell
-                        A  A  C  D
-                        He's so bad, but he does it so well
-                        I can see the end as it begins
-                        My one condition is
-                    """.trimIndent()
+                    duration = MidiDurationHelper.formatDuration(MidiDurationHelper.getDurationMs(context, "midi/ANOTHERLOVE.MID")),
+                    midiFilePath = "midi/ANOTHERLOVE.MID",
+                    lyricsWithNotes = listOf(
+                        LyricNote("I", "G4"),
+                        LyricNote("wan-", "G4"),
+                        LyricNote("na", "G4"),
+                        LyricNote("take", "G4"),
+                        LyricNote("you", "A4"),
+                        LyricNote("some-", "B4"),
+                        LyricNote("where", "G4"),
+                        LyricNote("so", "G4"),
+                        LyricNote("you", "G4"),
+                        LyricNote("know", "C5"),
+                        LyricNote("I", "C5"),
+                        LyricNote("care", "B4"),
+                        LyricNote("But", "G4"),
+                        LyricNote("it's", "G4"),
+                        LyricNote("so", "A4"),
+                        LyricNote("cold", "G4"),
+                        LyricNote("and", "F#4"),
+                        LyricNote("I", "F#4"),
+                        LyricNote("don't", "F#4"),
+                        LyricNote("know", "F#4"),
+                        LyricNote("where.", "E4"),
+                        LyricNote("I", "G4"),
+                        LyricNote("brought", "G4"),
+                        LyricNote("you", "A4"),
+                        LyricNote("da-", "B4"),
+                        LyricNote("ffo-", "A4"),
+                        LyricNote("dils", "G4"),
+                        LyricNote("in", "G4"),
+                        LyricNote("a", "G4"),
+                        LyricNote("pre-", "C5"),
+                        LyricNote("tty", "C5"),
+                        LyricNote("string", "B4"),
+                        LyricNote("but", "G4"),
+                        LyricNote("they", "G4"),
+                        LyricNote("won't", "A4"),
+                        LyricNote("flower", "F#4"),
+                        LyricNote("like", "F#4"),
+                        LyricNote("they", "E4"),
+                        LyricNote("did", "F#4"),
+                        LyricNote("last", "F#4"),
+                        LyricNote("spring.", "E4" )
+                    )
                 ),
                 Song(
                     title = "Let It Go",
                     artist = "Idina Menzel",
                     difficulty = Difficulty.EASY,
-                    duration = "3:45",
-                    lyricsWithNotes = "The snow glows white on the mountain tonight..."
+                    duration = MidiDurationHelper.formatDuration(MidiDurationHelper.getDurationMs(context, "midi/ANOTHERLOVE.MID")),
+                    midiFilePath = "midi/ANOTHERLOVE.MID",
+                    lyricsWithNotes = listOf(
+                        LyricNote("I", "G4"),
+                        LyricNote("wan-", "G4"),
+                        LyricNote("na", "G4"),
+                        LyricNote("take", "G4"),
+                        LyricNote("you", "A4"),
+                        LyricNote("some-", "B4"),
+                        LyricNote("where", "G4"),
+                        LyricNote("so", "G4"),
+                        LyricNote("you", "G4"),
+                        LyricNote("know", "C5"),
+                        LyricNote("I", "C5"),
+                        LyricNote("care", "B4"),
+                        LyricNote("But", "G4"),
+                        LyricNote("it's", "G4"),
+                        LyricNote("so", "A4"),
+                        LyricNote("cold", "G4"),
+                        LyricNote("and", "F#4"),
+                        LyricNote("I", "F#4"),
+                        LyricNote("don't", "F#4"),
+                        LyricNote("know", "F#4"),
+                        LyricNote("where", "E4")
+                    )
                 ),
                 Song(
                     title = "My Heart Will Go On",
                     artist = "Celine Dion",
                     difficulty = Difficulty.HARD,
-                    duration = "4:20",
-                    lyricsWithNotes = "Every night in my dreams I see you, I feel you..."
+                    duration = MidiDurationHelper.formatDuration(MidiDurationHelper.getDurationMs(context, "midi/ANOTHERLOVE.MID")),
+                    midiFilePath = "midi/ANOTHERLOVE.MID",
+                    lyricsWithNotes = listOf(
+                        LyricNote("I", "G4"),
+                        LyricNote("wan-", "G4"),
+                        LyricNote("na", "G4"),
+                        LyricNote("take", "G4"),
+                        LyricNote("you", "A4"),
+                        LyricNote("some-", "B4"),
+                        LyricNote("where", "G4"),
+                        LyricNote("so", "G4"),
+                        LyricNote("you", "G4"),
+                        LyricNote("know", "C5"),
+                        LyricNote("I", "C5"),
+                        LyricNote("care", "B4"),
+                        LyricNote("But", "G4"),
+                        LyricNote("it's", "G4"),
+                        LyricNote("so", "A4"),
+                        LyricNote("cold", "G4"),
+                        LyricNote("and", "F#4"),
+                        LyricNote("I", "F#4"),
+                        LyricNote("don't", "F#4"),
+                        LyricNote("know", "F#4"),
+                        LyricNote("where", "E4")
+                    )
                 ),
                 Song(
                     title = "A Thousand Years",
                     artist = "Christina Perri",
                     difficulty = Difficulty.MEDIUM,
-                    duration = "4:45",
-                    lyricsWithNotes = "Heart beats fast, colors and promises..."
+                    duration = MidiDurationHelper.formatDuration(MidiDurationHelper.getDurationMs(context, "midi/ANOTHERLOVE.MID")),
+                    midiFilePath = "midi/ANOTHERLOVE.MID",
+                    lyricsWithNotes = listOf(
+                        LyricNote("I", "G4"),
+                        LyricNote("wan-", "G4"),
+                        LyricNote("na", "G4"),
+                        LyricNote("take", "G4"),
+                        LyricNote("you", "A4"),
+                        LyricNote("some-", "B4"),
+                        LyricNote("where", "G4"),
+                        LyricNote("so", "G4"),
+                        LyricNote("you", "G4"),
+                        LyricNote("know", "C5"),
+                        LyricNote("I", "C5"),
+                        LyricNote("care", "B4"),
+                        LyricNote("But", "G4"),
+                        LyricNote("it's", "G4"),
+                        LyricNote("so", "A4"),
+                        LyricNote("cold", "G4"),
+                        LyricNote("and", "F#4"),
+                        LyricNote("I", "F#4"),
+                        LyricNote("don't", "F#4"),
+                        LyricNote("know", "F#4"),
+                        LyricNote("where", "E4")
+                    )
                 )
             )
 

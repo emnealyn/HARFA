@@ -12,13 +12,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.harpapp.data.Difficulty
-import com.example.harpapp.data.Song
+import com.example.harpapp.model.Difficulty
+import com.example.harpapp.model.Song
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.harpapp.ui.theme.DarkRed
 import com.example.harpapp.ui.theme.HARPAppTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import com.example.harpapp.model.LyricNote
 
 
 @Composable
@@ -108,8 +109,30 @@ fun SongItemPreview() {
             artist = "Taylor Swift",
             difficulty = Difficulty.MEDIUM,
             duration = "2:55",
-            lyricsWithNotes = ""
-        )
+            lyricsWithNotes = listOf(
+                LyricNote("I", "G4"),
+                LyricNote("wan-", "G4"),
+                LyricNote("na", "G4"),
+                LyricNote("take", "G4"),
+                LyricNote("you", "A4"),
+                LyricNote("some-", "B4"),
+                LyricNote("where", "G4"),
+                LyricNote("so", "G4"),
+                LyricNote("you", "G4"),
+                LyricNote("know", "C5"),
+                LyricNote("I", "C5"),
+                LyricNote("care", "B4"),
+                LyricNote("But", "G4"),
+                LyricNote("it's", "G4"),
+                LyricNote("so", "A4"),
+                LyricNote("cold", "G4"),
+                LyricNote("and", "F#4"),
+                LyricNote("I", "F#4"),
+                LyricNote("don't", "F#4"),
+                LyricNote("know", "F#4"),
+                LyricNote("where", "E4")
+            )
+            )
         SongItem(
             song = testSong,
             onPreviewClick = {}

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="/Converter (snapshot).kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="/Converter (snapshot).kt" />
+              <option name="originalContent" value="package com.example.harpapp.data&#10;&#10;import androidx.room.TypeConverter&#10;&#10;class Converters {&#10;    @TypeConverter&#10;    fun fromDifficulty(difficulty: Difficulty): String {&#10;        return difficulty.name&#10;    }&#10;&#10;    @TypeConverter&#10;    fun toDifficulty(value: String): Difficulty {&#10;        return Difficulty.valueOf(value)&#10;    }&#10;}&#10;" />
+              <option name="updatedContent" value="package com.example.harpapp.data&#10;&#10;import androidx.room.TypeConverter&#10;import com.example.harpapp.model.Difficulty&#10;&#10;class Converters {&#10;    @TypeConverter&#10;    fun fromDifficulty(difficulty: Difficulty): String {&#10;        return difficulty.name&#10;    }&#10;&#10;    @TypeConverter&#10;    fun toDifficulty(value: String): Difficulty {&#10;        return Difficulty.valueOf(value)&#10;    }&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="/MidiDurationHelper (snapshot).kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="/MidiDurationHelper (snapshot).kt" />
+              <option name="updatedContent" value="package com.example.harpapp.data&#10;&#10;import android.content.Context&#10;import android.media.MediaMetadataRetriever&#10;&#10;object MidiDurationHelper {&#10;    fun getDurationMs(context: Context, midiFileName: String): Long {&#10;        return try {&#10;            val retriever = MediaMetadataRetriever()&#10;            context.assets.openFd(midiFileName).use { afd -&gt;&#10;                retriever.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)&#10;            }&#10;            val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)&#10;            retriever.release()&#10;            durationStr?.toLongOrNull() ?: 0L&#10;        } catch (e: Exception) {&#10;            e.printStackTrace()&#10;            0L&#10;        }&#10;    }&#10;&#10;    fun formatDuration(durationMs: Long): String {&#10;        val totalSeconds = (durationMs / 1000).toInt()&#10;        val minutes = totalSeconds / 60&#10;        val seconds = totalSeconds % 60&#10;        return &quot;$minutes:${seconds.toString().padStart(2, '0')}&quot;&#10;    }&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="/NavBar (snapshot).kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="/NavBar (snapshot).kt" />
+              <option name="originalContent" value="package com.example.harpapp.ui.components&#10;&#10;import androidx.compose.material3.Icon&#10;import androidx.compose.material3.NavigationBar&#10;import androidx.compose.material3.NavigationBarItem&#10;import androidx.compose.material3.NavigationBarItemDefaults&#10;import androidx.compose.material3.Text&#10;import androidx.compose.runtime.Composable&#10;import androidx.compose.ui.Modifier&#10;import androidx.compose.ui.graphics.Color&#10;import com.example.harpapp.ui.theme.DarkRed&#10;import com.example.harpapp.ui.theme.MediumRed&#10;import com.example.harpapp.ui.theme.LightRed&#10;&#10;@Composable&#10;fun NavBar(&#10;    currentRoute: String?,&#10;    onNavigate: (route: String) -&gt; Unit,&#10;    modifier: Modifier = Modifier,&#10;    items: List&lt;NavBarItem&gt; = listOf(&#10;        NavBarItem.Home,&#10;        NavBarItem.Song,&#10;        NavBarItem.Settings&#10;    ),&#10;    alwaysShowLabel: Boolean = false&#10;) {&#10;    NavigationBar(&#10;        modifier = modifier,&#10;        containerColor = DarkRed,&#10;        contentColor = Color.White&#10;    ) {&#10;        items.forEach { item -&gt;&#10;            val selected = currentRoute?.let { cur -&gt;&#10;                cur == item.route || cur.startsWith(item.route)&#10;            } ?: false&#10;&#10;            NavigationBarItem(&#10;                icon = { Icon(item.icon, contentDescription = item.title) },&#10;                label = { Text(item.title) },&#10;                selected = selected,&#10;                onClick = { if (!selected) onNavigate(item.route) },&#10;                alwaysShowLabel = alwaysShowLabel,&#10;                colors = NavigationBarItemDefaults.colors(&#10;                    selectedIconColor = Color.White,&#10;                    selectedTextColor = Color.White,&#10;                    indicatorColor = MediumRed,&#10;                    unselectedIconColor = Color.White.copy(alpha = 0.7f),&#10;                    unselectedTextColor = Color.White.copy(alpha = 0.7f)&#10;                )&#10;            )&#10;        }&#10;    }&#10;}" />
+              <option name="updatedContent" value="package com.example.harpapp.ui.components&#10;&#10;import androidx.compose.material3.Icon&#10;import androidx.compose.material3.NavigationBar&#10;import androidx.compose.material3.NavigationBarItem&#10;import androidx.compose.material3.NavigationBarItemDefaults&#10;import androidx.compose.material3.Text&#10;import androidx.compose.runtime.Composable&#10;import androidx.compose.ui.Modifier&#10;import androidx.compose.ui.graphics.Color&#10;import com.example.harpapp.ui.theme.DarkRed&#10;import com.example.harpapp.ui.theme.MediumRed&#10;import com.example.harpapp.ui.theme.LightRed&#10;&#10;@Composable&#10;fun NavBar(&#10;    currentRoute: String?,&#10;    onNavigate: (route: String) -&gt; Unit,&#10;    modifier: Modifier = Modifier,&#10;    items: List&lt;NavBarItem&gt; = listOf(&#10;        NavBarItem.Home,&#10;        NavBarItem.Song,&#10;        NavBarItem.Settings&#10;    ),&#10;    alwaysShowLabel: Boolean = false&#10;) {&#10;    NavigationBar(&#10;        modifier = modifier,&#10;        containerColor = DarkRed,&#10;        contentColor = Color.White&#10;    ) {&#10;        items.forEach { item -&gt;&#10;            val selected = currentRoute?.let { cur -&gt;&#10;                val baseRoute = item.route.substringBefore(&quot;/&quot;)&#10;                cur == item.route || cur.startsWith(baseRoute)&#10;            } ?: false&#10;&#10;            NavigationBarItem(&#10;                icon = { Icon(item.icon, contentDescription = item.title) },&#10;                label = { Text(item.title) },&#10;                selected = selected,&#10;                onClick = { if (!selected) onNavigate(item.route) },&#10;                alwaysShowLabel = alwaysShowLabel,&#10;                colors = NavigationBarItemDefaults.colors(&#10;                    selectedIconColor = Color.White,&#10;                    selectedTextColor = Color.White,&#10;                    indicatorColor = MediumRed,&#10;                    unselectedIconColor = Color.White.copy(alpha = 0.7f),&#10;                    unselectedTextColor = Color.White.copy(alpha = 0.7f)&#10;                )&#10;            )&#10;        }&#10;    }&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="/NavBarItem (snapshot).kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="/NavBarItem (snapshot).kt" />
+              <option name="originalContent" value="package com.example.harpapp.ui.components&#10;&#10;import androidx.compose.ui.graphics.vector.ImageVector&#10;import androidx.compose.material.icons.Icons&#10;import androidx.compose.material.icons.filled.*&#10;&#10;sealed class NavBarItem(&#10;    val route: String,&#10;    val title: String,&#10;    val icon: ImageVector&#10;){&#10;    object Home : NavBarItem(&quot;home&quot;, &quot;Home&quot;, Icons.Default.Home)&#10;    object Song : NavBarItem(&quot;song&quot;, &quot;Song&quot;, Icons.Default.LibraryMusic)&#10;    object Settings : NavBarItem(&quot;settings&quot;, &quot;Settings&quot;, Icons.Default.Settings)&#10;}" />
+              <option name="updatedContent" value="package com.example.harpapp.ui.components&#10;&#10;import androidx.compose.ui.graphics.vector.ImageVector&#10;import androidx.compose.material.icons.Icons&#10;import androidx.compose.material.icons.filled.*&#10;&#10;sealed class NavBarItem(&#10;    val route: String,&#10;    val title: String,&#10;    val icon: ImageVector&#10;){&#10;    object Home : NavBarItem(&quot;home&quot;, &quot;Home&quot;, Icons.Default.Home)&#10;    object Song : NavBarItem(&quot;song/1&quot;, &quot;Song&quot;, Icons.Default.LibraryMusic)&#10;    object Settings : NavBarItem(&quot;settings&quot;, &quot;Settings&quot;, Icons.Default.Settings)&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="/Song (snapshot).kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="/Song (snapshot).kt" />
+              <option name="originalContent" value="package com.example.harpapp.data&#10;&#10;import androidx.room.Entity&#10;import androidx.room.PrimaryKey&#10;&#10;enum class Difficulty {&#10;    EASY, MEDIUM, HARD&#10;}&#10;&#10;@Entity(tableName = &quot;songs&quot;)&#10;data class Song(&#10;    @PrimaryKey(autoGenerate = true)&#10;    val id: Int = 0,&#10;    val title: String,&#10;    val artist: String,&#10;    val difficulty: Difficulty,&#10;    val duration: String,&#10;    val lyricsWithNotes: String,&#10;    val midiFilePath: String? = null,&#10;    val coverImage: String? = null&#10;)&#10;" />
+              <option name="updatedContent" value="package com.example.harpapp.model&#10;&#10;import androidx.room.Entity&#10;import androidx.room.PrimaryKey&#10;&#10;enum class Difficulty {&#10;    EASY, MEDIUM, HARD&#10;}&#10;&#10;@Entity(tableName = &quot;songs&quot;)&#10;data class Song(&#10;    @PrimaryKey(autoGenerate = true)&#10;    val id: Int = 0,&#10;    val title: String,&#10;    val artist: String,&#10;    val difficulty: Difficulty,&#10;    val duration: String,&#10;    val lyricsWithNotes: String,&#10;    val midiFilePath: String? = null,&#10;    val coverImage: String? = null&#10;)&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

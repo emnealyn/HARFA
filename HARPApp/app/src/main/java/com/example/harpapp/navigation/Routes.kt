@@ -4,6 +4,6 @@ object Routes {
     const val HOME = "home"
     const val SETTINGS = "settings"
     const val SPLASH = "splash"
-    const val SONG = "song"
+    const val SONG = "song/{songId}"
     const val BLUETOOTH = "bluetooth"
 }

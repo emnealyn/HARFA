@@ -10,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.example.harpapp.ui.theme.DarkRed
 import com.example.harpapp.ui.theme.MediumRed
-import com.example.harpapp.ui.theme.LightRed
 
 @Composable
 fun NavBar(
@@ -24,21 +23,33 @@ fun NavBar(
     ),
     alwaysShowLabel: Boolean = false
 ) {
+
     NavigationBar(
         modifier = modifier,
         containerColor = DarkRed,
         contentColor = Color.White
     ) {
         items.forEach { item ->
-            val selected = currentRoute?.let { cur ->
-                cur == item.route || cur.startsWith(item.route)
-            } ?: false
+
+            val isSongRoute = currentRoute?.startsWith("song/") == true && item is NavBarItem.Song
+            val selected = currentRoute == item.route || isSongRoute
 
             NavigationBarItem(
-                icon = { Icon(item.icon, contentDescription = item.title) },
-                label = { Text(item.title) },
+                icon = {
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = item.title
+                    )
+                },
+                label = {
+                    Text(item.title)
+                },
                 selected = selected,
-                onClick = { if (!selected) onNavigate(item.route) },
+                onClick = {
+                    if (!selected) {
+                        onNavigate(item.route)
+                    }
+                },
                 alwaysShowLabel = alwaysShowLabel,
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = Color.White,

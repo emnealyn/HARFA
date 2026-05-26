@@ -16,7 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.harpapp.data.Song
+import com.example.harpapp.model.Song
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.harpapp.ui.theme.HARPAppTheme
 
@@ -46,15 +46,3 @@ fun SongList(
 
 }
 
-// Pierwszy podgląd: Gdy na liście są piosenki
-@Preview(showBackground = true)
-@Composable
-fun SongListNormalPreview() {
-    HARPAppTheme {
-        val testSongs = listOf(
-            com.example.harpapp.data.Song(1, "Wildest Dreams", "Taylor Swift", com.example.harpapp.data.Difficulty.MEDIUM, "2:55", ""),
-            com.example.harpapp.data.Song(2, "Let It Go", "Idina Menzel", com.example.harpapp.data.Difficulty.EASY, "3:45", "")
-        )
-        SongList(songs = testSongs, onSongPreviewClick = {}, onSongClick = {})
-    }
-}

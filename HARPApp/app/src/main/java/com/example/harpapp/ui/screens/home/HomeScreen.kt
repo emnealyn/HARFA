@@ -25,8 +25,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.example.harpapp.data.Difficulty
-import com.example.harpapp.data.Song
+import com.example.harpapp.model.Difficulty
+import com.example.harpapp.model.Song
 import com.example.harpapp.ui.theme.HARPAppTheme
 
 @Composable
@@ -96,18 +96,4 @@ fun HomeContent(
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun HomeScreenPreview() {
-    HARPAppTheme {
-        HomeContent(
-            songs = listOf(
-                Song(1, "Test Song", "Artist", Difficulty.EASY, "3:00", "")
-            ),
-            searchQuery = "",
-            onSearchQueryChanged = {},
-            onSongClick = {},
-            onSongPreviewClick = {}
-        )
-    }
-}
+
