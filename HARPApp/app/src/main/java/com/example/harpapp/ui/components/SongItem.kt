@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.sp
 import com.example.harpapp.model.Difficulty
 import com.example.harpapp.model.Song
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.harpapp.ui.theme.DarkRed
 import com.example.harpapp.ui.theme.HARPAppTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
@@ -33,7 +32,10 @@ fun SongItem(
             .fillMaxWidth()
             .padding(vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, DarkRed)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Row(
             modifier = Modifier
@@ -53,20 +55,21 @@ fun SongItem(
                 Text(
                     text = song.artist,
                     fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Box(
                     modifier = Modifier
-                        .background(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(16.dp))
+                        .background(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(16.dp))
                         .padding(horizontal = 14.dp, vertical = 2.dp)
                 ){
                     Text(
                         text = song.difficulty.name,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -77,12 +80,15 @@ fun SongItem(
             ){
                 FilledIconButton(
                     onClick = onPreviewClick,
-                    modifier = Modifier.size(60.dp)
+                    modifier = Modifier.size(60.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = "Preview",
-                        tint = Color.White,
                         modifier = Modifier.size(48.dp)
                     )
                 }

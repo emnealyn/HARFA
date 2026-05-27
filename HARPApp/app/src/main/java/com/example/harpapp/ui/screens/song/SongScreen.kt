@@ -27,7 +27,6 @@ import com.example.harpapp.ui.components.song.LyricsDisplay
 import com.example.harpapp.ui.theme.HARPAppTheme
 import com.example.harpapp.viewmodel.SongViewModel
 
-
 @Composable
 fun SongScreen(
     songId: Int,
@@ -69,8 +68,6 @@ fun SongContent(
     onDismissDialog: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-
     if (song != null) {
         val imageResId = song.getCoverResourceId()
 
@@ -102,14 +99,16 @@ fun SongContent(
             Text(
                 text = song.title,
                 style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(4.dp))
-
+            
             Text(
                 text = song.artist,
                 style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
 
@@ -122,17 +121,23 @@ fun SongContent(
                 Text(
                     text = "Difficulty: ${song.difficulty}",
                     style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "Duration: ${song.duration}",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = onPlayPauseClick,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text(if (isPlaying) "Pause MIDI" else "Play MIDI")
                 }
@@ -155,7 +160,8 @@ fun SongContent(
 
                 Text(
                     text = "Lyrics/Notes:",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -172,7 +178,7 @@ fun SongContent(
             modifier = modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Color.White)
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -196,7 +202,7 @@ fun SongScreenPreview() {
                 LyricNote("out", "D")
             )
         )
-        Surface {
+        Surface(color = MaterialTheme.colorScheme.background) {
             SongContent(
                 song = mockSong,
                 isPlaying = false,
