@@ -4,7 +4,11 @@ import android.app.Application
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -13,20 +17,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.ViewModelProvider
-
 import com.example.harpapp.ui.components.NavBar
 import com.example.harpapp.ui.components.TopBar
-
 import com.example.harpapp.ui.screens.bluetooth.BluetoothScreen
 import com.example.harpapp.ui.screens.home.HomeScreen
 import com.example.harpapp.ui.screens.settings.SettingsScreen
 import com.example.harpapp.ui.screens.song.SongScreen
 import com.example.harpapp.ui.screens.splash.SplashScreen
-
 import com.example.harpapp.viewmodel.BluetoothViewModel
 import com.example.harpapp.viewmodel.HomeViewModel
 import com.example.harpapp.viewmodel.SettingsViewModel
@@ -36,18 +33,16 @@ import com.example.harpapp.viewmodel.SongViewModel
 fun AppNavGraph(
     settingsViewModel: SettingsViewModel
 ) {
-
     val navController = rememberNavController()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-
     val currentRoute = navBackStackEntry?.destination?.route
 
     val normalizedRoute = when {
         currentRoute == Routes.HOME -> Routes.HOME
         currentRoute == Routes.SETTINGS -> Routes.SETTINGS
         currentRoute == Routes.BLUETOOTH -> Routes.BLUETOOTH
-        currentRoute?.startsWith("song/") == true || currentRoute == Routes.SONG -> Routes.SONG
+        currentRoute?.startsWith("song/") == true -> Routes.SONG
         else -> currentRoute
     }
 
@@ -55,7 +50,6 @@ fun AppNavGraph(
     val homeViewModel: HomeViewModel = viewModel(
         factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
     )
-
     val bluetoothViewModel: BluetoothViewModel = viewModel()
     val songViewModel: SongViewModel = viewModel()
 
@@ -64,16 +58,15 @@ fun AppNavGraph(
 
     Scaffold(
         topBar = {
-
             val title = when (normalizedRoute) {
                 Routes.HOME -> "HARPApp"
                 Routes.SETTINGS -> "Settings"
-                Routes.SONG -> "Song Details"
                 Routes.BLUETOOTH -> "Bluetooth"
+                Routes.SONG -> "Song Details"
                 else -> "HARPApp"
             }
 
-            if (normalizedRoute != Routes.SPLASH) {
+            if (currentRoute != Routes.SPLASH) {
                 TopBar(
                     title = title,
                     onBackClick = {
@@ -89,26 +82,38 @@ fun AppNavGraph(
                 )
             }
         },
-
         bottomBar = {
-
-            if (normalizedRoute != Routes.SPLASH) {
+            if (currentRoute != Routes.SPLASH) {
                 NavBar(
                     currentRoute = normalizedRoute,
-                    onNavigate = { route ->
+                    onNavigate = { targetRoute ->
 
-                        navController.navigate(route) {
+                        val finalRoute = if (targetRoute == Routes.SONG) {
+                            val lastOpenedSongId = songViewModel.song.value?.id
+                            if (lastOpenedSongId != null && lastOpenedSongId != 0) {
+                                Routes.createSongRoute(lastOpenedSongId)
+                            } else {
+                                Routes.createSongRoute(1)
+                            }
+                        } else {
+                            targetRoute
+                        }
 
-                            popUpTo(navController.graph.findStartDestination().id)
+                        navController.navigate(finalRoute) {
+                            val startDestinationId = navController.graph.findStartDestination().id
+
+                            popUpTo(startDestinationId) {
+                                saveState = (targetRoute == Routes.SETTINGS)
+                            }
 
                             launchSingleTop = true
-                            restoreState = true
+
+                            restoreState = (targetRoute == Routes.SETTINGS)
                         }
                     }
                 )
             }
         }
-
     ) { innerPadding ->
 
         NavHost(
@@ -116,27 +121,22 @@ fun AppNavGraph(
             startDestination = Routes.HOME,
             modifier = Modifier.padding(innerPadding)
         ) {
-
             composable(Routes.SPLASH) {
                 SplashScreen()
             }
 
             composable(Routes.HOME) {
-
                 HomeScreen(
                     viewModel = homeViewModel,
-
                     onNavigateToSong = { songId ->
-                        navController.navigate("song/$songId")
+                        navController.navigate(Routes.createSongRoute(songId))
                     }
                 )
             }
 
             composable(Routes.SETTINGS) {
-
                 SettingsScreen(
                     viewModel = settingsViewModel,
-
                     onNavigateToBluetooth = {
                         navController.navigate(Routes.BLUETOOTH)
                     }
@@ -144,14 +144,12 @@ fun AppNavGraph(
             }
 
             composable(
-                route = Routes.SONG,
+                route = Routes.SONG_PATTERN,
                 arguments = listOf(
                     navArgument("songId") { type = NavType.IntType }
                 )
             ) { backStackEntry ->
-
                 val songId = backStackEntry.arguments?.getInt("songId") ?: 0
-
                 SongScreen(
                     songId = songId,
                     viewModel = songViewModel
@@ -159,7 +157,6 @@ fun AppNavGraph(
             }
 
             composable(Routes.BLUETOOTH) {
-
                 BluetoothScreen(
                     viewModel = bluetoothViewModel
                 )
