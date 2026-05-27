@@ -71,6 +71,7 @@ abstract class AppDatabase : RoomDatabase() {
                     difficulty = Difficulty.MEDIUM,
                     duration = MidiDurationHelper.formatDuration(MidiDurationHelper.getDurationMs(context, "midi/ANOTHERLOVE.MID")),
                     midiFilePath = "midi/ANOTHERLOVE.MID",
+                    coverImage = "cover_another_love",
                     lyricsWithNotes = listOf(
                         LyricNote("I", "G4"),
                         LyricNote("wan-", "G4"),
@@ -121,6 +122,7 @@ abstract class AppDatabase : RoomDatabase() {
                     difficulty = Difficulty.EASY,
                     duration = MidiDurationHelper.formatDuration(MidiDurationHelper.getDurationMs(context, "midi/ANOTHERLOVE.MID")),
                     midiFilePath = "midi/ANOTHERLOVE.MID",
+                    coverImage = null,
                     lyricsWithNotes = listOf(
                         LyricNote("I", "G4"),
                         LyricNote("wan-", "G4"),
@@ -151,6 +153,7 @@ abstract class AppDatabase : RoomDatabase() {
                     difficulty = Difficulty.HARD,
                     duration = MidiDurationHelper.formatDuration(MidiDurationHelper.getDurationMs(context, "midi/ANOTHERLOVE.MID")),
                     midiFilePath = "midi/ANOTHERLOVE.MID",
+                    coverImage = null,
                     lyricsWithNotes = listOf(
                         LyricNote("I", "G4"),
                         LyricNote("wan-", "G4"),
@@ -181,6 +184,7 @@ abstract class AppDatabase : RoomDatabase() {
                     difficulty = Difficulty.MEDIUM,
                     duration = MidiDurationHelper.formatDuration(MidiDurationHelper.getDurationMs(context, "midi/ANOTHERLOVE.MID")),
                     midiFilePath = "midi/ANOTHERLOVE.MID",
+                    coverImage = null,
                     lyricsWithNotes = listOf(
                         LyricNote("I", "G4"),
                         LyricNote("wan-", "G4"),

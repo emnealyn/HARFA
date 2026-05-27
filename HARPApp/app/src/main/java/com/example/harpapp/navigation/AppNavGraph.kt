@@ -1,5 +1,6 @@
 package com.example.harpapp.navigation
 
+import android.app.Application
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -14,6 +15,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
 
 import com.example.harpapp.ui.components.NavBar
 import com.example.harpapp.ui.components.TopBar
@@ -41,11 +44,18 @@ fun AppNavGraph(
     val currentRoute = navBackStackEntry?.destination?.route
 
     val normalizedRoute = when {
-        currentRoute?.startsWith("song/") == true -> Routes.SONG
+        currentRoute == Routes.HOME -> Routes.HOME
+        currentRoute == Routes.SETTINGS -> Routes.SETTINGS
+        currentRoute == Routes.BLUETOOTH -> Routes.BLUETOOTH
+        currentRoute?.startsWith("song/") == true || currentRoute == Routes.SONG -> Routes.SONG
         else -> currentRoute
     }
 
-    val homeViewModel: HomeViewModel = viewModel()
+    val context = LocalContext.current
+    val homeViewModel: HomeViewModel = viewModel(
+        factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
+    )
+
     val bluetoothViewModel: BluetoothViewModel = viewModel()
     val songViewModel: SongViewModel = viewModel()
 
@@ -82,26 +92,14 @@ fun AppNavGraph(
 
         bottomBar = {
 
-            if (
-                currentRoute in listOf(
-                    Routes.HOME,
-                    Routes.SETTINGS,
-                    Routes.SONG,
-                    Routes.BLUETOOTH
-                ) || currentRoute?.startsWith("song/") == true
-            ) {
-
+            if (normalizedRoute != Routes.SPLASH) {
                 NavBar(
-                    currentRoute = currentRoute,
+                    currentRoute = normalizedRoute,
                     onNavigate = { route ->
 
                         navController.navigate(route) {
-                            
-                            val startRoute = navController.graph.findStartDestination().route ?: Routes.HOME
 
-                            popUpTo(startRoute) {
-                                saveState = true
-                            }
+                            popUpTo(navController.graph.findStartDestination().id)
 
                             launchSingleTop = true
                             restoreState = true
@@ -148,14 +146,11 @@ fun AppNavGraph(
             composable(
                 route = Routes.SONG,
                 arguments = listOf(
-                    navArgument("songId") {
-                        type = NavType.IntType
-                    }
+                    navArgument("songId") { type = NavType.IntType }
                 )
             ) { backStackEntry ->
 
-                val songId =
-                    backStackEntry.arguments?.getInt("songId") ?: 0
+                val songId = backStackEntry.arguments?.getInt("songId") ?: 0
 
                 SongScreen(
                     songId = songId,
