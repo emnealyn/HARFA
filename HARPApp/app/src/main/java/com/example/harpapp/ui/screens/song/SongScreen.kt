@@ -9,10 +9,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -20,12 +18,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.harpapp.R
 import com.example.harpapp.model.Difficulty
 import com.example.harpapp.model.LyricNote
 import com.example.harpapp.model.Song
 import com.example.harpapp.model.getCoverResourceId
-import com.example.harpapp.ui.components.TopBar // Nasz wspólny TopBar
+import com.example.harpapp.ui.components.song.CompletedSongDialog
 import com.example.harpapp.ui.components.song.LyricsDisplay
 import com.example.harpapp.ui.theme.HARPAppTheme
 import com.example.harpapp.viewmodel.SongViewModel
@@ -43,11 +40,19 @@ fun SongScreen(
 
     val song by viewModel.song
     val isPlaying by viewModel.isPlaying
+    val isLearningMode by viewModel.isLearningMode
+    val currentNoteIndex by viewModel.currentNoteIndex
+    val learningComplete by viewModel.learningComplete
 
     SongContent(
         song = song,
         isPlaying = isPlaying,
         onPlayPauseClick = { viewModel.togglePlayPause() },
+        isLearningMode = isLearningMode,
+        onLearningModeClick = { viewModel.toggleLearningMode() },
+        currentNoteIndex = if (isLearningMode) currentNoteIndex else -1,
+        learningComplete = learningComplete,
+        onDismissDialog = { viewModel.dismissLearningCompleteDialog() },
         modifier = modifier
     )
 }
@@ -57,6 +62,11 @@ fun SongContent(
     song: Song?,
     isPlaying: Boolean,
     onPlayPauseClick: () -> Unit,
+    isLearningMode: Boolean,
+    onLearningModeClick: () -> Unit,
+    currentNoteIndex: Int = -1,
+    learningComplete: Boolean = false,
+    onDismissDialog: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -92,16 +102,14 @@ fun SongContent(
             Text(
                 text = song.title,
                 style = MaterialTheme.typography.headlineMedium,
-                //color = Color.White,
                 textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(4.dp))
-            
+
             Text(
                 text = song.artist,
                 style = MaterialTheme.typography.titleLarge,
-                //color = Color.LightGray,
                 textAlign = TextAlign.Center
             )
 
@@ -114,12 +122,10 @@ fun SongContent(
                 Text(
                     text = "Difficulty: ${song.difficulty}",
                     style = MaterialTheme.typography.bodyLarge,
-                    //color = Color.White
                 )
                 Text(
                     text = "Duration: ${song.duration}",
                     style = MaterialTheme.typography.bodyMedium,
-                    //color = Color.Gray
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -131,17 +137,34 @@ fun SongContent(
                     Text(if (isPlaying) "Pause MIDI" else "Play MIDI")
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onLearningModeClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text(if (isLearningMode) "Stop Learning!" else "Start Learning!")
+                }
+
+                if (learningComplete) {
+                    CompletedSongDialog(onDismiss = onDismissDialog)
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
                     text = "Lyrics/Notes:",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White
+                    style = MaterialTheme.typography.titleMedium
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                LyricsDisplay(song.lyricsWithNotes)
+                LyricsDisplay(
+                    lyrics = song.lyricsWithNotes,
+                    currentNoteIndex = currentNoteIndex,
+                    learningComplete = learningComplete
+                )
             }
         }
     } else {
@@ -173,11 +196,15 @@ fun SongScreenPreview() {
                 LyricNote("out", "D")
             )
         )
-        Surface() {
+        Surface {
             SongContent(
                 song = mockSong,
                 isPlaying = false,
-                onPlayPauseClick = {}
+                onPlayPauseClick = {},
+                isLearningMode = true,
+                onLearningModeClick = {},
+                currentNoteIndex = 2,
+                learningComplete = false
             )
         }
     }

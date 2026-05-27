@@ -13,7 +13,7 @@ import com.example.harpapp.model.Song
 import com.example.harpapp.model.Difficulty
 import com.example.harpapp.model.LyricNote
 
-@Database(entities = [Song::class], version = 5, exportSchema = false)
+@Database(entities = [Song::class], version = 6, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -207,6 +207,22 @@ abstract class AppDatabase : RoomDatabase() {
                         LyricNote("don't", "F#4"),
                         LyricNote("know", "F#4"),
                         LyricNote("where", "E4")
+                    )
+                ),
+                Song(
+                    title = "Viva la Test",
+                    artist = "Test Artist",
+                    difficulty = Difficulty.MEDIUM,
+                    duration = MidiDurationHelper.formatDuration(MidiDurationHelper.getDurationMs(context, "midi/ANOTHERLOVE.MID")),
+                    midiFilePath = "midi/ANOTHERLOVE.MID",
+                    coverImage = null,
+                    lyricsWithNotes = listOf(
+                        LyricNote("Its", "G4"),
+                        LyricNote("only", "G4"),
+                        LyricNote("Gs", "G4"),
+                        LyricNote("for", "G4"),
+                        LyricNote("a", "G4"),
+                        LyricNote("test", "G4")
                     )
                 )
             )

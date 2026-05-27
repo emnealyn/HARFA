@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -52,6 +53,10 @@ fun AppNavGraph(
     )
     val bluetoothViewModel: BluetoothViewModel = viewModel()
     val songViewModel: SongViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        songViewModel.attachBluetoothNoteFlow(bluetoothViewModel.incomingNote)
+    }
 
     val isBluetoothConnected by bluetoothViewModel.isConnected.collectAsState()
     val connectedDeviceName by bluetoothViewModel.connectedDeviceName.collectAsState()
