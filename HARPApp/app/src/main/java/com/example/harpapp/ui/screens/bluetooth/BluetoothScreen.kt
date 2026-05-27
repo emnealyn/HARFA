@@ -82,7 +82,11 @@ fun BluetoothScreen(
             } else {
                 Button(
                     onClick = { viewModel.fetchPairedDevices(context) },
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.background
+                    )
                 ) {
                     Text("Odśwież listę")
                 }

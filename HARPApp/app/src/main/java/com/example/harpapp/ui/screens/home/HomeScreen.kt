@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.harpapp.model.Difficulty
@@ -67,6 +68,7 @@ fun HomeContent(
             text = "What will you play today?",
             fontSize = 25.sp,
             fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
         )
 
@@ -74,17 +76,29 @@ fun HomeContent(
             value = searchQuery,
             onValueChange = onSearchQueryChanged,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(text = "Search for song or artist...") },
+            placeholder = { Text(
+                text = "Search for song or artist...",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                )
+            },
             leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search") },
             singleLine = true,
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground
+            )
         )
 
         Text(
             text = "Laser Harp Library",
             fontSize = 40.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.primaryContainer,
             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
         )
         SongList(

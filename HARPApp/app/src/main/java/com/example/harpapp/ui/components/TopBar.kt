@@ -13,7 +13,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
-import com.example.harpapp.ui.theme.DarkRed
 import com.example.harpapp.ui.theme.HARPAppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,13 +24,13 @@ fun TopBar(
     onBluetoothClick: () -> Unit,
     modifier: Modifier = Modifier,
     connectedDeviceName: String? = null
-    ){
+) {
     CenterAlignedTopAppBar(
         title = {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onPrimary
             )
         },
         navigationIcon = {
@@ -39,7 +38,7 @@ fun TopBar(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color.White
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         },
@@ -51,15 +50,19 @@ fun TopBar(
                     Text(
                         text = connectedDeviceName,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if(isBluetoothConnected) { Color.Green.copy(alpha = 0.7f)
-                        } else { Color.White.copy(alpha = 0.5f) },
+                        color = if (isBluetoothConnected) {
+                            Color.Green.copy(alpha = 0.8f)
+                        } else {
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+                        },
                         modifier = Modifier
                     )
                 }
 
                 IconButton(
                     onClick = onBluetoothClick,
-                    modifier = Modifier.size(36.dp)) {
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
                         imageVector = if (isBluetoothConnected) {
                             Icons.Default.BluetoothConnected
@@ -70,14 +73,14 @@ fun TopBar(
                         tint = if (isBluetoothConnected) {
                             Color.Green
                         } else {
-                            Color.White.copy(alpha = 0.5f)
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
                         }
                     )
                 }
             }
         },
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = DarkRed
+            containerColor = MaterialTheme.colorScheme.primary
         )
     )
 }

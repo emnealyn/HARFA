@@ -9,13 +9,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -25,11 +21,9 @@ import com.example.harpapp.model.Difficulty
 import com.example.harpapp.model.LyricNote
 import com.example.harpapp.model.Song
 import com.example.harpapp.model.getCoverResourceId
-import com.example.harpapp.ui.components.TopBar // Nasz wspólny TopBar
 import com.example.harpapp.ui.components.song.LyricsDisplay
 import com.example.harpapp.ui.theme.HARPAppTheme
 import com.example.harpapp.viewmodel.SongViewModel
-
 
 @Composable
 fun SongScreen(
@@ -59,8 +53,6 @@ fun SongContent(
     onPlayPauseClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-
     if (song != null) {
         val imageResId = song.getCoverResourceId()
 
@@ -92,7 +84,7 @@ fun SongContent(
             Text(
                 text = song.title,
                 style = MaterialTheme.typography.headlineMedium,
-                //color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
 
@@ -101,7 +93,7 @@ fun SongContent(
             Text(
                 text = song.artist,
                 style = MaterialTheme.typography.titleLarge,
-                //color = Color.LightGray,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
 
@@ -114,19 +106,23 @@ fun SongContent(
                 Text(
                     text = "Difficulty: ${song.difficulty}",
                     style = MaterialTheme.typography.bodyLarge,
-                    //color = Color.White
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "Duration: ${song.duration}",
                     style = MaterialTheme.typography.bodyMedium,
-                    //color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = onPlayPauseClick,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text(if (isPlaying) "Pause MIDI" else "Play MIDI")
                 }
@@ -136,7 +132,7 @@ fun SongContent(
                 Text(
                     text = "Lyrics/Notes:",
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onBackground
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -149,7 +145,7 @@ fun SongContent(
             modifier = modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Color.White)
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -173,7 +169,7 @@ fun SongScreenPreview() {
                 LyricNote("out", "D")
             )
         )
-        Surface() {
+        Surface(color = MaterialTheme.colorScheme.background) {
             SongContent(
                 song = mockSong,
                 isPlaying = false,
