@@ -1,5 +1,6 @@
 package com.example.harpapp.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.harpapp.R
@@ -15,10 +16,12 @@ data class Song(
     val title: String,
     val artist: String,
     val difficulty: Difficulty,
-    val duration: String,
+    var duration: String,
     val lyricsWithNotes: List<LyricNote>,
     val midiFilePath: String? = null,
-    val coverImage: String? = null
+    val coverImage: String? = null,
+
+    @ColumnInfo(name = "is_favorite") val isFavorite: Boolean = false
 )
 
 fun Song.getCoverResourceId(): Int {

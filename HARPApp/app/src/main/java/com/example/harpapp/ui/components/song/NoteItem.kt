@@ -83,7 +83,7 @@ fun NoteItem(
         Spacer(modifier = Modifier.height(2.dp))
 
         Text(
-            text = item.syllable,
+            text = item.syllable ?: "",
             maxLines = 1,
             softWrap = false,
             color = syllableColor,

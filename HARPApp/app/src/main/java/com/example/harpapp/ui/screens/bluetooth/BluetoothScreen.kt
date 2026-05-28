@@ -54,13 +54,13 @@ fun BluetoothScreen(
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
-            text = "Status: ${if (isConnected) "Połączono" else "Rozłączono"}",
+            text = "Status: ${if (isConnected) "Connected" else "Disconnected"}",
             style = MaterialTheme.typography.titleLarge
         )
 
         if (isConnected) {
             Text(
-                text = "Urządzenie: ${connectedDeviceName ?: "Nieznane"}",
+                text = "Device: ${connectedDeviceName ?: "Unknown"}",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -68,17 +68,17 @@ fun BluetoothScreen(
                 onClick = { viewModel.disconnect() },
                 modifier = Modifier.padding(top = 16.dp)
             ) {
-                Text("Rozłącz")
+                Text("Disconnect")
             }
         } else {
             Text(
-                text = "Sparowane urządzenia:",
+                text = "Paired devices:",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
             )
 
             if (!hasPermissions) {
-                Text("Brak uprawnień do Bluetooth")
+                Text("No Bluetooth permissions")
             } else {
                 Button(
                     onClick = { viewModel.fetchPairedDevices(context) },
@@ -88,7 +88,7 @@ fun BluetoothScreen(
                         contentColor = MaterialTheme.colorScheme.background
                     )
                 ) {
-                    Text("Odśwież listę")
+                    Text("Refresh list")
                 }
 
                 LazyColumn {
@@ -100,7 +100,7 @@ fun BluetoothScreen(
                                 .clickable { viewModel.connectToDevice(device) }
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(text = device.name ?: "Nieznane urządzenie", style = MaterialTheme.typography.bodyLarge)
+                                Text(text = device.name ?: "Unknown device", style = MaterialTheme.typography.bodyLarge)
                                 Text(text = device.address, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
