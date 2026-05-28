@@ -26,9 +26,9 @@ interface SongDao {
     @Delete
     suspend fun deleteSong(song: Song)
 
-    @Query("UPDATE songs SET is_favorite = :isFavorite WHERE id = :songId")
+    @Query("UPDATE songs SET isFavorite = :isFavorite WHERE id = :songId")
     suspend fun updateFavoriteStatus(songId: Int, isFavorite: Boolean)
 
-    @Query("SELECT * FROM songs WHERE is_favorite = 1")
+    @Query("SELECT * FROM songs WHERE isFavorite = 1")
     fun getFavoriteSongs(): Flow<List<Song>>
 }

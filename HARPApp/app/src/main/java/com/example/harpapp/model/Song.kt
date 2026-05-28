@@ -20,8 +20,7 @@ data class Song(
     val lyricsWithNotes: List<LyricNote>,
     val midiFilePath: String? = null,
     val coverImage: String? = null,
-
-    @ColumnInfo(name = "is_favorite") val isFavorite: Boolean = false
+    val isFavorite: Boolean = false
 )
 
 fun Song.getCoverResourceId(): Int {
