@@ -61,6 +61,7 @@ dependencies {
     implementation(libs.androidx.benchmark.traceprocessor)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.compose.foundation.layout)
     ksp(libs.room.compiler)
 
     testImplementation(libs.junit)

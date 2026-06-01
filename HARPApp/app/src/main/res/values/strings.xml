@@ -37,4 +37,6 @@
     <string name="title_bluetooth">Bluetooth</string>
     <string name="back">Back</string>
     <string name="bluetooth_status">Bluetooth status</string>
+    <string name="preferences">Preferences</string>
+    <string name="connectivity">Connectivity</string>
 </resources>
