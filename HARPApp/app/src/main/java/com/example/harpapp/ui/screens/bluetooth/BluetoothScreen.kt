@@ -16,6 +16,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.harpapp.viewmodel.BluetoothViewModel
 import android.annotation.SuppressLint
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.BluetoothConnected
+import androidx.compose.material.icons.filled.BluetoothDisabled
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.Alignment
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -30,79 +39,179 @@ fun BluetoothScreen(
     var hasPermissions by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         hasPermissions = permissions.values.all { it }
-        if (hasPermissions) {
-            viewModel.fetchPairedDevices(context)
-        }
+        if (hasPermissions) viewModel.fetchPairedDevices(context)
     }
 
     LaunchedEffect(Unit) {
-        val permissionsToRequest = mutableListOf(
+        val permissions = mutableListOf(
             Manifest.permission.BLUETOOTH,
             Manifest.permission.BLUETOOTH_ADMIN,
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
-            permissionsToRequest.add(Manifest.permission.BLUETOOTH_SCAN)
+            permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+            permissions.add(Manifest.permission.BLUETOOTH_SCAN)
         }
-        permissionLauncher.launch(permissionsToRequest.toTypedArray())
+
+        permissionLauncher.launch(permissions.toTypedArray())
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            text = "Status: ${if (isConnected) "Connected" else "Disconnected"}",
-            style = MaterialTheme.typography.titleLarge
-        )
+    val statusColor = if (isConnected)
+        MaterialTheme.colorScheme.primary
+    else
+        MaterialTheme.colorScheme.error
 
-        if (isConnected) {
-            Text(
-                text = "Device: ${connectedDeviceName ?: "Unknown"}",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            Button(
-                onClick = { viewModel.disconnect() },
-                modifier = Modifier.padding(top = 16.dp)
+    val statusIcon = if (isConnected)
+        Icons.Default.BluetoothConnected
+    else
+        Icons.Default.BluetoothDisabled
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = statusColor.copy(alpha = 0.12f)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Disconnect")
-            }
-        } else {
-            Text(
-                text = "Paired devices:",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-            )
 
-            if (!hasPermissions) {
-                Text("No Bluetooth permissions")
-            } else {
-                Button(
-                    onClick = { viewModel.fetchPairedDevices(context) },
-                    modifier = Modifier.padding(bottom = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.background
+                Icon(
+                    imageVector = statusIcon,
+                    contentDescription = null,
+                    tint = statusColor,
+                    modifier = Modifier.size(32.dp)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isConnected) "Connected" else "Disconnected",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = statusColor
                     )
-                ) {
-                    Text("Refresh list")
+
+                    Text(
+                        text = connectedDeviceName ?: "No device",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
 
-                LazyColumn {
-                    items(pairedDevices) { device ->
-                        Card(
+                if (isConnected) {
+                    IconButton(onClick = { viewModel.disconnect() }) {
+                        Icon(
+                            imageVector = Icons.Default.LinkOff,
+                            contentDescription = "Disconnect"
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Default.Bluetooth,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = "Paired Devices",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+
+            IconButton(onClick = { viewModel.fetchPairedDevices(context) }) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Refresh"
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (!hasPermissions) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Bluetooth permissions are required.",
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            return
+        }
+
+        if (pairedDevices.isEmpty()) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "No paired devices found",
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(pairedDevices) { device ->
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.connectToDevice(device) }
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable { viewModel.connectToDevice(device) }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(text = device.name ?: "Unknown device", style = MaterialTheme.typography.bodyLarge)
-                                Text(text = device.address, style = MaterialTheme.typography.bodyMedium)
+
+                            Icon(
+                                imageVector = Icons.Default.PhoneAndroid,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = device.name ?: "Unknown device",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text(
+                                    text = device.address,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
+
+                            Icon(
+                                imageVector = Icons.Default.Link,
+                                contentDescription = "Connect",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
                 }
