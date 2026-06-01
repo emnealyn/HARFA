@@ -37,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.harpapp.model.Difficulty
 import com.example.harpapp.model.Song
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 
 @Composable
 fun HomeScreen(
@@ -47,15 +49,18 @@ fun HomeScreen(
     val songs by viewModel.filteredSongs.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedDifficulties by viewModel.selectedDifficulties.collectAsState()
+    val showFavoritesOnly by viewModel.showFavoritesOnly.collectAsState()
 
     HomeContent(
         songs = songs,
         searchQuery = searchQuery,
         selectedDifficulties = selectedDifficulties,
+        showFavoritesOnly = showFavoritesOnly,
         onDifficultyToggle = { difficulty -> viewModel.toggleDifficultyFilter(difficulty) },
+        onToggleFavoritesFilter = { viewModel.toggleFavoritesFilter() },
         onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
         onSongClick = onNavigateToSong,
-        onSongPreviewClick = { song -> viewModel.playSongPreview(song.id) },
+        onFavoriteToggle = { song -> viewModel.toggleFavorite(song.id, song.isFavorite) },
         modifier = modifier
     )
 }
@@ -65,10 +70,12 @@ fun HomeContent(
     songs: List<Song>,
     searchQuery: String,
     selectedDifficulties: Set<Difficulty>,
+    showFavoritesOnly: Boolean,
     onDifficultyToggle: (Difficulty) -> Unit,
+    onToggleFavoritesFilter: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
+    onFavoriteToggle: (Song) -> Unit,
     onSongClick: (Int) -> Unit,
-    onSongPreviewClick: (Song) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -104,12 +111,25 @@ fun HomeContent(
                     )
                 },
                 trailingIcon = {
-                    IconButton(onClick = { expanded = !expanded }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filter",
-                            tint = if (selectedDifficulties.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                        )
+                    Row(
+                        modifier = Modifier.padding(end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ){
+                        IconButton(onClick = onToggleFavoritesFilter) {
+                            Icon(
+                                imageVector = if (showFavoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Filter Favorites",
+                                tint = if (showFavoritesOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                            )
+                        }
+
+                        IconButton(onClick = { expanded = !expanded }) {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = "Filter",
+                                tint = if (selectedDifficulties.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                            )
+                        }
                     }
                 },
                 singleLine = true,
@@ -160,40 +180,12 @@ fun HomeContent(
             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
         )
 
-        if (songs.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(8.dp)
-                ) {
-                    Text(
-                        text = "No songs found :(",
-                        fontSize = 25.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Try changing your search phrase or clear some filters",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                }
-            }
-        } else {
-            SongList(
-                songs = songs,
-                onSongPreviewClick = onSongPreviewClick,
-                onSongClick = { song -> onSongClick(song.id) },
-                modifier = Modifier.weight(1f)
-            )
-        }
+        SongList(
+            songs = songs,
+            onFavoriteClick = onFavoriteToggle,
+            onSongClick = { song -> onSongClick(song.id) },
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 

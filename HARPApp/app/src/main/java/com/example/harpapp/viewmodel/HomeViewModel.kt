@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import com.example.harpapp.model.Difficulty
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class HomeViewModel(application: Application): AndroidViewModel(application) {
 
@@ -23,16 +25,23 @@ class HomeViewModel(application: Application): AndroidViewModel(application) {
     private val _allSongs: Flow<List<Song>> = songDao.getAllSongs()
     private val _selectedDifficulties = MutableStateFlow<Set<Difficulty>>(emptySet())
     val selectedDifficulties = _selectedDifficulties.asStateFlow()
+    private val _showFavoritesOnly = MutableStateFlow(false)
+    val showFavoritesOnly = _showFavoritesOnly.asStateFlow()
 
 
-    val filteredSongs = combine(_allSongs, _searchQuery, _selectedDifficulties) { songs, query, difficulties ->
+    val filteredSongs = combine(
+        _allSongs,
+        _searchQuery,
+        _selectedDifficulties,
+        _showFavoritesOnly
+    ) { songs, query, difficulties, favoritesOnly ->
         songs.filter { song ->
             val matchesSearch = song.title.contains(query, ignoreCase = true) ||
                     song.artist.contains(query, ignoreCase = true)
-
             val matchesDifficulty = difficulties.isEmpty() || difficulties.contains(song.difficulty)
+            val matchesFavorites = !favoritesOnly || song.isFavorite
 
-            matchesSearch && matchesDifficulty
+            matchesSearch && matchesDifficulty && matchesFavorites
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -49,8 +58,13 @@ class HomeViewModel(application: Application): AndroidViewModel(application) {
         }
     }
 
-    fun playSongPreview(songId: Int) {
-        // TO DO: dodać odtwarzanie audio
-        println("Playing preview for song $songId")
+    fun toggleFavorite(songId: Int, currentFavoriteStatus: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            songDao.updateFavoriteStatus(songId, !currentFavoriteStatus)
+        }
+    }
+
+    fun toggleFavoritesFilter() {
+        _showFavoritesOnly.value = !_showFavoritesOnly.value
     }
 }

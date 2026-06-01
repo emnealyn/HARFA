@@ -31,6 +31,7 @@ import com.example.harpapp.model.getCoverResourceId
 @Composable
 fun SongItem(
     song: Song,
+    onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val difficultyColor = when (song.difficulty) {
@@ -120,7 +121,7 @@ fun SongItem(
             }
 
             IconButton(
-                onClick = { /* TODO: Toggle favorite */ },
+                onClick = onFavoriteClick,
                 modifier = Modifier
                     .size(48.dp)
                     .padding(end = 24.dp)
@@ -153,7 +154,8 @@ fun SongItemPreview() {
             )
         )
         SongItem(
-            song = testSong
+            song = testSong,
+            onFavoriteClick = {}
         )
     }
 }
