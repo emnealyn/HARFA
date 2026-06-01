@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HARPApp</string>
+    <string name="no_songs_found">Nie znaleziono piosenek :(</string>
+    <string name="try_changing_your_search_phrase_or_clear_some_filters">Spróbuj zmienić frazę wyszukiwania lub wyczyść niektóre filtry</string>
+    <string name="dark_mode">Ciemny motyw</string>
+    <string name="light_mode">Jasny motyw</string>
+    <string name="congratulations">Gratulacje!</string>
+    <string name="song_complete_great_job">Piosenka ukończona! Świetna robota!</string>
+    <string name="ok">Okej</string>
+    <string name="connected">Połączono</string>
+    <string name="disconnected">Rozłączono</string>
+    <string name="no_device">Brak urządzenia</string>
+    <string name="paired_devices">Sparowane urządzenia</string>
+    <string name="bluetooth_permissions_are_required">Wymagane są uprawnienia Bluetooth.</string>
+    <string name="no_paired_devices_found">Nie znaleziono sparowanych urządzeń</string>
+    <string name="unknown_device">Nieznane urządzenie</string>
+    <string name="what_will_you_play_today">Co dzisiaj zagrasz?</string>
+    <string name="search_for_song_or_artist">Wyszukaj utwór lub artystę...</string>
+    <string name="your_library">Twoja Biblioteka</string>
+    <string name="bluetooth_settings">Ustawienia Bluetooth</string>
+    <string name="application_theme">Motyw aplikacji</string>
+    <string name="difficulty">Trudność: %1$s</string>
+    <string name="duration">Czas trwania: %1$s</string>
+    <string name="pause_midi">Zatrzymaj MIDI</string>
+    <string name="play_midi">Odtwórz MIDI</string>
+    <string name="stop_learning">Zatrzymaj tryb nauki!</string>
+    <string name="start_learning">Rozpocznij tryb nauki!</string>
+    <string name="lyrics_notes">Tekst/Nuty:</string>
+    <string name="difficulty_easy">Łatwy</string>
+    <string name="difficulty_medium">Średni</string>
+    <string name="difficulty_hard">Trudny</string>
+    <string name="settings_language_title">Język</string>
+
+    <string name="nav_home">Główna</string>
+    <string name="nav_song">Utwór</string>
+    <string name="nav_settings">Ustawienia</string>
+    <string name="title_song_details">Szczegóły utworu</string>
+    <string name="title_bluetooth">Bluetooth</string>
+    <string name="back">Cofnij</string>
+    <string name="bluetooth_status">Status Połączenia</string>
+</resources>

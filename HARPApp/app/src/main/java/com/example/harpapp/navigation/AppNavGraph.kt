@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -18,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.harpapp.R
 import com.example.harpapp.ui.components.NavBar
 import com.example.harpapp.ui.components.TopBar
 import com.example.harpapp.ui.screens.bluetooth.BluetoothScreen
@@ -64,11 +66,11 @@ fun AppNavGraph(
     Scaffold(
         topBar = {
             val title = when (normalizedRoute) {
-                Routes.HOME -> "HARPApp"
-                Routes.SETTINGS -> "Settings"
-                Routes.BLUETOOTH -> "Bluetooth"
-                Routes.SONG -> "Song Details"
-                else -> "HARPApp"
+                Routes.HOME -> stringResource(R.string.app_name)
+                Routes.SETTINGS -> stringResource(R.string.nav_settings)
+                Routes.BLUETOOTH -> stringResource(R.string.title_bluetooth)
+                Routes.SONG -> stringResource(R.string.title_song_details)
+                else -> stringResource(R.string.app_name)
             }
 
             if (currentRoute != Routes.SPLASH) {
@@ -112,8 +114,8 @@ fun AppNavGraph(
                             }
 
                             launchSingleTop = true
-
                             restoreState = (targetRoute == Routes.SETTINGS)
+
                         }
                     }
                 )
@@ -135,15 +137,7 @@ fun AppNavGraph(
                     viewModel = homeViewModel,
                     onNavigateToSong = { songId ->
                         navController.navigate(Routes.createSongRoute(songId))
-                    }
-                )
-            }
 
-            composable(Routes.SETTINGS) {
-                SettingsScreen(
-                    viewModel = settingsViewModel,
-                    onNavigateToBluetooth = {
-                        navController.navigate(Routes.BLUETOOTH)
                     }
                 )
             }
@@ -158,6 +152,15 @@ fun AppNavGraph(
                 SongScreen(
                     songId = songId,
                     viewModel = songViewModel
+                )
+            }
+
+            composable(Routes.SETTINGS) {
+                SettingsScreen(
+                    viewModel = settingsViewModel,
+                    onNavigateToBluetooth = {
+                        navController.navigate(Routes.BLUETOOTH)
+                    }
                 )
             }
 

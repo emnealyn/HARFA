@@ -10,9 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.harpapp.R
 import com.example.harpapp.ui.theme.HARPAppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,7 +38,7 @@ fun TopBar(
             IconButton(onClick = onBackClick) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.back),
                     tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
@@ -69,7 +70,7 @@ fun TopBar(
                         } else {
                             Icons.Default.BluetoothDisabled
                         },
-                        contentDescription = "Status Bluetooth",
+                        contentDescription = stringResource(R.string.bluetooth_status),
                         tint = if (isBluetoothConnected) {
                             Color.Green
                         } else {

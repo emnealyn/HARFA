@@ -24,8 +24,11 @@ import com.example.harpapp.ui.theme.HARPAppTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.ui.res.stringResource
 import com.example.harpapp.model.LyricNote
 import com.example.harpapp.model.getCoverResourceId
+import com.example.harpapp.R
+
 
 
 @Composable
@@ -38,6 +41,11 @@ fun SongItem(
         Difficulty.EASY -> Color(0xFF4CAF50)
         Difficulty.MEDIUM -> Color(0xFFFFA726)
         Difficulty.HARD -> Color(0xFFEF5350)
+    }
+    val difficultyText = when(song.difficulty) {
+        Difficulty.EASY -> stringResource(R.string.difficulty_easy)
+        Difficulty.MEDIUM -> stringResource(R.string.difficulty_medium)
+        Difficulty.HARD -> stringResource(R.string.difficulty_hard)
     }
 
     Card(
@@ -57,7 +65,6 @@ fun SongItem(
                 .height(98.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Cover image
             Image(
                 painter = painterResource(id = song.getCoverResourceId()),
                 contentDescription = "Cover",
@@ -89,7 +96,6 @@ fun SongItem(
 
                 Spacer(modifier = Modifier.height(1.dp))
 
-                // Artist
                 Text(
                     text = song.artist,
                     fontSize = 13.sp,
@@ -111,7 +117,7 @@ fun SongItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = song.difficulty.name,
+                        text = difficultyText,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = difficultyColor,

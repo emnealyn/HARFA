@@ -9,9 +9,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.harpapp.R
 import com.example.harpapp.model.Song
 
 @Composable
@@ -32,14 +34,14 @@ fun SongList(
                 modifier = Modifier.padding(8.dp)
             ) {
                 Text(
-                    text = "No songs found :(",
+                    text = stringResource(R.string.no_songs_found),
                     fontSize = 25.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Try changing your search phrase or clear some filters",
+                    text = stringResource(R.string.try_changing_your_search_phrase_or_clear_some_filters),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center

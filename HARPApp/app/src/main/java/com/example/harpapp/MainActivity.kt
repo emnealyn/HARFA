@@ -3,10 +3,13 @@ package com.example.harpapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.harpapp.data.dataStore
 import com.example.harpapp.navigation.AppNavGraph
@@ -14,8 +17,9 @@ import com.example.harpapp.repository.SettingsRepository
 import com.example.harpapp.viewmodel.SettingsViewModel
 import com.example.harpapp.viewmodel.SettingsViewModelFactory
 import com.example.harpapp.ui.theme.HARPAppTheme
+import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -39,6 +39,8 @@ import com.example.harpapp.model.Difficulty
 import com.example.harpapp.model.Song
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.ui.res.stringResource
+import com.example.harpapp.R
 
 @Composable
 fun HomeScreen(
@@ -86,7 +88,7 @@ fun HomeContent(
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text(
-            text = "What will you play today?",
+            text = stringResource(R.string.what_will_you_play_today),
             fontSize = 25.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -100,7 +102,7 @@ fun HomeContent(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
                     Text(
-                        text = "Search for song or artist...",
+                        text = stringResource(R.string.search_for_song_or_artist),
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
                     )
                 },
@@ -173,7 +175,7 @@ fun HomeContent(
         }
 
         Text(
-            text = "Your Library",
+            text = stringResource(R.string.your_library),
             fontSize = 25.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primaryContainer,

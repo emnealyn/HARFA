@@ -4,13 +4,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import com.example.harpapp.navigation.Routes
+import com.example.harpapp.R
 
 sealed class NavBarItem(
     val route: String,
-    val title: String,
+    val titleResId: Int,
     val icon: ImageVector
 ){
-    object Home : NavBarItem(Routes.HOME, "Home", Icons.Default.Home)
-    object Song : NavBarItem(Routes.SONG, "Song", Icons.Default.LibraryMusic)
-    object Settings : NavBarItem(Routes.SETTINGS, "Settings", Icons.Default.Settings)
+    object Home : NavBarItem(Routes.HOME, R.string.nav_home, Icons.Default.Home)
+    object Song : NavBarItem(Routes.SONG, R.string.nav_song, Icons.Default.LibraryMusic)
+    object Settings : NavBarItem(Routes.SETTINGS, R.string.nav_settings, Icons.Default.Settings)
 }

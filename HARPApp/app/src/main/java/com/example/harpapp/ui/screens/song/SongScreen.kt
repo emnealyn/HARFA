@@ -15,9 +15,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.harpapp.R
 import com.example.harpapp.model.Difficulty
 import com.example.harpapp.model.LyricNote
 import com.example.harpapp.model.Song
@@ -68,8 +70,14 @@ fun SongContent(
     onDismissDialog: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+
     if (song != null) {
         val imageResId = song.getCoverResourceId()
+        val translatedDifficulty = when (song.difficulty) {
+            Difficulty.EASY -> stringResource(R.string.difficulty_easy)
+            Difficulty.MEDIUM -> stringResource(R.string.difficulty_medium)
+            Difficulty.HARD -> stringResource(R.string.difficulty_hard)
+        }
 
         Column(
             modifier = modifier
@@ -119,12 +127,11 @@ fun SongContent(
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = "Difficulty: ${song.difficulty}",
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = stringResource(R.string.difficulty, translatedDifficulty),
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "Duration: ${song.duration}",
+                    text = stringResource(R.string.duration, song.duration),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -139,7 +146,7 @@ fun SongContent(
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Text(if (isPlaying) "Pause MIDI" else "Play MIDI")
+                    Text(if (isPlaying) stringResource(R.string.pause_midi) else stringResource(R.string.play_midi))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -149,7 +156,9 @@ fun SongContent(
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
-                    Text(if (isLearningMode) "Stop Learning!" else "Start Learning!")
+                    Text(if (isLearningMode) stringResource(R.string.stop_learning) else stringResource(
+                        R.string.start_learning
+                    ))
                 }
 
                 if (learningComplete) {
@@ -159,7 +168,7 @@ fun SongContent(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "Lyrics/Notes:",
+                    text = stringResource(R.string.lyrics_notes),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground
                 )

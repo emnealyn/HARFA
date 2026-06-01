@@ -8,6 +8,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 
 @Composable
 fun NavBar(
@@ -36,11 +37,11 @@ fun NavBar(
                 icon = {
                     Icon(
                         imageVector = item.icon,
-                        contentDescription = item.title
+                        contentDescription = stringResource(item.titleResId)
                     )
                 },
                 label = {
-                    Text(item.title)
+                    Text(stringResource(item.titleResId))
                 },
                 selected = selected,
                 onClick = {

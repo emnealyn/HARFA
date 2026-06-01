@@ -8,8 +8,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.harpapp.R
 import com.example.harpapp.data.ThemeMode
 import com.example.harpapp.ui.theme.HARPAppTheme
 
@@ -34,7 +36,7 @@ fun ThemeOptionRow(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = if (isDark) "Dark mode" else "Light mode",
+                text = if (isDark) stringResource(R.string.dark_mode) else stringResource(R.string.light_mode),
                 style = MaterialTheme.typography.bodyLarge
             )
         }

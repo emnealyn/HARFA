@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Piano
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
+import com.example.harpapp.R
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -100,13 +102,15 @@ fun BluetoothScreen(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (isConnected) "Connected" else "Disconnected",
+                        text = if (isConnected) stringResource(R.string.connected) else stringResource(
+                            R.string.disconnected
+                        ),
                         style = MaterialTheme.typography.titleLarge,
                         color = statusColor
                     )
 
                     Text(
-                        text = connectedDeviceName ?: "No device",
+                        text = connectedDeviceName ?: stringResource(R.string.no_device),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -137,7 +141,7 @@ fun BluetoothScreen(
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text = "Paired Devices",
+                text = stringResource(R.string.paired_devices),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f)
             )
@@ -155,7 +159,7 @@ fun BluetoothScreen(
         if (!hasPermissions) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Bluetooth permissions are required.",
+                    text = stringResource(R.string.bluetooth_permissions_are_required),
                     modifier = Modifier.padding(16.dp)
                 )
             }
@@ -165,7 +169,7 @@ fun BluetoothScreen(
         if (pairedDevices.isEmpty()) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "No paired devices found",
+                    text = stringResource(R.string.no_paired_devices_found),
                     modifier = Modifier.padding(16.dp)
                 )
             }
@@ -198,7 +202,7 @@ fun BluetoothScreen(
 
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = device.name ?: "Unknown device",
+                                    text = device.name ?: stringResource(R.string.unknown_device),
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Text(
