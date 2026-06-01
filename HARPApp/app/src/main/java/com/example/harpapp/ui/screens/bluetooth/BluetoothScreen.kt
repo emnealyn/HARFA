@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Piano
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.Alignment
 
@@ -187,7 +188,7 @@ fun BluetoothScreen(
                         ) {
 
                             Icon(
-                                imageVector = Icons.Default.PhoneAndroid,
+                                imageVector = Icons.Default.Piano,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(28.dp)

@@ -48,7 +48,7 @@ fun SettingsScreen(
                 contentColor = MaterialTheme.colorScheme.background
             )
         ) {
-            Text("Ustawienia Bluetooth")
+            Text("Bluetooth settings")
         }
     }
 }
