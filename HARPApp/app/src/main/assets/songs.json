@@ -52,12 +52,12 @@
     ]
   },
   {
-    "title": "Let It Go",
-    "artist": "Idina Menzel",
+    "title": "Wildest Dreams",
+    "artist": "Taylor Swift",
     "difficulty": "EASY",
     "duration": "0:53",
     "midiFilePath": "midi/ANOTHERLOVE.MID",
-    "coverImage": null,
+    "coverImage": "cover_wildest_dreams",
     "is_favorite": false,
     "lyricsWithNotes": [
       { "syllable": "I", "note": "G4" },
@@ -84,12 +84,12 @@
     ]
   },
   {
-    "title": "My Heart Will Go On",
-    "artist": "Celine Dion",
+    "title": "Lovely",
+    "artist": "Billie Eilish & Khalid",
     "difficulty": "HARD",
     "duration": "0:53",
     "midiFilePath": "midi/ANOTHERLOVE.MID",
-    "coverImage": null,
+    "coverImage": "cover_lovely",
     "is_favorite": false,
     "lyricsWithNotes": [
       { "syllable": "I", "note": "G4" },
@@ -116,12 +116,12 @@
     ]
   },
   {
-    "title": "A Thousand Years",
-    "artist": "Christina Perri",
+    "title": "Hallelujah",
+    "artist": "Leonard Cohen",
     "difficulty": "MEDIUM",
     "duration": "0:53",
     "midiFilePath": "midi/ANOTHERLOVE.MID",
-    "coverImage": null,
+    "coverImage": "cover_hallelujah",
     "is_favorite": false,
     "lyricsWithNotes": [
       { "syllable": "I", "note": "G4" },

@@ -24,6 +24,7 @@ class HomeViewModel(application: Application): AndroidViewModel(application) {
     private val _selectedDifficulties = MutableStateFlow<Set<Difficulty>>(emptySet())
     val selectedDifficulties = _selectedDifficulties.asStateFlow()
 
+
     val filteredSongs = combine(_allSongs, _searchQuery, _selectedDifficulties) { songs, query, difficulties ->
         songs.filter { song ->
             val matchesSearch = song.title.contains(query, ignoreCase = true) ||
