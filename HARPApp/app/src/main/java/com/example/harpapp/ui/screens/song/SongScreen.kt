@@ -1,10 +1,17 @@
 package com.example.harpapp.ui.screens.song
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,14 +23,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.harpapp.R
 import com.example.harpapp.model.Difficulty
 import com.example.harpapp.model.LyricNote
 import com.example.harpapp.model.Song
 import com.example.harpapp.model.getCoverResourceId
+import com.example.harpapp.ui.components.home.DifficultyBadge
 import com.example.harpapp.ui.components.song.CompletedSongDialog
 import com.example.harpapp.ui.components.song.LyricsDisplay
 import com.example.harpapp.ui.theme.HARPAppTheme
@@ -73,11 +83,6 @@ fun SongContent(
 
     if (song != null) {
         val imageResId = song.getCoverResourceId()
-        val translatedDifficulty = when (song.difficulty) {
-            Difficulty.EASY -> stringResource(R.string.difficulty_easy)
-            Difficulty.MEDIUM -> stringResource(R.string.difficulty_medium)
-            Difficulty.HARD -> stringResource(R.string.difficulty_hard)
-        }
 
         Column(
             modifier = modifier
@@ -106,80 +111,122 @@ fun SongContent(
 
             Text(
                 text = song.title,
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(4.dp))
-            
+
             Text(
                 text = song.artist,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                DifficultyBadge(difficulty = song.difficulty)
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ){
+                    Icon(
+                        imageVector = Icons.Default.AccessTime,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = song.duration,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onLearningModeClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = MaterialTheme.shapes.large
+                ) {
+                    Text(
+                        text = if (isLearningMode) stringResource(R.string.stop_learning)
+                        else stringResource(R.string.start_learning),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                OutlinedIconButton(
+                    onClick = onPlayPauseClick,
+                    modifier = Modifier.size(48.dp),
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                    colors = IconButtonDefaults.outlinedIconButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause MIDI" else "Play MIDI",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = stringResource(R.string.difficulty, translatedDifficulty),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = stringResource(R.string.duration, song.duration),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = onPlayPauseClick,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Text(if (isPlaying) stringResource(R.string.pause_midi) else stringResource(R.string.play_midi))
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = onLearningModeClick,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Text(if (isLearningMode) stringResource(R.string.stop_learning) else stringResource(
-                        R.string.start_learning
-                    ))
-                }
-
-                if (learningComplete) {
-                    CompletedSongDialog(onDismiss = onDismissDialog)
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Text(
                     text = stringResource(R.string.lyrics_notes),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                LyricsDisplay(
-                    lyrics = song.lyricsWithNotes,
-                    currentNoteIndex = currentNoteIndex,
-                    learningComplete = learningComplete
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        LyricsDisplay(
+                            lyrics = song.lyricsWithNotes,
+                            currentNoteIndex = currentNoteIndex,
+                            learningComplete = learningComplete
+                        )
+                    }
+                }
             }
         }
     } else {

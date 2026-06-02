@@ -56,7 +56,7 @@ fun NoteItem(
     val noteColor = when (state) {
         NoteState.DONE -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
         NoteState.ACTIVE -> MaterialTheme.colorScheme.primary
-        NoteState.UPCOMING -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+        NoteState.UPCOMING -> MaterialTheme.colorScheme.primaryContainer
     }
 
     val itemAlpha = if (state == NoteState.ACTIVE) pulseAlpha else 1f

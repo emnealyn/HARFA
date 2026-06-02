@@ -37,17 +37,6 @@ fun SongItem(
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val difficultyColor = when (song.difficulty) {
-        Difficulty.EASY -> Color(0xFF4CAF50)
-        Difficulty.MEDIUM -> Color(0xFFFFA726)
-        Difficulty.HARD -> Color(0xFFEF5350)
-    }
-    val difficultyText = when(song.difficulty) {
-        Difficulty.EASY -> stringResource(R.string.difficulty_easy)
-        Difficulty.MEDIUM -> stringResource(R.string.difficulty_medium)
-        Difficulty.HARD -> stringResource(R.string.difficulty_hard)
-    }
-
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -106,24 +95,7 @@ fun SongItem(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Box(
-                    modifier = Modifier
-                        .wrapContentWidth()
-                        .height(24.dp)
-                        .background(
-                            color = difficultyColor.copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(15.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = difficultyText,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = difficultyColor,
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    )
-                }
+                DifficultyBadge(difficulty = song.difficulty)
             }
 
             IconButton(
