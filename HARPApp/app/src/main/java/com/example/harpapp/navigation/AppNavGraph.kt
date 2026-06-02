@@ -125,11 +125,15 @@ fun AppNavGraph(
 
         NavHost(
             navController = navController,
-            startDestination = Routes.HOME,
+            startDestination = Routes.SPLASH,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Routes.SPLASH) {
-                SplashScreen()
+                SplashScreen(onAnimationFinished = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                })
             }
 
             composable(Routes.HOME) {
