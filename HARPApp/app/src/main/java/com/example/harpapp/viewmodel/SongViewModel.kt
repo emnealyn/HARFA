@@ -36,9 +36,10 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     private var noteListenerJob: Job? = null
 
     fun loadSong(songId: Int) {
+        if (_song.value?.id == songId) return
+
         viewModelScope.launch {
             _song.value = songDao.getSongById(songId)
-            // Reset everything when switching songs
             mediaPlayer?.release()
             mediaPlayer = null
             _isPlaying.value = false
