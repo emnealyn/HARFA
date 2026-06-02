@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Piano
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import com.example.harpapp.R
 
@@ -65,7 +66,7 @@ fun BluetoothScreen(
     }
 
     val statusColor = if (isConnected)
-        MaterialTheme.colorScheme.primary
+        Color(0xFF3B8A40)
     else
         MaterialTheme.colorScheme.error
 

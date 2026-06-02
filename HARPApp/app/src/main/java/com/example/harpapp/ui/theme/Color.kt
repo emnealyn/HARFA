@@ -17,3 +17,5 @@ val DarkBackground = Color(0xFF151515)
 val DarkSurface = Color(0xFF1E1E1E)
 val DarkOnSurface = Color(0xFFF1EFEF)
 val DarkLibraryHeader = Color(0xB7F53838)
+
+val Green = Color(0xFF295D2B)

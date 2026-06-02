@@ -103,6 +103,7 @@ fun HomeContent(
                 placeholder = {
                     Text(
                         text = stringResource(R.string.search_for_song_or_artist),
+                        fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
                     )
                 },

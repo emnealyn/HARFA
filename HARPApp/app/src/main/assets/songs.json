@@ -56,7 +56,7 @@
     "artist": "Taylor Swift",
     "difficulty": "EASY",
     "duration": "0:53",
-    "midiFilePath": "midi/ANOTHERLOVE.MID",
+    "midiFilePath": "midi/WILDESTDREAMS.MID",
     "coverImage": "cover_wildest_dreams",
     "is_favorite": false,
     "lyricsWithNotes": [
@@ -84,8 +84,6 @@
       { "syllable": "a-", "note": "D#4" },
       { "syllable": "way", "note": "C5" },
       { "syllable": "from", "note": "C5" },
-      { "syllable": " ", "note": "A#4" },
-      { "syllable": "from", "note": "G#4" },
       { "syllable": "the", "note": "F4" },
       { "syllable": "crowds", "note": "D#4" }
     ]
@@ -95,7 +93,7 @@
     "artist": "Billie Eilish & Khalid",
     "difficulty": "HARD",
     "duration": "0:53",
-    "midiFilePath": "midi/ANOTHERLOVE.MID",
+    "midiFilePath": "midi/LOVELY.MID",
     "coverImage": "cover_lovely",
     "is_favorite": false,
     "lyricsWithNotes": [
@@ -195,7 +193,7 @@
     "artist": "Leonard Cohen",
     "difficulty": "MEDIUM",
     "duration": "0:53",
-    "midiFilePath": "midi/ANOTHERLOVE.MID",
+    "midiFilePath": "midi/HALLELUJAH.MID",
     "coverImage": "cover_hallelujah",
     "is_favorite": false,
     "lyricsWithNotes": [
@@ -276,7 +274,7 @@
     "artist": "Test Artist",
     "difficulty": "EASY",
     "duration": "0:53",
-    "midiFilePath": "midi/ANOTHERLOVE.MID",
+    "midiFilePath": "midi/TESTSONG.MID",
     "coverImage": null,
     "is_favorite": false,
     "lyricsWithNotes": [

@@ -16,7 +16,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.InputStreamReader
 
-@Database(entities = [Song::class], version = 12, exportSchema = false)
+@Database(entities = [Song::class], version = 14, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
