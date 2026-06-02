@@ -14,11 +14,13 @@ import com.example.harpapp.viewmodel.SettingsViewModel
 import com.example.harpapp.viewmodel.SettingsViewModelFactory
 import com.example.harpapp.ui.theme.HARPAppTheme
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
 
         setContent {
             val context = LocalContext.current
