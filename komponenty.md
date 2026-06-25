@@ -10,7 +10,7 @@
 10. BMS 3S - układ zabezpieczajacy przed spaleniem baterii np, fajna sprawa.
 11. Koszyk do baterii
 12. Głośnik?
-
+13. Zasilanie zasilaczem?
 
 <!-- 1. 15x TEPT4400 Phototransistor
 2. 15x 5mm Red LED Diode
