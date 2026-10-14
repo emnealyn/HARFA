@@ -58,7 +58,7 @@ https://allegro.pl/produkt/wzmacniacz-max98357a-dekoder-dac-i2s-3w-e61f304e-434a
 
 #### nie będę udawać, że opracowanie poniżej przygotowałam ja xDD
 
-## Głośniki
+## Głośniki (na końcu jest podsumowanie)
 
 ### 1. Visaton FR 10 HM — około 50 zł
 
