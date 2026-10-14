@@ -14,30 +14,30 @@
 
 ## Zasilanie
 
-- ### Wyłącznik zasilania
+### Wyłącznik zasilania
     Włącz/wyłącz.
 - https://botland.com.pl/przelaczniki-kolyskowe-dwupozycyjne-3-pozycyjne/8382-przelacznik-on-off-rs-101-7c-t-120-250v6a-czarny-5904422311599.html
-- ### Zasilacz 5V
+### Zasilacz 5V
     Podczas pracy z gniazdka ładuje akumulator i jedocześnie umożliwia grę na harfie podpiętej do prądu bez zużywania energii z baterii.
 - https://botland.com.pl/zasilacze-dogniazdkowe/7160-zasilacz-impulsowy-5v3a-15w-wtyk-dc-5521mm-5902135147627.html
-- ### Ładowarka PowerPath
+### Ładowarka PowerPath
     Zarządza przepływem energii. Gdy podłączymy zasilacz, zasila harfę i ładuje akumulator. Po odłączeniu zasilacza automatycznie przechodzi na zasilanie akumulatorowe.
 
 - aktualnie są jakieś problemy z tą co znalazłam, nie spełnia jakichś wymagań, wybaczcie ale jest późno, mogę jutro to ogarnąć
-- ### Akumulator
+### Akumulator
     Magazynuje energię. Dwa ogniwa połączone równolegle zapewniają większą pojemność, czyli dłuższy czas gry.
 - https://allegro.pl/produkt/bateria-inncraft-energy-ie-1s2p-p700-7000mah-3-7v-ogniwa-18650-samsung-35e-2dd13f3c-c2a0-4908-941f-81726fd70bf2?srsltid=AU7gw4VZ-tHhzsgP0WTl0SDN4Oj1r0_dFkmJ9HMWXJO6FRvhPgoWQNl_&offerId=17765553536
-- ### Miernik poziomu akumulatora
+### Miernik poziomu akumulatora
     Sprawdza poziom naładowania baterii i przekazuje tę informację do STM32.
 - https://botland.com.pl/wskazniki-rozladowania/21997-miernik-naladowania-akumulatora-li-pol-li-ion-max17048-stemma-jst-ph-qt-qwiic-adafruit-5580.html
-- ### Przetwornica utrzymująca 5V
+### Przetwornica utrzymująca 5V
     Utrzymuje stałe napięcie 5 V, niezależnie od zmian napięcia akumulatora. Zasila lasery oraz wzmacniacz audio, które wymagają stabilnych 5 V.
 - https://botland.com.pl/przetwornice-step-up-step-down/19768-s13v30f5-przetwornica-step-upstep-down-5v-3a-pololu-4082-5904422347529.html
-- ### Regulator do 3,3V
+### Regulator do 3,3V
     Obniża napięcie z 5 V do 3,3 V, potrzebnych do zasilania mikrokontrolera STM32WB55 i części elektroniki.
 - https://botland.com.pl/przetwornice-step-down/3018-d24v10f3-przetwornica-step-down-33v-1a-pololu-2830-5904422366537.html
-- ## Pytania
-    - ### Czy warto dodawać bezpiecznik na wypadek zwarcia?
+## Pytania
+- ### Czy warto dodawać bezpiecznik na wypadek zwarcia?
 
 ## Nagłośnienie
 
