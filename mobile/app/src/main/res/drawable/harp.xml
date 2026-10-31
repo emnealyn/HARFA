@@ -1,0 +1,133 @@
+<animated-vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:name="vector"
+            android:width="584dp"
+            android:height="645dp"
+            android:viewportWidth="584"
+            android:viewportHeight="645">
+
+            <path
+                android:name="path_2"
+                android:pathData="M 140 140 L 390 178 C 426.311 188.263 434.779 200.319 442 226 C 443.255 242.011 443.436 250.988 442 267 L 202 505 L 280 505"
+                android:strokeColor="#ffffff"
+                android:strokeWidth="30"
+                android:fillColor="@android:color/transparent"/>
+
+            <path
+                android:name="struna_1"
+                android:pathData="M 167 166 L 203 475"
+                android:strokeColor="#ff0000"
+                android:strokeWidth="7"
+                android:strokeLineCap="round"
+                android:trimPathEnd="0"/>
+            <path
+                android:name="struna_2"
+                android:pathData="M 211 174 L 242 426"
+                android:strokeColor="#ff0000"
+                android:strokeWidth="7"
+                android:strokeLineCap="round"
+                android:trimPathEnd="0"/>
+            <path
+                android:name="struna_3"
+                android:pathData="M 260 184 L 290 384"
+                android:strokeColor="#ff0000"
+                android:strokeWidth="7"
+                android:strokeLineCap="round"
+                android:trimPathEnd="0"/>
+            <path
+                android:name="struna_4"
+                android:pathData="M 305 189 L 331 343"
+                android:strokeColor="#ff0000"
+                android:strokeWidth="7"
+                android:strokeLineCap="round"
+                android:trimPathEnd="0"/>
+            <path
+                android:name="struna_5"
+                android:pathData="M 349 196 L 368 302"
+                android:strokeColor="#ff0000"
+                android:strokeWidth="7"
+                android:strokeLineCap="round"
+                android:trimPathEnd="0"/>
+        </vector>
+    </aapt:attr>
+
+    <target android:name="path_2">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="trimPathEnd"
+                android:duration="1000"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType"
+                android:interpolator="@android:interpolator/fast_out_slow_in"/>
+        </aapt:attr>
+    </target>
+
+    <target android:name="struna_1">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="trimPathEnd"
+                android:startOffset="1000"
+                android:duration="800"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType"
+                android:interpolator="@android:anim/linear_interpolator"/>
+        </aapt:attr>
+    </target>
+
+    <target android:name="struna_2">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="trimPathEnd"
+                android:startOffset="1150"
+                android:duration="800"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType"
+                android:interpolator="@android:anim/linear_interpolator"/>
+        </aapt:attr>
+    </target>
+
+    <target android:name="struna_3">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="trimPathEnd"
+                android:startOffset="1300"
+                android:duration="800"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType"
+                android:interpolator="@android:anim/linear_interpolator"/>
+        </aapt:attr>
+    </target>
+
+    <target android:name="struna_4">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="trimPathEnd"
+                android:startOffset="1450"
+                android:duration="800"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType"
+                android:interpolator="@android:anim/linear_interpolator"/>
+        </aapt:attr>
+    </target>
+
+    <target android:name="struna_5">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="trimPathEnd"
+                android:startOffset="1600"
+                android:duration="800"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType"
+                android:interpolator="@android:anim/linear_interpolator"/>
+        </aapt:attr>
+    </target>
+</animated-vector>
