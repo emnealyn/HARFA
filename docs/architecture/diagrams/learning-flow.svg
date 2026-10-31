@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="700" viewBox="0 0 1900 700" role="img" aria-labelledby="title desc">
+  <title id="title">Przepływ trybu nauki</title>
+  <desc id="desc">Aplikacja zarządza lekcją i postępem, STM32WB55 steruje sprzętem i raportuje faktycznie zagraną strunę.</desc>
+  <defs>
+    <marker id="arrow-teal-learn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-blue-learn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-purple-learn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9333ea"/>
+    </marker>
+    <marker id="arrow-gray-learn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrow-green-learn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#059669"/>
+    </marker>
+    <marker id="arrow-orange-learn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ea580c"/>
+    </marker>
+    <style>
+      .label { font-family: Arial, sans-serif; fill: #111827; text-anchor: middle; }
+      .lane { font-size: 17px; font-weight: 700; }
+      .title { font-size: 15px; font-weight: 700; }
+      .text { font-size: 14px; }
+      .edge-label { font-size: 13px; font-weight: 700; }
+    </style>
+  </defs>
+
+  <rect x="1" y="1" width="1898" height="698" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="30" y="40" width="1840" height="190" rx="18" fill="#faf5ff" stroke="#9333ea" stroke-width="2"/>
+  <rect x="30" y="250" width="1840" height="190" rx="18" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="30" y="460" width="1840" height="170" rx="18" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+  <text class="label lane" x="950" y="72">APLIKACJA ANDROID</text>
+  <text class="label lane" x="950" y="282">STM32WB55</text>
+  <text class="label lane" x="950" y="492">INSTRUMENT I UŻYTKOWNIK</text>
+
+  <g>
+    <rect x="70" y="105" width="210" height="80" rx="12" fill="#ffffff" stroke="#9333ea" stroke-width="2"/>
+    <text class="label title" x="175" y="136">1. Wybór utworu</text>
+    <text class="label text" x="175" y="161">i rozpoczęcie lekcji</text>
+  </g>
+  <g>
+    <rect x="320" y="310" width="220" height="80" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+    <text class="label title" x="430" y="341">2. Utworzenie sesji</text>
+    <text class="label text" x="430" y="366">i potwierdzenie możliwości</text>
+  </g>
+  <g>
+    <rect x="580" y="105" width="210" height="80" rx="12" fill="#ffffff" stroke="#9333ea" stroke-width="2"/>
+    <text class="label title" x="685" y="136">3. Wybór kroku</text>
+    <text class="label text" x="685" y="161">i oczekiwanego StringId</text>
+  </g>
+  <g>
+    <rect x="830" y="310" width="220" height="80" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+    <text class="label title" x="940" y="341">4. Ustawienie celu</text>
+    <text class="label text" x="940" y="366">i włączenie właściwej LED</text>
+  </g>
+  <g>
+    <rect x="1090" y="510" width="180" height="70" rx="12" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+    <text class="label title" x="1180" y="539">5. Użytkownik</text>
+    <text class="label text" x="1180" y="562">gra strunę</text>
+  </g>
+  <g>
+    <rect x="1310" y="300" width="250" height="100" rx="12" fill="#dbeafe" stroke="#1d4ed8" stroke-width="3"/>
+    <text class="label title" x="1435" y="331">6. Dźwięk lokalny</text>
+    <text class="label text" x="1435" y="355">oraz zdarzenie zagrania</text>
+    <text class="label text" x="1435" y="378">StringId + wysokość dźwięku</text>
+  </g>
+  <g>
+    <rect x="1600" y="100" width="220" height="90" rx="12" fill="#f3e8ff" stroke="#7e22ce" stroke-width="3"/>
+    <text class="label title" x="1710" y="133">7. Ocena zagrania</text>
+    <text class="label text" x="1710" y="158">porównanie z oczekiwanym</text>
+    <text class="label text" x="1710" y="178">krokiem</text>
+  </g>
+  <g>
+    <rect x="1580" y="270" width="230" height="65" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+    <text class="label title" x="1695" y="297">Poprawnie</text>
+    <text class="label text" x="1695" y="319">zapis postępu i kolejny cel</text>
+  </g>
+  <g>
+    <rect x="1580" y="355" width="230" height="65" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+    <text class="label title" x="1695" y="382">Błędnie</text>
+    <text class="label text" x="1695" y="404">informacja; cel bez zmian</text>
+  </g>
+
+  <path d="M 280 145 L 300 145 L 300 350 L 318 350" fill="none" stroke="#0f766e" stroke-width="2.5" marker-end="url(#arrow-teal-learn)"/>
+  <rect x="275" y="225" width="62" height="26" rx="6" fill="#ffffff"/>
+  <text class="label edge-label" x="306" y="243" fill="#0f766e">BLE</text>
+
+  <path d="M 540 350 L 560 350 L 560 145 L 578 145" fill="none" stroke="#0f766e" stroke-width="2.5" marker-end="url(#arrow-teal-learn)"/>
+  <path d="M 790 145 L 810 145 L 810 350 L 828 350" fill="none" stroke="#0f766e" stroke-width="2.5" marker-end="url(#arrow-teal-learn)"/>
+  <rect x="785" y="225" width="86" height="26" rx="6" fill="#ffffff"/>
+  <text class="label edge-label" x="828" y="243" fill="#0f766e">SetTarget</text>
+
+  <path d="M 1050 350 L 1070 350 L 1070 545 L 1088 545" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow-gray-learn)"/>
+  <path d="M 1270 545 L 1290 545 L 1290 350 L 1308 350" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue-learn)"/>
+  <path d="M 1560 350 L 1580 350 L 1580 145 L 1598 145" fill="none" stroke="#0f766e" stroke-width="2.5" marker-end="url(#arrow-teal-learn)"/>
+  <rect x="1550" y="225" width="90" height="26" rx="6" fill="#ffffff"/>
+  <text class="label edge-label" x="1595" y="243" fill="#0f766e">NotePlayed</text>
+
+  <path d="M 1710 190 L 1710 268" fill="none" stroke="#059669" stroke-width="2.5" marker-end="url(#arrow-green-learn)"/>
+  <path d="M 1780 190 L 1825 190 L 1825 387 L 1812 387" fill="none" stroke="#ea580c" stroke-width="2.5" marker-end="url(#arrow-orange-learn)"/>
+  <path d="M 1580 302 L 1510 302 L 1510 215 L 685 215 L 685 187" fill="none" stroke="#9333ea" stroke-width="2.5" stroke-dasharray="8 7" marker-end="url(#arrow-purple-learn)"/>
+  <text class="label edge-label" x="1095" y="208" fill="#7e22ce">kolejny krok</text>
+
+  <rect x="460" y="650" width="980" height="40" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <text class="label title" x="950" y="676">Po ukończeniu lub anulowaniu aplikacja kończy sesję, a STM32WB55 gasi LED-y trybu nauki.</text>
+</svg>
