@@ -5,7 +5,7 @@
 5. Moduł Bluetooth HM-10
 6. ADAU1701 procesor DSP --> sigmastudio
 7. Dotykowy wyświetlacz LCD TFT 2,4" SPI 320x240 ST7789
-8. Wzmacniacz TPA3110
+8. Wzmacniacz TPA3110 / TPA3116  bo jest na botlandzie
 9. Przetwornica (jaka?)
 10. BMS 3S - układ zabezpieczajacy przed spaleniem baterii np, fajna sprawa.
 11. Koszyk do baterii
