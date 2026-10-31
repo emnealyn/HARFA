@@ -1,4 +1,4 @@
-# ADR 003: Wybór architektury toru audio (I2S DAC vs Dedykowany DSP)
+# ADR 004: Wybór architektury toru audio (I2S DAC vs Dedykowany DSP)
 
 * **Stan:** Przyjęty
 * **Data:** 2026-10-31

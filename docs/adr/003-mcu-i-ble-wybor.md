@@ -1,4 +1,4 @@
-# ADR 002: Wybór Mikrokontrolera (MCU) oraz integracja Bluetooth (BLE)
+# ADR 003: Wybór Mikrokontrolera (MCU) oraz integracja Bluetooth (BLE)
 
 * **Stan:** Przyjęty
 * **Data:** 2026-10-31

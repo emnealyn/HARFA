@@ -12,9 +12,9 @@
 * **Konstrukcja:** Każda struna tworzona jest przez dedykowaną **diodę laserową** oraz odbiornik w postaci **fototranzystora** (15 par).
 * **Detekcja:** Przerwanie wiązki światła laserowego powoduje natychmiastowe wyzwolenie dźwięku (próbka WAV) oraz przesłanie komunikatu BLE.
 
-### 1.2 Przełączniki Dźwigniowe (funkcja pedałów harfy)
+### 1.2 Przełączniki Dźwigniowe (funkcja pedałów harfy) - 7 przełączników
 * **Zasada działania:** Przełączniki ON-OFF-ON pełnią funkcję analogiczną do **pedałów w harfie klasycznej**.
-* **Modulacja dźwięku:** Pozwalają na dynamiczną zmianę wysokości generowanego dźwięku o pół tonu w górę bądź dół dla przypisanych strun.
+* **Modulacja dźwięku:** Pozwalają na dynamiczną zmianę wysokości generowanego dźwięku o pół tonu w górę bądź dół dla przypisanych strun, po 1 na każdą nazwę dźwięku we wszystkich oktawach (C, D, E, F, G, A, H).
 
 ### 1.3 Wskaźniki i Wyświetlacz
 * **Wyświetlacz OLED:** Służy do monitorowania **poziomu naładowania baterii**.

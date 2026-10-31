@@ -1,4 +1,4 @@
-# ADR 004: Wybór sposobu zasilania, ogniwa Li-Ion oraz modułu zarządzania energią
+# ADR 006: Wybór sposobu zasilania, ogniwa Li-Ion oraz modułu zarządzania energią
 
 * **Stan:** Przyjęty
 * **Data:** 2026-10-31
