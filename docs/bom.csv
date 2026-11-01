@@ -1,0 +1,12 @@
+Item,Quantity,Component Description,Selected Model,Notes
+1,15,Phototransistor (String Sensor Receiver),Fototranzystor tept4400 3mm 570nm,Odbiornik bariery optycznej (15 strun)
+2,15,Laser Diode (String Sensor Emitter),Dioda laserowa 650nm 5V,Nadajnik bariery optycznej (15 strun)
+3,2,LED Pack (Learning Mode),Dioda LED 5mm czerwona,Opakowanie 10 sztuk (15 diod nad strunami)
+4,1,Pitch Shift Switch (Harp Pedal Function),Przełącznik dźwigniowy ON-OFF-ON KN3(C)-103,Zmiana stroju o półtonu
+5,1,I2S Audio Amplifier,MAX98357A,Cyfrowy wzmacniacz Class-D
+6,1,Broadband Speaker,Visaton FRS 8 4 Ohm,Głośnik szerokopasmowy
+7,1,Li-Ion Battery Cell,Samsung INR18650-35E 3400mAh,Ogniwo zasilające 3.7V (1S)
+8,1,Power Management Module,Waveshare 18306,Moduł ładowania i ochrony Li-Ion
+9,1,Display,Wyświetlacz OLED niebieski graficzny 1.3" 128x64px I2C v2,Wskaźnik poziomu baterii / zasilania
+10,1,Main Microcontroller,STM32WB55RG,Mikrokontroler z wbudowanym BLE
+11,2,3D Printing Filament,Filament elegoo pla 175 mm,Rolki materiału na obudowę i elementy nośne
