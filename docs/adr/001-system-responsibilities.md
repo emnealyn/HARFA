@@ -84,7 +84,9 @@ STM32WB55 jest właścicielem:
 * identyfikacji struny przez stabilny `StringId`,
 * lokalnego uruchomienia dźwięku instrumentu,
 * fizycznego stanu 15 diod LED,
+* odczytu 7 przełączników tonacji dla dźwięków C, D, E, F, G, A i H we wszystkich oktawach,
 * stanu sprzętu, baterii i błędów urządzenia,
+* wyświetlania stanu baterii na wyświetlaczu OLED,
 * serwera BLE GATT i raportowanych zdarzeń instrumentu.
 
 Aplikacja mobilna jest właścicielem:
@@ -126,14 +128,14 @@ wymaganie pracy bez telefonu.
 | Mapowanie struny na dźwięk | Przechowuje aktualne mapowanie `StringId` na wysokość dźwięku | Używa otrzymanego mapowania do dopasowania kroków lekcji | STM32WB55 |
 | Generowanie dźwięku | Uruchamia dźwięk lokalnie po wykryciu struny | Nie uczestniczy w ścieżce generowania dźwięku instrumentu | STM32WB55 |
 | Fizyczne diody LED | Włącza i wyłącza LED oraz raportuje zastosowany stan | Wysyła żądanie podświetlenia struny wynikające z kroku lekcji | STM32WB55 dla stanu fizycznego, aplikacja dla celu lekcji |
-| Stan sprzętu | Monitoruje baterię, czujniki, podsystem audio i błędy urządzenia | Prezentuje otrzymany stan użytkownikowi | STM32WB55 |
+| Stan sprzętu | Monitoruje baterię, czujniki, podsystem audio i błędy urządzenia oraz wyświetla stan baterii na OLED | Prezentuje otrzymany stan użytkownikowi | STM32WB55 |
 | Połączenie BLE | Działa jako serwer GATT i publikuje możliwości instrumentu | Działa jako klient GATT, inicjuje połączenie i prezentuje jego stan | Każda strona dla swojego stanu lokalnego |
 | Katalog utworów | Nie przechowuje katalogu | Przechowuje i prezentuje utwory oraz ich sekwencje nut | Aplikacja |
 | Przebieg lekcji | Wykonuje komendy sprzętowe dotyczące aktualnego celu | Rozpoczyna, pauzuje i kończy lekcję oraz wybiera kolejny krok | Aplikacja |
 | Ocena zagrania | Raportuje faktycznie zagraną strunę | Porównuje zdarzenie z oczekiwanym krokiem lekcji | Aplikacja |
 | Postęp użytkownika | Nie przechowuje historii użytkownika | Zapisuje ukończone kroki, utwory i statystyki | Aplikacja |
 | Ustawienia interfejsu | Nie zna języka ani motywu aplikacji | Przechowuje język, motyw i ustawienia prezentacji | Aplikacja |
-| Ustawienia instrumentu | Stosuje ustawienie i raportuje faktycznie aktywną wartość | Może wysłać żądanie zmiany, jeżeli dana funkcja zostanie udostępniona | STM32WB55 dla aktywnego stanu |
+| Ustawienia instrumentu | Odczytuje 7 przełączników odpowiadających tonom C, D, E, F, G, A i H oraz stosuje wybraną wartość we wszystkich oktawach | Nie steruje lokalnymi przełącznikami; może prezentować aktywną wartość, jeśli protokół ją udostępnia | STM32WB55 |
 
 ### Przepływ zwykłej gry
 

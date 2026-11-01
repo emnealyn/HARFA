@@ -46,6 +46,11 @@
     <text class="label node-text" x="170" y="557">i pomiar baterii</text>
   </g>
   <g>
+    <rect x="80" y="330" width="180" height="80" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+    <text class="label node-title" x="170" y="362">7 przełączników</text>
+    <text class="label node-text" x="170" y="387">tonacja C, D, E, F, G, A, H</text>
+  </g>
+  <g>
     <rect x="300" y="330" width="190" height="90" rx="12" fill="#dbeafe" stroke="#1d4ed8" stroke-width="3"/>
     <text class="label node-title" x="395" y="366">STM32WB55</text>
     <text class="label node-text" x="395" y="392">stan sprzętu i BLE GATT</text>
@@ -53,6 +58,12 @@
   <g>
     <rect x="510" y="190" width="120" height="70" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
     <text class="label node-title" x="570" y="232">15 diod LED</text>
+  </g>
+  <g>
+    <rect x="500" y="330" width="140" height="80" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+    <text class="label node-title" x="570" y="352">Wyświetlacz</text>
+    <text class="label node-title" x="570" y="372">OLED</text>
+    <text class="label node-text" x="570" y="394">stan baterii</text>
   </g>
   <g>
     <rect x="500" y="500" width="140" height="70" rx="12" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
@@ -91,12 +102,14 @@
   <path class="edge-gray" d="M 800 70 L 800 150 L 1365 150 L 1365 188"/>
   <path class="edge-blue" d="M 260 230 L 280 230 L 280 375 L 298 375"/>
   <path class="edge-blue" d="M 260 540 L 280 540 L 280 395 L 298 395"/>
+  <path class="edge-blue" d="M 260 370 L 298 370"/>
   <path class="edge-blue" d="M 490 350 L 500 350 L 500 225 L 508 225"/>
+  <path class="edge-blue" d="M 490 385 L 498 385"/>
   <path class="edge-blue" d="M 490 400 L 495 400 L 495 535 L 498 535"/>
 
-  <path d="M 490 375 L 1090 410" fill="none" stroke="#0f766e" stroke-width="3.5" marker-start="url(#arrow-teal)" marker-end="url(#arrow-teal)"/>
-  <rect x="715" y="368" width="145" height="34" rx="8" fill="#ffffff" stroke="#99f6e4"/>
-  <text class="label edge-label" x="787" y="391">BLE GATT</text>
+  <path d="M 395 420 L 395 440 L 700 440 L 700 410 L 1090 410" fill="none" stroke="#0f766e" stroke-width="3.5" marker-start="url(#arrow-teal)" marker-end="url(#arrow-teal)"/>
+  <rect x="715" y="393" width="145" height="34" rx="8" fill="#ffffff" stroke="#99f6e4"/>
+  <text class="label edge-label" x="787" y="416">BLE GATT</text>
 
   <path class="edge-purple" d="M 1050 225 L 1098 225"/>
   <path class="edge-purple" d="M 1260 225 L 1298 225"/>

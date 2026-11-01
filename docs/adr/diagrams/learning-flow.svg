@@ -69,20 +69,20 @@
     <text class="label text" x="1435" y="378">StringId + wysokość dźwięku</text>
   </g>
   <g>
-    <rect x="1600" y="100" width="220" height="90" rx="12" fill="#f3e8ff" stroke="#7e22ce" stroke-width="3"/>
-    <text class="label title" x="1710" y="133">7. Ocena zagrania</text>
-    <text class="label text" x="1710" y="158">porównanie z oczekiwanym</text>
-    <text class="label text" x="1710" y="178">krokiem</text>
+    <rect x="1030" y="100" width="220" height="90" rx="12" fill="#f3e8ff" stroke="#7e22ce" stroke-width="3"/>
+    <text class="label title" x="1140" y="133">7. Ocena zagrania</text>
+    <text class="label text" x="1140" y="158">porównanie z oczekiwanym</text>
+    <text class="label text" x="1140" y="178">krokiem</text>
   </g>
   <g>
-    <rect x="1580" y="270" width="230" height="65" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
-    <text class="label title" x="1695" y="297">Poprawnie</text>
-    <text class="label text" x="1695" y="319">zapis postępu i kolejny cel</text>
+    <rect x="1280" y="55" width="230" height="65" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+    <text class="label title" x="1395" y="82">Poprawnie</text>
+    <text class="label text" x="1395" y="104">zapis postępu i kolejny cel</text>
   </g>
   <g>
-    <rect x="1580" y="355" width="230" height="65" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
-    <text class="label title" x="1695" y="382">Błędnie</text>
-    <text class="label text" x="1695" y="404">informacja; cel bez zmian</text>
+    <rect x="1280" y="145" width="230" height="65" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+    <text class="label title" x="1395" y="172">Błędnie</text>
+    <text class="label text" x="1395" y="194">informacja; cel bez zmian</text>
   </g>
 
   <path d="M 280 145 L 300 145 L 300 350 L 318 350" fill="none" stroke="#0f766e" stroke-width="2.5" marker-end="url(#arrow-teal-learn)"/>
@@ -96,14 +96,15 @@
 
   <path d="M 1050 350 L 1070 350 L 1070 545 L 1088 545" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#arrow-gray-learn)"/>
   <path d="M 1270 545 L 1290 545 L 1290 350 L 1308 350" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue-learn)"/>
-  <path d="M 1560 350 L 1580 350 L 1580 145 L 1598 145" fill="none" stroke="#0f766e" stroke-width="2.5" marker-end="url(#arrow-teal-learn)"/>
-  <rect x="1550" y="225" width="90" height="26" rx="6" fill="#ffffff"/>
-  <text class="label edge-label" x="1595" y="243" fill="#0f766e">NotePlayed</text>
+  <path d="M 1435 300 L 1435 240 L 1140 240 L 1140 190" fill="none" stroke="#0f766e" stroke-width="2.5" marker-end="url(#arrow-teal-learn)"/>
+  <rect x="1280" y="215" width="90" height="26" rx="6" fill="#ffffff"/>
+  <text class="label edge-label" x="1325" y="233" fill="#0f766e">NotePlayed</text>
 
-  <path d="M 1710 190 L 1710 268" fill="none" stroke="#059669" stroke-width="2.5" marker-end="url(#arrow-green-learn)"/>
-  <path d="M 1780 190 L 1825 190 L 1825 387 L 1812 387" fill="none" stroke="#ea580c" stroke-width="2.5" marker-end="url(#arrow-orange-learn)"/>
-  <path d="M 1580 302 L 1510 302 L 1510 215 L 685 215 L 685 187" fill="none" stroke="#9333ea" stroke-width="2.5" stroke-dasharray="8 7" marker-end="url(#arrow-purple-learn)"/>
-  <text class="label edge-label" x="1095" y="208" fill="#7e22ce">kolejny krok</text>
+  <path d="M 1250 145 L 1265 145 L 1265 87 L 1278 87" fill="none" stroke="#059669" stroke-width="2.5" marker-end="url(#arrow-green-learn)"/>
+  <path d="M 1250 165 L 1265 165 L 1265 177 L 1278 177" fill="none" stroke="#ea580c" stroke-width="2.5" marker-end="url(#arrow-orange-learn)"/>
+  <path d="M 1280 87 L 1000 87 L 1000 90 L 820 90 L 820 80 L 685 80 L 685 103" fill="none" stroke="#9333ea" stroke-width="2.5" stroke-dasharray="8 7" marker-end="url(#arrow-purple-learn)"/>
+  <rect x="865" y="78" width="90" height="24" rx="6" fill="#ffffff"/>
+  <text class="label edge-label" x="910" y="95" fill="#7e22ce">kolejny krok</text>
 
   <rect x="460" y="650" width="980" height="40" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
   <text class="label title" x="950" y="676">Po ukończeniu lub anulowaniu aplikacja kończy sesję, a STM32WB55 gasi LED-y trybu nauki.</text>
