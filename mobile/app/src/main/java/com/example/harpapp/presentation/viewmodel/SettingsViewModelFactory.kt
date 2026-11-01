@@ -2,7 +2,7 @@ package com.example.harpapp.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.harpapp.repository.SettingsRepository
+import com.example.harpapp.data.preferences.SettingsRepository
 
 class SettingsViewModelFactory(private val repo: SettingsRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

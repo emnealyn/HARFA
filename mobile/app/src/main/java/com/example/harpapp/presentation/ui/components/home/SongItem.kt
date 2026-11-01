@@ -26,7 +26,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.ui.res.stringResource
 import com.example.harpapp.domain.model.LyricNote
-import com.example.harpapp.domain.model.getCoverResourceId
+import com.example.harpapp.presentation.ui.components.home.getCoverResourceId
 import com.example.harpapp.R
 
 

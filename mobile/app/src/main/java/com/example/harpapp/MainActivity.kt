@@ -9,7 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.harpapp.data.preferences.dataStore
 import com.example.harpapp.presentation.navigation.AppNavGraph
-import com.example.harpapp.repository.SettingsRepository
+import com.example.harpapp.data.preferences.SettingsRepository
 import com.example.harpapp.presentation.viewmodel.SettingsViewModel
 import com.example.harpapp.presentation.viewmodel.SettingsViewModelFactory
 import com.example.harpapp.presentation.ui.theme.HARPAppTheme

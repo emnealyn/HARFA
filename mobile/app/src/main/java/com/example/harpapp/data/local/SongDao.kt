@@ -1,13 +1,11 @@
 package com.example.harpapp.data.local
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
-import kotlinx.coroutines.flow.Flow
 import com.example.harpapp.domain.model.Song
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SongDao {
@@ -17,18 +15,15 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE id = :songId LIMIT 1")
     suspend fun getSongById(songId: Int): Song?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSong(song: Song)
+    @Query("SELECT * FROM songs")
+    fun getAllSongEntities(): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs WHERE id = :songId LIMIT 1")
+    suspend fun getSongEntityById(songId: Int): SongEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAllSongs(songs: List<Song>)
-
-    @Delete
-    suspend fun deleteSong(song: Song)
+    suspend fun insertAllSongs(songs: List<SongEntity>)
 
     @Query("UPDATE songs SET isFavorite = :isFavorite WHERE id = :songId")
     suspend fun updateFavoriteStatus(songId: Int, isFavorite: Boolean)
-
-    @Query("SELECT * FROM songs WHERE isFavorite = 1")
-    fun getFavoriteSongs(): Flow<List<Song>>
 }

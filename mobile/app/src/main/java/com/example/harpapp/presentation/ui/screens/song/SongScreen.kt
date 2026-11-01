@@ -30,7 +30,7 @@ import com.example.harpapp.R
 import com.example.harpapp.domain.model.Difficulty
 import com.example.harpapp.domain.model.LyricNote
 import com.example.harpapp.domain.model.Song
-import com.example.harpapp.domain.model.getCoverResourceId
+import com.example.harpapp.presentation.ui.components.home.getCoverResourceId
 import com.example.harpapp.presentation.ui.components.home.DifficultyBadge
 import com.example.harpapp.presentation.ui.components.song.CompletedSongDialog
 import com.example.harpapp.presentation.ui.components.song.LyricsDisplay
