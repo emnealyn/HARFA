@@ -8,8 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.harpapp.data.preferences.dataStore
+import com.example.harpapp.data.preferences.DataStoreSettingsRepository
 import com.example.harpapp.presentation.navigation.AppNavGraph
-import com.example.harpapp.data.preferences.SettingsRepository
 import com.example.harpapp.presentation.viewmodel.SettingsViewModel
 import com.example.harpapp.presentation.viewmodel.SettingsViewModelFactory
 import com.example.harpapp.presentation.ui.theme.HARPAppTheme
@@ -24,7 +24,7 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             val context = LocalContext.current
-            val repo = remember { SettingsRepository(context.dataStore) }
+            val repo = remember { DataStoreSettingsRepository(context.dataStore) }
             val settingsViewModel: SettingsViewModel = viewModel(
                 factory = SettingsViewModelFactory(repo)
             )

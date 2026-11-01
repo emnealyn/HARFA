@@ -1,6 +1,5 @@
 package com.example.harpapp.presentation.ui.screens.settings
 
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,10 +59,10 @@ fun SettingsScreen(
     onNavigateToBluetooth: () -> Unit
 ) {
     val mode by viewModel.themeMode.collectAsState()
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
     var expanded by remember { mutableStateOf(false) }
 
-    val currentLocale = AppCompatDelegate.getApplicationLocales().toLanguageTags()
-    val isPolish = currentLocale.startsWith("pl")
+    val isPolish = currentLanguage.startsWith("pl")
     val selectedLanguageLabel = if (isPolish) "PL" else "EN"
 
     Box(
