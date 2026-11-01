@@ -1,7 +1,6 @@
 package com.example.harpapp.presentation.ui.screens.bluetooth
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,22 +19,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.harpapp.R
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
 
-@SuppressLint("MissingPermission")
 @Composable
 fun BluetoothScreen(
-    viewModel: BluetoothViewModel = viewModel()
+    viewModel: BluetoothViewModel
 ) {
-    val context = LocalContext.current
     val isConnected by viewModel.isConnected.collectAsState()
-    val connectedDeviceName by viewModel.connectedDeviceName.collectAsState()
-    val pairedDevices by viewModel.pairedDevices.collectAsState()
+    val connectedDeviceName by viewModel.connectedDeviceName.collectAsState(initial = null)
+    val pairedDevices by viewModel.pairedDevices.collectAsState(initial = emptyList())
 
     var hasPermissions by remember { mutableStateOf(false) }
 
@@ -43,7 +38,7 @@ fun BluetoothScreen(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         hasPermissions = permissions.values.all { it }
-        if (hasPermissions) viewModel.fetchPairedDevices(context)
+        if (hasPermissions) viewModel.fetchPairedDevices()
     }
 
     LaunchedEffect(Unit) {
@@ -156,7 +151,7 @@ fun BluetoothScreen(
                         modifier = Modifier.weight(1f)
                     )
 
-                    IconButton(onClick = { viewModel.fetchPairedDevices(context) }) {
+                    IconButton(onClick = { viewModel.fetchPairedDevices() }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh",

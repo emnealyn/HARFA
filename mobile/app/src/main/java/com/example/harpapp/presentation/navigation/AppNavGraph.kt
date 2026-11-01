@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.harpapp.R
 import com.example.harpapp.data.media.AndroidAssetAudioPlayer
+import com.example.harpapp.device.bluetooth.BluetoothInstrumentRepository
 import com.example.harpapp.presentation.ui.components.NavBar
 import com.example.harpapp.presentation.ui.components.TopBar
 import com.example.harpapp.presentation.ui.screens.bluetooth.BluetoothScreen
@@ -30,6 +31,7 @@ import com.example.harpapp.presentation.ui.screens.settings.SettingsScreen
 import com.example.harpapp.presentation.ui.screens.song.SongScreen
 import com.example.harpapp.presentation.ui.screens.splash.SplashScreen
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
+import com.example.harpapp.presentation.viewmodel.BluetoothViewModelFactory
 import com.example.harpapp.presentation.viewmodel.HomeViewModel
 import com.example.harpapp.presentation.viewmodel.SettingsViewModel
 import com.example.harpapp.presentation.viewmodel.SongViewModel
@@ -56,7 +58,13 @@ fun AppNavGraph(
     val homeViewModel: HomeViewModel = viewModel(
         factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
     )
-    val bluetoothViewModel: BluetoothViewModel = viewModel()
+    val instrumentRepository = remember {
+        BluetoothInstrumentRepository(context.applicationContext)
+    }
+    val bluetoothViewModelFactory = remember(instrumentRepository) {
+        BluetoothViewModelFactory(instrumentRepository)
+    }
+    val bluetoothViewModel: BluetoothViewModel = viewModel(factory = bluetoothViewModelFactory)
     val audioPlayer = remember {
         AndroidAssetAudioPlayer(context.applicationContext)
     }
@@ -69,11 +77,11 @@ fun AppNavGraph(
     val songViewModel: SongViewModel = viewModel(factory = songViewModelFactory)
 
     LaunchedEffect(Unit) {
-        songViewModel.attachBluetoothNoteFlow(bluetoothViewModel.incomingNote)
+        songViewModel.attachBluetoothNoteFlow(instrumentRepository.incomingNotes)
     }
 
     val isBluetoothConnected by bluetoothViewModel.isConnected.collectAsState()
-    val connectedDeviceName by bluetoothViewModel.connectedDeviceName.collectAsState()
+    val connectedDeviceName by bluetoothViewModel.connectedDeviceName.collectAsState(initial = null)
 
     Scaffold(
         topBar = {

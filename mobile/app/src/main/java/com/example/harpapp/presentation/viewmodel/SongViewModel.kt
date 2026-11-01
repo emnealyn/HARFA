@@ -7,9 +7,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.harpapp.data.local.AppDatabase
 import com.example.harpapp.domain.model.Song
+import com.example.harpapp.domain.model.NotePlayed
 import com.example.harpapp.domain.repository.AudioPlayer
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 
 class SongViewModel(
@@ -48,11 +49,12 @@ class SongViewModel(
         }
     }
 
-    fun attachBluetoothNoteFlow(noteFlow: SharedFlow<String>) {
-        viewModelScope.launch {
-            noteFlow.collect { note ->
+    fun attachBluetoothNoteFlow(noteFlow: Flow<NotePlayed>) {
+        noteListenerJob?.cancel()
+        noteListenerJob = viewModelScope.launch {
+            noteFlow.collect { playedNote ->
                 if (_isLearningMode.value) {
-                    handleIncomingNote(note)
+                    handleIncomingNote(playedNote.note)
                 }
             }
         }
@@ -108,6 +110,7 @@ class SongViewModel(
     }
 
     override fun onCleared() {
+        noteListenerJob?.cancel()
         audioPlayer.release()
         super.onCleared()
     }
