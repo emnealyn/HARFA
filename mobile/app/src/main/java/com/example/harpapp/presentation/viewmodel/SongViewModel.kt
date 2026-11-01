@@ -1,24 +1,26 @@
 package com.example.harpapp.presentation.viewmodel
 
 import android.app.Application
-import android.media.MediaPlayer
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.harpapp.data.local.AppDatabase
 import com.example.harpapp.domain.model.Song
+import com.example.harpapp.domain.repository.AudioPlayer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 
-class SongViewModel(application: Application) : AndroidViewModel(application) {
+class SongViewModel(
+    application: Application,
+    private val audioPlayer: AudioPlayer
+) : AndroidViewModel(application) {
     private val songDao = AppDatabase.getDatabase(application, viewModelScope).songDao()
 
     private val _song = mutableStateOf<Song?>(null)
     val song: State<Song?> = _song
 
-    private var mediaPlayer: MediaPlayer? = null
     private val _isPlaying = mutableStateOf(false)
     val isPlaying: State<Boolean> = _isPlaying
 
@@ -40,8 +42,7 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             _song.value = songDao.getSongById(songId)
-            mediaPlayer?.release()
-            mediaPlayer = null
+            audioPlayer.release()
             _isPlaying.value = false
             stopLearning()
         }
@@ -100,39 +101,14 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun togglePlayPause() {
-        val currentSong = _song.value ?: return
-        val context = getApplication<Application>().applicationContext
-        val fileName = currentSong.midiFilePath ?: return
-
-        if (_isPlaying.value) {
-            mediaPlayer?.pause()
+        val fileName = _song.value?.midiFilePath ?: return
+        _isPlaying.value = audioPlayer.toggle(fileName) {
             _isPlaying.value = false
-        } else {
-            if (mediaPlayer == null) {
-                try {
-                    val afd = context.assets.openFd(fileName)
-                    mediaPlayer = MediaPlayer().apply {
-                        setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                        prepare()
-                        setOnCompletionListener {
-                            _isPlaying.value = false
-                            mediaPlayer?.seekTo(0)
-                        }
-                    }
-                    afd.close()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    return
-                }
-            }
-            mediaPlayer?.start()
-            _isPlaying.value = true
         }
     }
 
     override fun onCleared() {
+        audioPlayer.release()
         super.onCleared()
-        mediaPlayer?.release()
-        mediaPlayer = null
     }
 }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -20,6 +21,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.harpapp.R
+import com.example.harpapp.data.media.AndroidAssetAudioPlayer
 import com.example.harpapp.presentation.ui.components.NavBar
 import com.example.harpapp.presentation.ui.components.TopBar
 import com.example.harpapp.presentation.ui.screens.bluetooth.BluetoothScreen
@@ -31,6 +33,7 @@ import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
 import com.example.harpapp.presentation.viewmodel.HomeViewModel
 import com.example.harpapp.presentation.viewmodel.SettingsViewModel
 import com.example.harpapp.presentation.viewmodel.SongViewModel
+import com.example.harpapp.presentation.viewmodel.SongViewModelFactory
 
 @Composable
 fun AppNavGraph(
@@ -54,7 +57,16 @@ fun AppNavGraph(
         factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
     )
     val bluetoothViewModel: BluetoothViewModel = viewModel()
-    val songViewModel: SongViewModel = viewModel()
+    val audioPlayer = remember {
+        AndroidAssetAudioPlayer(context.applicationContext)
+    }
+    val songViewModelFactory = remember(audioPlayer) {
+        SongViewModelFactory(
+            context.applicationContext as Application,
+            audioPlayer
+        )
+    }
+    val songViewModel: SongViewModel = viewModel(factory = songViewModelFactory)
 
     LaunchedEffect(Unit) {
         songViewModel.attachBluetoothNoteFlow(bluetoothViewModel.incomingNote)
