@@ -34,7 +34,7 @@ Harfa ma dawać jak najbardziej przyjazne doświadcznie zapewniając jednocześn
 ## Decyzja
 Wybrano **Opcję B - (2 Oktawy - 15 strun)**.
 
-5 strun daje możliwość zagrania znacznie większej gamy utworów niż oryginalne 7, mieszcząc się wciąż wygodnie na rozważanych mikrokontrolerach oraz zachowując wykonalne wymiary harfy.
+15 strun daje możliwość zagrania znacznie większej gamy utworów niż oryginalne 8, mieszcząc się wciąż wygodnie na rozważanych mikrokontrolerach oraz zachowując wykonalne wymiary harfy.
 
 ## Konsekwencje
 * Obudowa 3D musi uwzględnić rozmieszczenie 15 strun pomiędzy ramami.
