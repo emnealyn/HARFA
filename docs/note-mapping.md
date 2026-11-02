@@ -71,73 +71,29 @@ Tak uzyskany effectiveMIDI będzie nam służył jako forma identyfikacji przeks
 
 ## 5. Pełne spektrum dźwięków Harfy
 
-W każdej tabeli nuta bazowa jest podana razem z numerem MIDI. Nuty po zmianie
-położenia dźwigni również zawierają numer MIDI; `LeverOffset +1` podnosi dźwięk
-o półton, a `LeverOffset -1` obniża go o półton.
+Tabela zawiera wszystkie dźwięki występujące w zakresie mapowania z trzech
+oktaw, od `B0` do `C#5`. Pliki dla dźwięków z krzyżykiem używają oznaczenia
+`cs`, np. `C#1` jest zapisane jako `cs1.wav`.
 
-### OKTAWA 1
-
-| ID Struny (`string_id`) | Stopień Gamy | Nuta Bazowa | Nuta (`LeverOffset + 1`) | Nuta (`LeverOffset - 1`) |
-| :---: | :---: | :---: | :---: | :---: |
-| **0** | C | **C1** (MIDI 24) | **C#1** (MIDI 25) | **B0** (MIDI 23) |
-| **1** | D | **D1** (MIDI 26) | **D#1** (MIDI 27) | **C#1** (MIDI 25) |
-| **2** | E | **E1** (MIDI 28) | **F1** (MIDI 29) | **D#1** (MIDI 27) |
-| **3** | F | **F1** (MIDI 29) | **F#1** (MIDI 30) | **E1** (MIDI 28) |
-| **4** | G | **G1** (MIDI 31) | **G#1** (MIDI 32) | **F#1** (MIDI 30) |
-| **5** | A | **A1** (MIDI 33) | **A#1** (MIDI 34) | **G#1** (MIDI 32) |
-| **6** | B | **B1** (MIDI 35) | **C2** (MIDI 36) | **A#1** (MIDI 34) |
-| **7** | C | **C2** (MIDI 36) | **C#2** (MIDI 37) | **B1** (MIDI 35) |
-| **8** | D | **D2** (MIDI 38) | **D#2** (MIDI 39) | **C#2** (MIDI 37) |
-| **9** | E | **E2** (MIDI 40) | **F2** (MIDI 41) | **D#2** (MIDI 39) |
-| **10** | F | **F2** (MIDI 41) | **F#2** (MIDI 42) | **E2** (MIDI 40) |
-| **11** | G | **G2** (MIDI 43) | **G#2** (MIDI 44) | **F#2** (MIDI 42) |
-| **12** | A | **A2** (MIDI 45) | **A#2** (MIDI 46) | **G#2** (MIDI 44) |
-| **13** | B | **B2** (MIDI 47) | **C3** (MIDI 48) | **A#2** (MIDI 46) |
-| **14** | C | **C3** (MIDI 48) | **C#3** (MIDI 49) | **B2** (MIDI 47) |
-
----
-
-### OKTAWA 2
-
-| ID Struny (`string_id`) | Stopień Gamy | Nuta Bazowa | Nuta (`LeverOffset + 1`) | Nuta (`LeverOffset - 1`) |
-| :---: | :---: | :---: | :---: | :---: |
-| **0** | C | **C2** (MIDI 36) | **C#2** (MIDI 37) | **B1** (MIDI 35) |
-| **1** | D | **D2** (MIDI 38) | **D#2** (MIDI 39) | **C#2** (MIDI 37) |
-| **2** | E | **E2** (MIDI 40) | **F2** (MIDI 41) | **D#2** (MIDI 39) |
-| **3** | F | **F2** (MIDI 41) | **F#2** (MIDI 42) | **E2** (MIDI 40) |
-| **4** | G | **G2** (MIDI 43) | **G#2** (MIDI 44) | **F#2** (MIDI 42) |
-| **5** | A | **A2** (MIDI 45) | **A#2** (MIDI 46) | **G#2** (MIDI 44) |
-| **6** | B | **B2** (MIDI 47) | **C3** (MIDI 48) | **A#2** (MIDI 46) |
-| **7** | C | **C3** (MIDI 48) | **C#3** (MIDI 49) | **B2** (MIDI 47) |
-| **8** | D | **D3** (MIDI 50) | **D#3** (MIDI 51) | **C#3** (MIDI 49) |
-| **9** | E | **E3** (MIDI 52) | **F3** (MIDI 53) | **D#3** (MIDI 51) |
-| **10** | F | **F3** (MIDI 53) | **F#3** (MIDI 54) | **E3** (MIDI 52) |
-| **11** | G | **G3** (MIDI 55) | **G#3** (MIDI 56) | **F#3** (MIDI 54) |
-| **12** | A | **A3** (MIDI 57) | **A#3** (MIDI 58) | **G#3** (MIDI 56) |
-| **13** | B | **B3** (MIDI 59) | **C4** (MIDI 60) | **A#3** (MIDI 58) |
-| **14** | C | **C4** (MIDI 60) | **C#4** (MIDI 61) | **B3** (MIDI 59) |
-
----
-
-### OKTAWA 3
-
-| ID Struny (`string_id`) | Stopień Gamy | Nuta Bazowa | Nuta (`LeverOffset + 1`) | Nuta (`LeverOffset - 1`) |
-| :---: | :---: | :---: | :---: | :---: |
-| **0** | C | **C3** (MIDI 48) | **C#3** (MIDI 49) | **B2** (MIDI 47) |
-| **1** | D | **D3** (MIDI 50) | **D#3** (MIDI 51) | **C#3** (MIDI 49) |
-| **2** | E | **E3** (MIDI 52) | **F3** (MIDI 53) | **D#3** (MIDI 51) |
-| **3** | F | **F3** (MIDI 53) | **F#3** (MIDI 54) | **E3** (MIDI 52) |
-| **4** | G | **G3** (MIDI 55) | **G#3** (MIDI 56) | **F#3** (MIDI 54) |
-| **5** | A | **A3** (MIDI 57) | **A#3** (MIDI 58) | **G#3** (MIDI 56) |
-| **6** | B | **B3** (MIDI 59) | **C4** (MIDI 60) | **A#3** (MIDI 58) |
-| **7** | C | **C4** (MIDI 60) | **C#4** (MIDI 61) | **B3** (MIDI 59) |
-| **8** | D | **D4** (MIDI 62) | **D#4** (MIDI 63) | **C#4** (MIDI 61) |
-| **9** | E | **E4** (MIDI 64) | **F4** (MIDI 65) | **D#4** (MIDI 63) |
-| **10** | F | **F4** (MIDI 65) | **F#4** (MIDI 66) | **E4** (MIDI 64) |
-| **11** | G | **G4** (MIDI 67) | **G#4** (MIDI 68) | **F#4** (MIDI 66) |
-| **12** | A | **A4** (MIDI 69) | **A#4** (MIDI 70) | **G#4** (MIDI 68) |
-| **13** | B | **B4** (MIDI 71) | **C5** (MIDI 72) | **A#4** (MIDI 70) |
-| **14** | C | **C5** (MIDI 72) | **C#5** (MIDI 73) | **B4** (MIDI 71) |
+| Dźwięk | MIDI | Plik `.wav` | Dźwięk | MIDI | Plik `.wav` | Dźwięk | MIDI | Plik `.wav` |
+| :---: | :---: | :--- | :---: | :---: | :--- | :---: | :---: | :--- |
+| **B0** | 23 | `b0.wav` | **E2** | 40 | `e2.wav` | **A3** | 57 | `a3.wav` |
+| **C1** | 24 | `c1.wav` | **F2** | 41 | `f2.wav` | **A#3** | 58 | `as3.wav` |
+| **C#1** | 25 | `cs1.wav` | **F#2** | 42 | `fs2.wav` | **B3** | 59 | `b3.wav` |
+| **D1** | 26 | `d1.wav` | **G2** | 43 | `g2.wav` | **C4** | 60 | `c4.wav` |
+| **D#1** | 27 | `ds1.wav` | **G#2** | 44 | `gs2.wav` | **C#4** | 61 | `cs4.wav` |
+| **E1** | 28 | `e1.wav` | **A2** | 45 | `a2.wav` | **D4** | 62 | `d4.wav` |
+| **F1** | 29 | `f1.wav` | **A#2** | 46 | `as2.wav` | **D#4** | 63 | `ds4.wav` |
+| **F#1** | 30 | `fs1.wav` | **B2** | 47 | `b2.wav` | **E4** | 64 | `e4.wav` |
+| **G1** | 31 | `g1.wav` | **C3** | 48 | `c3.wav` | **F4** | 65 | `f4.wav` |
+| **G#1** | 32 | `gs1.wav` | **C#3** | 49 | `cs3.wav` | **F#4** | 66 | `fs4.wav` |
+| **A1** | 33 | `a1.wav` | **D3** | 50 | `d3.wav` | **G4** | 67 | `g4.wav` |
+| **A#1** | 34 | `as1.wav` | **D#3** | 51 | `ds3.wav` | **G#4** | 68 | `gs4.wav` |
+| **B1** | 35 | `b1.wav` | **E3** | 52 | `e3.wav` | **A4** | 69 | `a4.wav` |
+| **C2** | 36 | `c2.wav` | **F3** | 53 | `f3.wav` | **A#4** | 70 | `as4.wav` |
+| **C#2** | 37 | `cs2.wav` | **F#3** | 54 | `fs3.wav` | **B4** | 71 | `b4.wav` |
+| **D2** | 38 | `d2.wav` | **G3** | 55 | `g3.wav` | **C5** | 72 | `c5.wav` |
+| **D#2** | 39 | `ds2.wav` | **G#3** | 56 | `gs3.wav` | **C#5** | 73 | `cs5.wav` |
 
 
 ## 6. Struktura Ramki Handshake BLE (Firmware $\to$ App) 
