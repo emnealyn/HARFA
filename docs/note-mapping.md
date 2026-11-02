@@ -36,6 +36,8 @@ Harfa posiada **15 fizycznych strun** strojonych w tonacji C-dur (2 oktawy diato
 
 ---
 
+
+
 ## 3. Przełączniki (Pedały) i Transpozycja
 
 Harfa posiada **7 przełączników** (po jednym dla każdego stopnia gamy `[C, D, E, F, G, A, B]`).
@@ -51,7 +53,7 @@ Każdy przełącznik wpływa na **wszystkie struny danego stopnia** jednocześni
 
 ---
 
-## 4. Algorytm Przeliczania Nuty Wyjściowej
+## 4. Algorytm Przeliczania Nuty Wyjściowej (Obowiązujący zarówno w Firmware jak i Aplikacji Mobilnej)
 
 Efektywny numer nuty MIDI dla danej struny wyliczany jest według wzoru:
 
@@ -63,11 +65,84 @@ Gdzie:
 - $\text{LeverOffset}$ – tablica 7 elementów ze stanem przełączników $\in \{-1, 0, +1\}$
 - $\text{OctaveShift}$ – transpozycja oktawowa $\in \{-1, 0, +1\}$
 
+Tak uzyskany effectiveMIDI będzie nam służył jako forma identyfikacji przekształconej nuty w Aplikacji Mobilej oraz w samej Harfie.
+
 ---
 
-## 5. Struktura Ramki Handshake BLE (Firmware $\to$ App)
+## 5. Pełne spektrum dźwięków Harfy
 
-Podczas połączenia BLE harfa wysyła paczkę konfiguracyjną (np. 9 bajtów):
+W każdej tabeli nuta bazowa jest podana razem z numerem MIDI. Nuty po zmianie
+położenia dźwigni również zawierają numer MIDI; `LeverOffset +1` podnosi dźwięk
+o półton, a `LeverOffset -1` obniża go o półton.
+
+### OKTAWA 1
+
+| ID Struny (`string_id`) | Stopień Gamy | Nuta Bazowa | Nuta (`LeverOffset + 1`) | Nuta (`LeverOffset - 1`) |
+| :---: | :---: | :---: | :---: | :---: |
+| **0** | C | **C1** (MIDI 24) | **C#1** (MIDI 25) | **B0** (MIDI 23) |
+| **1** | D | **D1** (MIDI 26) | **D#1** (MIDI 27) | **C#1** (MIDI 25) |
+| **2** | E | **E1** (MIDI 28) | **F1** (MIDI 29) | **D#1** (MIDI 27) |
+| **3** | F | **F1** (MIDI 29) | **F#1** (MIDI 30) | **E1** (MIDI 28) |
+| **4** | G | **G1** (MIDI 31) | **G#1** (MIDI 32) | **F#1** (MIDI 30) |
+| **5** | A | **A1** (MIDI 33) | **A#1** (MIDI 34) | **G#1** (MIDI 32) |
+| **6** | B | **B1** (MIDI 35) | **C2** (MIDI 36) | **A#1** (MIDI 34) |
+| **7** | C | **C2** (MIDI 36) | **C#2** (MIDI 37) | **B1** (MIDI 35) |
+| **8** | D | **D2** (MIDI 38) | **D#2** (MIDI 39) | **C#2** (MIDI 37) |
+| **9** | E | **E2** (MIDI 40) | **F2** (MIDI 41) | **D#2** (MIDI 39) |
+| **10** | F | **F2** (MIDI 41) | **F#2** (MIDI 42) | **E2** (MIDI 40) |
+| **11** | G | **G2** (MIDI 43) | **G#2** (MIDI 44) | **F#2** (MIDI 42) |
+| **12** | A | **A2** (MIDI 45) | **A#2** (MIDI 46) | **G#2** (MIDI 44) |
+| **13** | B | **B2** (MIDI 47) | **C3** (MIDI 48) | **A#2** (MIDI 46) |
+| **14** | C | **C3** (MIDI 48) | **C#3** (MIDI 49) | **B2** (MIDI 47) |
+
+---
+
+### OKTAWA 2
+
+| ID Struny (`string_id`) | Stopień Gamy | Nuta Bazowa | Nuta (`LeverOffset + 1`) | Nuta (`LeverOffset - 1`) |
+| :---: | :---: | :---: | :---: | :---: |
+| **0** | C | **C2** (MIDI 36) | **C#2** (MIDI 37) | **B1** (MIDI 35) |
+| **1** | D | **D2** (MIDI 38) | **D#2** (MIDI 39) | **C#2** (MIDI 37) |
+| **2** | E | **E2** (MIDI 40) | **F2** (MIDI 41) | **D#2** (MIDI 39) |
+| **3** | F | **F2** (MIDI 41) | **F#2** (MIDI 42) | **E2** (MIDI 40) |
+| **4** | G | **G2** (MIDI 43) | **G#2** (MIDI 44) | **F#2** (MIDI 42) |
+| **5** | A | **A2** (MIDI 45) | **A#2** (MIDI 46) | **G#2** (MIDI 44) |
+| **6** | B | **B2** (MIDI 47) | **C3** (MIDI 48) | **A#2** (MIDI 46) |
+| **7** | C | **C3** (MIDI 48) | **C#3** (MIDI 49) | **B2** (MIDI 47) |
+| **8** | D | **D3** (MIDI 50) | **D#3** (MIDI 51) | **C#3** (MIDI 49) |
+| **9** | E | **E3** (MIDI 52) | **F3** (MIDI 53) | **D#3** (MIDI 51) |
+| **10** | F | **F3** (MIDI 53) | **F#3** (MIDI 54) | **E3** (MIDI 52) |
+| **11** | G | **G3** (MIDI 55) | **G#3** (MIDI 56) | **F#3** (MIDI 54) |
+| **12** | A | **A3** (MIDI 57) | **A#3** (MIDI 58) | **G#3** (MIDI 56) |
+| **13** | B | **B3** (MIDI 59) | **C4** (MIDI 60) | **A#3** (MIDI 58) |
+| **14** | C | **C4** (MIDI 60) | **C#4** (MIDI 61) | **B3** (MIDI 59) |
+
+---
+
+### OKTAWA 3
+
+| ID Struny (`string_id`) | Stopień Gamy | Nuta Bazowa | Nuta (`LeverOffset + 1`) | Nuta (`LeverOffset - 1`) |
+| :---: | :---: | :---: | :---: | :---: |
+| **0** | C | **C3** (MIDI 48) | **C#3** (MIDI 49) | **B2** (MIDI 47) |
+| **1** | D | **D3** (MIDI 50) | **D#3** (MIDI 51) | **C#3** (MIDI 49) |
+| **2** | E | **E3** (MIDI 52) | **F3** (MIDI 53) | **D#3** (MIDI 51) |
+| **3** | F | **F3** (MIDI 53) | **F#3** (MIDI 54) | **E3** (MIDI 52) |
+| **4** | G | **G3** (MIDI 55) | **G#3** (MIDI 56) | **F#3** (MIDI 54) |
+| **5** | A | **A3** (MIDI 57) | **A#3** (MIDI 58) | **G#3** (MIDI 56) |
+| **6** | B | **B3** (MIDI 59) | **C4** (MIDI 60) | **A#3** (MIDI 58) |
+| **7** | C | **C4** (MIDI 60) | **C#4** (MIDI 61) | **B3** (MIDI 59) |
+| **8** | D | **D4** (MIDI 62) | **D#4** (MIDI 63) | **C#4** (MIDI 61) |
+| **9** | E | **E4** (MIDI 64) | **F4** (MIDI 65) | **D#4** (MIDI 63) |
+| **10** | F | **F4** (MIDI 65) | **F#4** (MIDI 66) | **E4** (MIDI 64) |
+| **11** | G | **G4** (MIDI 67) | **G#4** (MIDI 68) | **F#4** (MIDI 66) |
+| **12** | A | **A4** (MIDI 69) | **A#4** (MIDI 70) | **G#4** (MIDI 68) |
+| **13** | B | **B4** (MIDI 71) | **C5** (MIDI 72) | **A#4** (MIDI 70) |
+| **14** | C | **C5** (MIDI 72) | **C#5** (MIDI 73) | **B4** (MIDI 71) |
+
+
+## 6. Struktura Ramki Handshake BLE (Firmware $\to$ App) 
+
+Podczas połączenia BLE harfa wysyła paczkę konfiguracyjną (9 bajtów): 
 
 | Bajt | Opis | Wartości |
 | :---: | :--- | :--- |
