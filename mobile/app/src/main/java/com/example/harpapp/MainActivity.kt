@@ -4,35 +4,33 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.harpapp.data.preferences.dataStore
-import com.example.harpapp.data.preferences.DataStoreSettingsRepository
+import com.example.harpapp.di.AppContainer
+import com.example.harpapp.domain.model.ThemeMode
 import com.example.harpapp.presentation.navigation.AppNavGraph
 import com.example.harpapp.presentation.viewmodel.SettingsViewModel
-import com.example.harpapp.presentation.viewmodel.SettingsViewModelFactory
 import com.example.harpapp.presentation.ui.theme.HARPAppTheme
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : AppCompatActivity() {
+
+    private val appContainer by lazy { AppContainer(applicationContext) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
         setContent {
-            val context = LocalContext.current
-            val repo = remember { DataStoreSettingsRepository(context.dataStore) }
             val settingsViewModel: SettingsViewModel = viewModel(
-                factory = SettingsViewModelFactory(repo)
+                factory = appContainer.settingsViewModelFactory
             )
 
             val mode by settingsViewModel.themeMode.collectAsState()
 
-            HARPAppTheme(darkTheme = (mode == com.example.harpapp.domain.model.ThemeMode.DARK)) {
-                AppNavGraph(settingsViewModel = settingsViewModel)
+            HARPAppTheme(darkTheme = (mode == ThemeMode.DARK)) {
+                AppNavGraph(
+                    appContainer = appContainer,
+                    settingsViewModel = settingsViewModel
+                )
             }
         }
     }

@@ -1,49 +1,51 @@
 package com.example.harpapp.presentation.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.harpapp.domain.model.Difficulty
 import com.example.harpapp.domain.model.Song
+import com.example.harpapp.domain.usecase.FilterSongsUseCase
+import com.example.harpapp.domain.usecase.ObserveSongsUseCase
+import com.example.harpapp.domain.usecase.SetFavoriteUseCase
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import androidx.lifecycle.viewModelScope
-import com.example.harpapp.data.local.AppDatabase
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
-import com.example.harpapp.domain.model.Difficulty
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class HomeViewModel(application: Application): AndroidViewModel(application) {
+class HomeViewModel(
+    private val observeSongsUseCase: ObserveSongsUseCase,
+    private val filterSongsUseCase: FilterSongsUseCase,
+    private val setFavoriteUseCase: SetFavoriteUseCase
+) : ViewModel() {
 
-    private val database = AppDatabase.getDatabase(application, viewModelScope)
-    private val songDao = database.songDao()
+    private val allSongs: Flow<List<Song>> = observeSongsUseCase()
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-    private val _allSongs: Flow<List<Song>> = songDao.getAllSongs()
+
     private val _selectedDifficulties = MutableStateFlow<Set<Difficulty>>(emptySet())
-    val selectedDifficulties = _selectedDifficulties.asStateFlow()
+    val selectedDifficulties: StateFlow<Set<Difficulty>> =
+        _selectedDifficulties.asStateFlow()
+
     private val _showFavoritesOnly = MutableStateFlow(false)
-    val showFavoritesOnly = _showFavoritesOnly.asStateFlow()
+    val showFavoritesOnly: StateFlow<Boolean> = _showFavoritesOnly.asStateFlow()
 
-
-    val filteredSongs = combine(
-        _allSongs,
-        _searchQuery,
-        _selectedDifficulties,
-        _showFavoritesOnly
+    val filteredSongs: StateFlow<List<Song>> = combine(
+        allSongs,
+        searchQuery,
+        selectedDifficulties,
+        showFavoritesOnly
     ) { songs, query, difficulties, favoritesOnly ->
-        songs.filter { song ->
-            val matchesSearch = song.title.contains(query, ignoreCase = true) ||
-                    song.artist.contains(query, ignoreCase = true)
-            val matchesDifficulty = difficulties.isEmpty() || difficulties.contains(song.difficulty)
-            val matchesFavorites = !favoritesOnly || song.isFavorite
-
-            matchesSearch && matchesDifficulty && matchesFavorites
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        filterSongsUseCase(songs, query, difficulties, favoritesOnly)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
 
     fun onSearchQueryChanged(newQuery: String) {
         _searchQuery.value = newQuery
@@ -59,8 +61,8 @@ class HomeViewModel(application: Application): AndroidViewModel(application) {
     }
 
     fun toggleFavorite(songId: Int, currentFavoriteStatus: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) {
-            songDao.updateFavoriteStatus(songId, !currentFavoriteStatus)
+        viewModelScope.launch {
+            setFavoriteUseCase(songId, !currentFavoriteStatus)
         }
     }
 

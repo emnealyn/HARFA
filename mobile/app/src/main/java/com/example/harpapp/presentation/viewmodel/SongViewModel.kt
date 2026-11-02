@@ -1,23 +1,24 @@
 package com.example.harpapp.presentation.viewmodel
 
-import android.app.Application
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.harpapp.data.local.AppDatabase
-import com.example.harpapp.domain.model.Song
 import com.example.harpapp.domain.model.NotePlayed
+import com.example.harpapp.domain.model.Song
+import com.example.harpapp.domain.usecase.EvaluateNoteUseCase
+import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.repository.AudioPlayer
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 class SongViewModel(
-    application: Application,
-    private val audioPlayer: AudioPlayer
-) : AndroidViewModel(application) {
-    private val songDao = AppDatabase.getDatabase(application, viewModelScope).songDao()
+    private val getSongUseCase: GetSongUseCase,
+    private val evaluateNoteUseCase: EvaluateNoteUseCase,
+    private val audioPlayer: AudioPlayer,
+    incomingNotes: Flow<NotePlayed>
+) : ViewModel() {
 
     private val _song = mutableStateOf<Song?>(null)
     val song: State<Song?> = _song
@@ -28,35 +29,28 @@ class SongViewModel(
     private val _isLearningMode = mutableStateOf(false)
     val isLearningMode: State<Boolean> = _isLearningMode
 
-    // Index of the note the user must play next (-1 = not started / finished)
     private val _currentNoteIndex = mutableStateOf(0)
     val currentNoteIndex: State<Int> = _currentNoteIndex
 
-    // Whether the song has been completed in learning mode
     private val _learningComplete = mutableStateOf(false)
     val learningComplete: State<Boolean> = _learningComplete
 
-    private var noteListenerJob: Job? = null
+    private val noteListenerJob: Job = viewModelScope.launch {
+        incomingNotes.collect { playedNote ->
+            if (_isLearningMode.value) {
+                handleIncomingNote(playedNote.note)
+            }
+        }
+    }
 
     fun loadSong(songId: Int) {
         if (_song.value?.id == songId) return
 
         viewModelScope.launch {
-            _song.value = songDao.getSongById(songId)
+            _song.value = getSongUseCase(songId)
             audioPlayer.release()
             _isPlaying.value = false
             stopLearning()
-        }
-    }
-
-    fun attachBluetoothNoteFlow(noteFlow: Flow<NotePlayed>) {
-        noteListenerJob?.cancel()
-        noteListenerJob = viewModelScope.launch {
-            noteFlow.collect { playedNote ->
-                if (_isLearningMode.value) {
-                    handleIncomingNote(playedNote.note)
-                }
-            }
         }
     }
 
@@ -67,8 +61,8 @@ class SongViewModel(
         val index = _currentNoteIndex.value
         if (index >= lyrics.size) return
 
-        val expectedNote = lyrics[index].note.trim().uppercase().first().toString()
-        if (note.trim().uppercase() == expectedNote) {
+        val expectedNote = lyrics[index].note.trim().uppercase().firstOrNull()?.toString() ?: return
+        if (evaluateNoteUseCase(expectedNote, note)) {
             val nextIndex = index + 1
             _currentNoteIndex.value = nextIndex
             if (nextIndex >= lyrics.size) {
@@ -110,7 +104,7 @@ class SongViewModel(
     }
 
     override fun onCleared() {
-        noteListenerJob?.cancel()
+        noteListenerJob.cancel()
         audioPlayer.release()
         super.onCleared()
     }

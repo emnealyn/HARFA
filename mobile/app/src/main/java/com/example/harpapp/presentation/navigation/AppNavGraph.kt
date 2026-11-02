@@ -1,17 +1,12 @@
 package com.example.harpapp.presentation.navigation
 
-import android.app.Application
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -21,8 +16,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.harpapp.R
-import com.example.harpapp.data.media.AndroidAssetAudioPlayer
-import com.example.harpapp.device.bluetooth.BluetoothInstrumentRepository
+import com.example.harpapp.di.AppContainer
 import com.example.harpapp.presentation.ui.components.NavBar
 import com.example.harpapp.presentation.ui.components.TopBar
 import com.example.harpapp.presentation.ui.screens.bluetooth.BluetoothScreen
@@ -31,14 +25,13 @@ import com.example.harpapp.presentation.ui.screens.settings.SettingsScreen
 import com.example.harpapp.presentation.ui.screens.song.SongScreen
 import com.example.harpapp.presentation.ui.screens.splash.SplashScreen
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
-import com.example.harpapp.presentation.viewmodel.BluetoothViewModelFactory
 import com.example.harpapp.presentation.viewmodel.HomeViewModel
 import com.example.harpapp.presentation.viewmodel.SettingsViewModel
 import com.example.harpapp.presentation.viewmodel.SongViewModel
-import com.example.harpapp.presentation.viewmodel.SongViewModelFactory
 
 @Composable
 fun AppNavGraph(
+    appContainer: AppContainer,
     settingsViewModel: SettingsViewModel
 ) {
     val navController = rememberNavController()
@@ -54,31 +47,10 @@ fun AppNavGraph(
         else -> currentRoute
     }
 
-    val context = LocalContext.current
-    val homeViewModel: HomeViewModel = viewModel(
-        factory = ViewModelProvider.AndroidViewModelFactory.getInstance(context.applicationContext as Application)
-    )
-    val instrumentRepository = remember {
-        BluetoothInstrumentRepository(context.applicationContext)
-    }
-    val bluetoothViewModelFactory = remember(instrumentRepository) {
-        BluetoothViewModelFactory(instrumentRepository)
-    }
-    val bluetoothViewModel: BluetoothViewModel = viewModel(factory = bluetoothViewModelFactory)
-    val audioPlayer = remember {
-        AndroidAssetAudioPlayer(context.applicationContext)
-    }
-    val songViewModelFactory = remember(audioPlayer) {
-        SongViewModelFactory(
-            context.applicationContext as Application,
-            audioPlayer
-        )
-    }
-    val songViewModel: SongViewModel = viewModel(factory = songViewModelFactory)
-
-    LaunchedEffect(Unit) {
-        songViewModel.attachBluetoothNoteFlow(instrumentRepository.incomingNotes)
-    }
+    val homeViewModel: HomeViewModel = viewModel(factory = appContainer.homeViewModelFactory)
+    val bluetoothViewModel: BluetoothViewModel =
+        viewModel(factory = appContainer.bluetoothViewModelFactory)
+    val songViewModel: SongViewModel = viewModel(factory = appContainer.songViewModelFactory)
 
     val isBluetoothConnected by bluetoothViewModel.isConnected.collectAsState()
     val connectedDeviceName by bluetoothViewModel.connectedDeviceName.collectAsState(initial = null)

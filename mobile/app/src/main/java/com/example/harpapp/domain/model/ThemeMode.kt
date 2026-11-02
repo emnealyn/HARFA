@@ -9,8 +9,3 @@ enum class ThemeMode(val value: Int) {
             values().firstOrNull { it.value == value } ?: LIGHT
     }
 }
-
-fun ThemeMode.toAppCompatMode(): Int = when (this) {
-    ThemeMode.LIGHT -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
-    ThemeMode.DARK -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
-}
