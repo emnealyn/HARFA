@@ -2,6 +2,8 @@
 
 Dokument określa spójny model mapowania fizycznych strun harfy (0–14) na nuty, pliki dźwiękowe `.wav`, stany przełączników oraz transpozycję oktawową.
 
+Dalej w dokumencie oraz w całym projekcie do opisywanie dźwięków będziemy korzystać z **notacji anglosaskiej**  tj  | C | D | E | F | G | A | B | .
+
 ---
 
 ## 1. Architektura i Single Source of Truth (SSOT)
