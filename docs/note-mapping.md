@@ -100,10 +100,4 @@ oktaw, od `B0` do `C#5`. Pliki dla dźwięków z krzyżykiem używają oznaczeni
 
 ## 6. Struktura Ramki Handshake BLE (Firmware $\to$ App) 
 
-Podczas połączenia BLE harfa wysyła paczkę konfiguracyjną (9 bajtów): 
-
-| Bajt | Opis | Wartości |
-| :---: | :--- | :--- |
-| **0** | `OctaveShift` | `-1`, `0`, `1` (zapisany jako uint8 z offsetem +1: `0..2`) |
-| **1..7** | `LeverOffset[0..6]` | Stany dla C, D, E, F, G, A, B (zapisane z offsetem +1: `0..2`) |
-| **8** | `BaseOctave` | Domyślna oktawa początkowa (np. `2` dla C2) |
+Podczas połączenia BLE harfa wysyła paczkę konfiguracyjną (dokładna struktura tej oraz innych wiadomości w [protokole bluetooth](./protocol/ble-protocol.md)).

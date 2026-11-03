@@ -8,7 +8,7 @@
 ## 1. Architektura Systemu i Peryferia
 
 ### 1.1 Czujniki Strun (15 strun)
-* **Liczba strun:** System składa się z dokładnie **15 strun optycznych** reprezentujących 2 oktawy + C dźwięków.
+* **Liczba strun:** System składa się z dokładnie **15 strun optycznych** reprezentujących 2 oktawy + C dźwięków ([mapowanie strun](./note-mapping.md)).
 * **Konstrukcja:** Każda struna tworzona jest przez dedykowaną **diodę laserową** oraz odbiornik w postaci **fototranzystora** (15 par).
 * **Detekcja:** Przerwanie wiązki światła laserowego powoduje natychmiastowe wyzwolenie dźwięku (próbka WAV) oraz przesłanie komunikatu BLE.
 
@@ -40,6 +40,7 @@
 
 * **Mikrokontroler:** **STM32WB55** ze zintegrowanym modułem BLE 5.2.
 * **Komunikacja BLE:** Bezprzewodowa transmisja komunikatów i komend sterujących do dedykowanej aplikacji i spowrotem (do aplikacji: grane dźwięki i obecne tonacje, do harfy: kolejna nuta do nauki).
+([protokół bluetooth](./protocol/ble-protocol.md)).
 
 ## 5. Konstrukcja Mechaniczna
 
