@@ -19,11 +19,11 @@ import com.example.harpapp.R
 import com.example.harpapp.di.AppContainer
 import com.example.harpapp.presentation.ui.components.NavBar
 import com.example.harpapp.presentation.ui.components.TopBar
-import com.example.harpapp.presentation.ui.screens.bluetooth.BluetoothScreen
-import com.example.harpapp.presentation.ui.screens.home.HomeScreen
-import com.example.harpapp.presentation.ui.screens.settings.SettingsScreen
-import com.example.harpapp.presentation.ui.screens.song.SongScreen
-import com.example.harpapp.presentation.ui.screens.splash.SplashScreen
+import com.example.harpapp.presentation.ui.screens.BluetoothScreen
+import com.example.harpapp.presentation.ui.screens.HomeScreen
+import com.example.harpapp.presentation.ui.screens.SettingsScreen
+import com.example.harpapp.presentation.ui.screens.SongScreen
+import com.example.harpapp.presentation.ui.screens.SplashScreen
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
 import com.example.harpapp.presentation.viewmodel.HomeViewModel
 import com.example.harpapp.presentation.viewmodel.SettingsViewModel

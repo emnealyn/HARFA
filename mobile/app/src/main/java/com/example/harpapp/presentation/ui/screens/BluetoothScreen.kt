@@ -1,4 +1,4 @@
-package com.example.harpapp.presentation.ui.screens.bluetooth
+package com.example.harpapp.presentation.ui.screens
 
 import android.Manifest
 import android.os.Build

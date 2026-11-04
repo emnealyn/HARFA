@@ -1,4 +1,4 @@
-package com.example.harpapp.presentation.ui.screens.settings
+package com.example.harpapp.presentation.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -44,7 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.harpapp.R
-import com.example.harpapp.presentation.ui.components.settings.ThemeOptionRow
+import com.example.harpapp.presentation.ui.components.ThemeOptionRow
 import com.example.harpapp.presentation.viewmodel.SettingsViewModel
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard

@@ -1,4 +1,4 @@
-package com.example.harpapp.presentation.ui.screens.home
+package com.example.harpapp.presentation.ui.screens
 
 import android.content.res.Configuration
 import androidx.compose.material3.Text

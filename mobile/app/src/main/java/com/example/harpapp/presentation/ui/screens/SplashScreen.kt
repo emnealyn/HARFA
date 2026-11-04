@@ -1,4 +1,4 @@
-package com.example.harpapp.presentation.ui.screens.splash
+package com.example.harpapp.presentation.ui.screens
 
 import com.example.harpapp.R
 import androidx.compose.animation.graphics.res.animatedVectorResource

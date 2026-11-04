@@ -1,4 +1,4 @@
-package com.example.harpapp.presentation.ui.screens.song
+package com.example.harpapp.presentation.ui.screens
 
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke

@@ -1,4 +1,4 @@
-package com.example.harpapp.presentation.ui.components.settings
+package com.example.harpapp.presentation.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
