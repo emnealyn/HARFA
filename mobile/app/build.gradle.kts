@@ -34,6 +34,10 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets {
+        // Wspólne wektory testowe protokołu BLE (docs/protocol/test-vectors.json)
+        getByName("test").resources.directories.add("../../docs/protocol")
+    }
 //    kotlinOptions {
 //        jvmTarget = "11"
 //    }
