@@ -2,9 +2,18 @@
 
 * **Wersja:** 1.0
 * **Data:** 2026-11-04
-* **Powiązane dokumenty:** [ADR 008](adr/008-domain-model.md), [Mapowanie strun](note-mapping.md), [Protokół BLE](protocol/ble-protocol.md), [ADR 001](adr/001-system-responsibilities.md)
+* **Powiązane dokumenty:** [ADR 009](adr/009-domain-model.md), [ADR 008 – architektura warstwowa](adr/008-mobile-app-layered-architecture.md), [Mapowanie strun](note-mapping.md), [Protokół BLE](protocol/ble-protocol.md), [ADR 001](adr/001-system-responsibilities.md)
 
 Dokument definiuje pojęcia domenowe, którymi posługuje się aplikacja mobilna w trybie nauki. Zastępuje on operowanie surowymi napisami (np. `"G#4"`) jednoznacznymi typami. Model jest **niezależny od Androida, Rooma i warstwy BLE**: można go w całości przetestować testami jednostkowymi.
+
+Model należy do warstwy `domain` z [ADR 008](adr/008-mobile-app-layered-architecture.md):
+
+| Warstwa | Odpowiedzialność w trybie nauki |
+| :--- | :--- |
+| `domain` | Typy z tego dokumentu, walidacja katalogu (§6), ocena kroku (`LessonProgress`) i przygotowanie lekcji z utworu. |
+| `device` | Odwzorowanie ramek protokołu na `NoteEvent` i `InstrumentState` (§7). `InstrumentRepository` udostępnia strumienie tych typów. |
+| `data` | Odczyt katalogu (`songs.json`, Room) jako model `Song` z surowymi nutami. Bez interpretowania nut. |
+| `presentation` | Przechowywanie bieżącego `LessonProgress`, wyświetlanie kroków i błędów walidacji. |
 
 Notacja dźwięków jest anglosaska (`C D E F G A B`), zgodnie z [note-mapping](note-mapping.md).
 
@@ -186,9 +195,9 @@ Każde zdarzenie daje nowy stan oraz wynik kroku, który odpowiada `LESSON_RESUL
 
 ## 6. Walidacja katalogu
 
-Utwory w katalogu (`songs.json`, baza Room) zawierają surowe pary `syllable` i `note`. Są to dane wejściowe, a nie model domenowy. Katalog nie przechowuje danych wyliczanych z nuty, takich jak numer struny, stopień czy MIDI ([ADR 008](adr/008-domain-model.md)).
+Utwory w katalogu (`songs.json`, baza Room) zawierają surowe pary `syllable` i `note`. Są to dane wejściowe, a nie model domenowy. Katalog nie przechowuje danych wyliczanych z nuty, takich jak numer struny, stopień czy MIDI ([ADR 009](adr/009-domain-model.md)).
 
-Walidator przyjmuje identyfikator i tytuł utworu oraz listę surowych kroków (`syllable`, `note`). Pola mogą być puste lub `null`, bo pochodzą z deserializacji. Walidator nie zależy od encji Room. Przekształcenie encji na surowe kroki należy do warstwy danych.
+Walidator przyjmuje identyfikator i tytuł utworu oraz listę surowych kroków (`syllable`, `note`). Pola mogą być puste lub `null`, bo pochodzą z deserializacji. Walidator nie zależy od encji Room. Warstwa `data` mapuje encję na model `Song`. Przypadek użycia w `domain` przekształca `Song.lyricsWithNotes` na surowe kroki i uruchamia walidację.
 
 **Przed rozpoczęciem lekcji** utwór przechodzi walidację, której wynikiem jest:
 
