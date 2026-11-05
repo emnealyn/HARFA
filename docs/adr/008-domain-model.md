@@ -78,6 +78,8 @@ Dodatkowo przyjęto:
 * Model domenowy (`StringId`, `NoteName`, `Accidental`, `Pitch`, `InstrumentState`, `NoteEvent`, `Lesson`, `LessonStep`, `LessonProgress`) jest niezależny od Androida, Rooma i BLE, więc testują go testy jednostkowe.
 * Parsowanie, walidacja i odwzorowanie ramek BLE na model nie zgłaszają wyjątków. Niepoprawne dane dają wynik błędu albo „brak wartości”.
 * Struktura katalogu (`LyricNote`, encja Room) pozostaje bez zmian i pełni rolę danych wejściowych. Nie jest wymagana migracja bazy.
+* Katalog **nie przechowuje danych wyliczanych** z nuty (numer struny, stopień gamy, MIDI). Struna zależy od bieżącego strojenia harfy, więc zapisana wartość byłaby poprawna tylko dla jednego ustawienia. Do tego powstałyby dwa źródła prawdy. Wyliczenie odbywa się raz, przy walidacji.
+* Odłożono na osobne zadanie opcjonalne pole na poziomie utworu, `harpSetup` (zalecana transpozycja i pozycje przełączników). Pole opisuje decyzję autora lekcji, a nie dane wyliczane. Wymaga migracji bazy.
 
 Pełna definicja modelu znajduje się w [docs/domain-model.md](../domain-model.md).
 

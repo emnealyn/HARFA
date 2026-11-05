@@ -186,7 +186,11 @@ Każde zdarzenie daje nowy stan oraz wynik kroku, który odpowiada `LESSON_RESUL
 
 ## 6. Walidacja katalogu
 
-Utwory w katalogu (`songs.json`, baza Room) zawierają surowe pary `syllable` i `note`. Są to dane wejściowe, a nie model domenowy. **Przed rozpoczęciem lekcji** utwór przechodzi walidację, której wynikiem jest:
+Utwory w katalogu (`songs.json`, baza Room) zawierają surowe pary `syllable` i `note`. Są to dane wejściowe, a nie model domenowy. Katalog nie przechowuje danych wyliczanych z nuty, takich jak numer struny, stopień czy MIDI ([ADR 008](adr/008-domain-model.md)).
+
+Walidator przyjmuje identyfikator i tytuł utworu oraz listę surowych kroków (`syllable`, `note`). Pola mogą być puste lub `null`, bo pochodzą z deserializacji. Walidator nie zależy od encji Room. Przekształcenie encji na surowe kroki należy do warstwy danych.
+
+**Przed rozpoczęciem lekcji** utwór przechodzi walidację, której wynikiem jest:
 
 - `Valid(lesson)`, gdy wszystkie kroki są poprawne,
 - `Invalid(issues)`, czyli lista **wszystkich** znalezionych problemów (nie tylko pierwszego).
@@ -226,7 +230,7 @@ Stan obecnego katalogu: utwór *Hallelujah* zawiera `D5`, `E5` i `F#5` (MIDI 74,
 | `LESSON_STEP.mask` | bit `stringFor(currentStep.pitch)` (pusta maska, gdy brak struny) |
 | `LESSON_RESULT.result` | wynik kroku: `MISS`, `HIT`, `COMPLETE` (`IGNORED` nie jest wysyłany) |
 
-Odwzorowanie ramki na model zwraca „brak wartości” zamiast zgłaszać wyjątek, gdy pola są niepoprawne.
+Odwzorowanie ramki na model zwraca „brak wartości” zamiast zgłaszać wyjątek, gdy pola są niepoprawne. Należy ono do warstwy urządzenia (klient BLE i kodek), a nie do modelu domenowego.
 
 ---
 
