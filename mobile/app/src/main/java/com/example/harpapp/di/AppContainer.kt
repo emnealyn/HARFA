@@ -24,7 +24,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
-class AppContainer(context: Context) {
+class AppContainer(
+    context: Context,
+    instrumentRepositoryOverride: InstrumentRepository? = null
+) {
     private val appContext = context.applicationContext
     private val databaseScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val database = AppDatabase.getDatabase(appContext, databaseScope)
@@ -34,7 +37,7 @@ class AppContainer(context: Context) {
         DataStoreSettingsRepository(appContext.dataStore)
     val audioPlayer: AudioPlayer = AndroidAssetAudioPlayer(appContext)
     val instrumentRepository: InstrumentRepository =
-        BluetoothInstrumentRepository(appContext)
+        instrumentRepositoryOverride ?: BluetoothInstrumentRepository(appContext)
 
     private val observeSongsUseCase = ObserveSongsUseCase(songRepository)
     private val getSongUseCase = GetSongUseCase(songRepository)

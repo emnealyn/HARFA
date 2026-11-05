@@ -15,9 +15,11 @@ import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.protocol.HarpProtocol
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
 import java.io.IOException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -39,45 +41,56 @@ internal class BleGattInstrumentTransport(
     private var rxCharacteristic: BluetoothGattCharacteristic? = null
 
     override suspend fun connect(device: InstrumentDevice) {
-        suspendCancellableCoroutine { continuation ->
-            disconnect()
-            connectContinuation = continuation
+        try {
+            withTimeout(CONNECTION_TIMEOUT_MS) {
+                suspendCancellableCoroutine<Unit> { continuation ->
+                    disconnect()
+                    connectContinuation = continuation
 
-            val bluetoothAdapter = bluetoothManager?.adapter
-            if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
-                failConnection(IllegalStateException("Bluetooth adapter is unavailable or disabled"))
-                return@suspendCancellableCoroutine
-            }
+                    val bluetoothAdapter = bluetoothManager?.adapter
+                    if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
+                        failConnection(
+                            IllegalStateException(
+                                "Bluetooth adapter is unavailable or disabled"
+                            )
+                        )
+                        return@suspendCancellableCoroutine
+                    }
 
-            val bluetoothDevice = try {
-                bluetoothAdapter.getRemoteDevice(device.address)
-            } catch (exception: IllegalArgumentException) {
-                failConnection(exception)
-                return@suspendCancellableCoroutine
-            } catch (exception: SecurityException) {
-                failConnection(exception)
-                return@suspendCancellableCoroutine
-            }
+                    val bluetoothDevice = try {
+                        bluetoothAdapter.getRemoteDevice(device.address)
+                    } catch (exception: IllegalArgumentException) {
+                        failConnection(exception)
+                        return@suspendCancellableCoroutine
+                    } catch (exception: SecurityException) {
+                        failConnection(exception)
+                        return@suspendCancellableCoroutine
+                    }
 
-            continuation.invokeOnCancellation {
-                disconnect()
-            }
+                    continuation.invokeOnCancellation {
+                        disconnect()
+                    }
 
-            try {
-                val gatt = bluetoothDevice.connectGatt(
-                    appContext,
-                    false,
-                    gattCallback,
-                    BluetoothDevice.TRANSPORT_LE
-                )
-                if (gatt == null) {
-                    failConnection(IOException("Could not create Bluetooth GATT connection"))
-                } else {
-                    bluetoothGatt = gatt
+                    try {
+                        val gatt = bluetoothDevice.connectGatt(
+                            appContext,
+                            false,
+                            gattCallback,
+                            BluetoothDevice.TRANSPORT_LE
+                        )
+                        if (gatt == null) {
+                            failConnection(IOException("Could not create Bluetooth GATT connection"))
+                        } else {
+                            bluetoothGatt = gatt
+                        }
+                    } catch (exception: SecurityException) {
+                        failConnection(exception)
+                    }
                 }
-            } catch (exception: SecurityException) {
-                failConnection(exception)
             }
+        } catch (exception: TimeoutCancellationException) {
+            disconnect()
+            throw IOException("BLE GATT connection timed out", exception)
         }
     }
 
@@ -361,6 +374,7 @@ internal class BleGattInstrumentTransport(
 
     private companion object {
         const val TAG = "BleGattInstrumentTransport"
+        const val CONNECTION_TIMEOUT_MS = 15_000L
         val CCCD_UUID = java.util.UUID.fromString(
             "00002902-0000-1000-8000-00805F9B34FB"
         )
