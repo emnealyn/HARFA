@@ -7,7 +7,8 @@ import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.util.Log
 import com.example.harpapp.domain.model.ConnectionState
-import com.example.harpapp.domain.model.NotePlayed
+import com.example.harpapp.domain.model.InstrumentState
+import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.model.PairedDevice
 import com.example.harpapp.domain.repository.InstrumentRepository
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +16,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -26,7 +26,7 @@ import java.util.UUID
 @SuppressLint("MissingPermission")
 class BluetoothInstrumentRepository(
     context: Context,
-    private val codec: NoteEventCodec = NoteEventCodec(),
+    private val eventStream: InstrumentEventStream = InstrumentEventStream(),
     private val targetMacAddresses: Set<String> = DEFAULT_TARGET_MAC_ADDRESSES
 ) : InstrumentRepository {
 
@@ -46,8 +46,8 @@ class BluetoothInstrumentRepository(
     private val _pairedDevices = MutableStateFlow<List<PairedDevice>>(emptyList())
     override val pairedDevices: Flow<List<PairedDevice>> = _pairedDevices.asStateFlow()
 
-    private val _incomingNotes = MutableSharedFlow<NotePlayed>(extraBufferCapacity = 16)
-    override val incomingNotes: Flow<NotePlayed> = _incomingNotes
+    override val noteEvents: Flow<NoteEvent> = eventStream.noteEvents
+    override val instrumentState: Flow<InstrumentState> = eventStream.instrumentState
 
     private var bluetoothSocket: BluetoothSocket? = null
     private var listeningJob: Job? = null
@@ -132,6 +132,7 @@ class BluetoothInstrumentRepository(
         val socket = bluetoothSocket
         bluetoothSocket = null
         closeSocket(socket)
+        eventStream.reset()
         _connectionState.value = ConnectionState.DISCONNECTED
     }
 
@@ -148,9 +149,10 @@ class BluetoothInstrumentRepository(
                         break
                     }
 
-                    codec.decode(buffer, bytesRead).forEach { note ->
-                        _incomingNotes.emit(note)
-                    }
+                    // Prototypowy transport SPP nie przesyła ramek protokołu (ADR 007, ADR 009):
+                    // dane są tylko logowane. Docelowy klient BLE przekaże każdą notyfikację TX
+                    // jako jedną ramkę do eventStream.accept(frame).
+                    Log.d(TAG, "Ignoring $bytesRead bytes from the prototype SPP transport")
                 }
             } catch (exception: IOException) {
                 Log.e(TAG, "Disconnected or error reading Bluetooth stream", exception)
@@ -159,6 +161,7 @@ class BluetoothInstrumentRepository(
             } finally {
                 if (socket == bluetoothSocket) {
                     bluetoothSocket = null
+                    eventStream.reset()
                     _connectionState.value = ConnectionState.DISCONNECTED
                 }
             }

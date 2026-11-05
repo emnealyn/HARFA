@@ -10,7 +10,3 @@ enum class ConnectionState {
     CONNECTING,
     CONNECTED
 }
-
-data class NotePlayed(
-    val note: String
-)
