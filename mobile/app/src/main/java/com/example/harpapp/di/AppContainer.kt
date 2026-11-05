@@ -11,10 +11,10 @@ import com.example.harpapp.domain.repository.AudioPlayer
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.domain.repository.SettingsRepository
 import com.example.harpapp.domain.repository.SongRepository
-import com.example.harpapp.domain.usecase.EvaluateNoteUseCase
 import com.example.harpapp.domain.usecase.FilterSongsUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.usecase.ObserveSongsUseCase
+import com.example.harpapp.domain.usecase.PrepareLessonUseCase
 import com.example.harpapp.domain.usecase.SetFavoriteUseCase
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModelFactory
 import com.example.harpapp.presentation.viewmodel.HomeViewModelFactory
@@ -40,7 +40,7 @@ class AppContainer(context: Context) {
     private val getSongUseCase = GetSongUseCase(songRepository)
     private val setFavoriteUseCase = SetFavoriteUseCase(songRepository)
     private val filterSongsUseCase = FilterSongsUseCase()
-    private val evaluateNoteUseCase = EvaluateNoteUseCase()
+    private val prepareLessonUseCase = PrepareLessonUseCase()
 
     val homeViewModelFactory = HomeViewModelFactory(
         observeSongsUseCase = observeSongsUseCase,
@@ -50,9 +50,10 @@ class AppContainer(context: Context) {
 
     val songViewModelFactory = SongViewModelFactory(
         getSongUseCase = getSongUseCase,
-        evaluateNoteUseCase = evaluateNoteUseCase,
+        prepareLessonUseCase = prepareLessonUseCase,
         audioPlayer = audioPlayer,
-        incomingNotes = instrumentRepository.incomingNotes
+        noteEvents = instrumentRepository.noteEvents,
+        connectionState = instrumentRepository.connectionState
     )
 
     val settingsViewModelFactory = SettingsViewModelFactory(settingsRepository)

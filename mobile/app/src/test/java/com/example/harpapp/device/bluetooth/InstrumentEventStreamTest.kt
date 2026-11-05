@@ -9,6 +9,7 @@ import com.example.harpapp.protocol.TestVectors
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -25,6 +26,7 @@ class InstrumentEventStreamTest {
         val events = mutableListOf<NoteEvent>()
         val job = launch(start = CoroutineStart.UNDISPATCHED) { stream.noteEvents.collect { events += it } }
         block()
+        yield() // pozwala kolektorowi odebrać zdarzenia z bufora przed anulowaniem
         job.cancel()
         events
     }

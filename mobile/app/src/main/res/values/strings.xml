@@ -39,4 +39,10 @@
     <string name="bluetooth_status">Bluetooth status</string>
     <string name="preferences">Preferences</string>
     <string name="connectivity">Connectivity</string>
+    <string name="lesson_issues_title">Can\'t start learning</string>
+    <string name="lesson_issues_intro">This song contains notes that can\'t be used in learning mode:</string>
+    <string name="lesson_issue_no_steps">The song has no notes.</string>
+    <string name="lesson_issue_empty">Step %1$d: empty note</string>
+    <string name="lesson_issue_malformed">Step %1$d: invalid note \"%2$s\"</string>
+    <string name="lesson_issue_out_of_range">Step %1$d: %2$s is outside the harp\'s range (B0–C#5)</string>
 </resources>

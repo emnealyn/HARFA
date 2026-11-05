@@ -41,4 +41,10 @@
     <string name="bluetooth_status">Status Połączenia</string>
     <string name="preferences">Preferencje</string>
     <string name="connectivity">Połączenia</string>
+    <string name="lesson_issues_title">Nie można rozpocząć nauki</string>
+    <string name="lesson_issues_intro">Ten utwór zawiera nuty, których nie można użyć w trybie nauki:</string>
+    <string name="lesson_issue_no_steps">Utwór nie zawiera żadnych nut.</string>
+    <string name="lesson_issue_empty">Krok %1$d: pusta nuta</string>
+    <string name="lesson_issue_malformed">Krok %1$d: niepoprawny zapis nuty „%2$s”</string>
+    <string name="lesson_issue_out_of_range">Krok %1$d: %2$s jest poza zakresem harfy (B0–C#5)</string>
 </resources>

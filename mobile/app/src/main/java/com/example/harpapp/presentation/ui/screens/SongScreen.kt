@@ -27,12 +27,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.harpapp.R
+import com.example.harpapp.domain.model.CatalogIssue
 import com.example.harpapp.domain.model.Difficulty
 import com.example.harpapp.domain.model.LyricNote
 import com.example.harpapp.domain.model.Song
 import com.example.harpapp.presentation.ui.components.home.getCoverResourceId
 import com.example.harpapp.presentation.ui.components.home.DifficultyBadge
 import com.example.harpapp.presentation.ui.components.song.CompletedSongDialog
+import com.example.harpapp.presentation.ui.components.song.LessonIssuesDialog
 import com.example.harpapp.presentation.ui.components.song.LyricsDisplay
 import com.example.harpapp.presentation.ui.theme.HARPAppTheme
 import com.example.harpapp.presentation.viewmodel.SongViewModel
@@ -52,6 +54,7 @@ fun SongScreen(
     val isLearningMode by viewModel.isLearningMode
     val currentNoteIndex by viewModel.currentNoteIndex
     val learningComplete by viewModel.learningComplete
+    val lessonIssues by viewModel.lessonIssues
 
     SongContent(
         song = song,
@@ -62,6 +65,8 @@ fun SongScreen(
         currentNoteIndex = if (isLearningMode) currentNoteIndex else -1,
         learningComplete = learningComplete,
         onDismissDialog = { viewModel.dismissLearningCompleteDialog() },
+        lessonIssues = lessonIssues,
+        onDismissLessonIssues = { viewModel.dismissLessonIssues() },
         modifier = modifier
     )
 }
@@ -77,6 +82,8 @@ fun SongContent(
     currentNoteIndex: Int = -1,
     learningComplete: Boolean = false,
     onDismissDialog: () -> Unit = {},
+    lessonIssues: List<CatalogIssue> = emptyList(),
+    onDismissLessonIssues: () -> Unit = {},
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -371,6 +378,10 @@ fun SongContent(
         if (learningComplete) {
             CompletedSongDialog(onDismiss = onDismissDialog)
         }
+
+        if (lessonIssues.isNotEmpty()) {
+            LessonIssuesDialog(issues = lessonIssues, onDismiss = onDismissLessonIssues)
+        }
     } else {
         Box(
             modifier = modifier.fillMaxSize(),
@@ -393,11 +404,11 @@ fun SongScreenPreview() {
             duration = "2:55",
             coverImage = "cover_placeholder",
             lyricsWithNotes = listOf(
-                LyricNote("He", "D"),
-                LyricNote("said", "D"),
-                LyricNote("Let's", "A"),
-                LyricNote("get", "C"),
-                LyricNote("out", "D")
+                LyricNote("He", "D4"),
+                LyricNote("said", "D4"),
+                LyricNote("Let's", "A4"),
+                LyricNote("get", "C4"),
+                LyricNote("out", "D4")
             )
         )
         Surface(color = MaterialTheme.colorScheme.background) {
@@ -426,11 +437,11 @@ fun SongScreenLandscapePreview() {
             duration = "2:55",
             coverImage = "cover_placeholder",
             lyricsWithNotes = listOf(
-                LyricNote("He", "D"),
-                LyricNote("said", "D"),
-                LyricNote("Let's", "A"),
-                LyricNote("get", "C"),
-                LyricNote("out", "D")
+                LyricNote("He", "D4"),
+                LyricNote("said", "D4"),
+                LyricNote("Let's", "A4"),
+                LyricNote("get", "C4"),
+                LyricNote("out", "D4")
             )
         )
         Surface(color = MaterialTheme.colorScheme.background) {
