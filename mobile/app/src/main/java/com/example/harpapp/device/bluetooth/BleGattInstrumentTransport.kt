@@ -207,8 +207,13 @@ internal class BleGattInstrumentTransport(
                 return
             }
 
-            if (newState == BluetoothProfile.STATE_CONNECTED && !gatt.discoverServices()) {
-                failConnection(IOException("Could not start GATT service discovery"))
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                if (!gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)) {
+                    Log.w(TAG, "Could not request high BLE connection priority")
+                }
+                if (!gatt.discoverServices()) {
+                    failConnection(IOException("Could not start GATT service discovery"))
+                }
             }
         }
 

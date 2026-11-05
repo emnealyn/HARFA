@@ -4,6 +4,7 @@ import com.example.harpapp.protocol.HarpCodec
 import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.HarpProtocol
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlinx.coroutines.async
@@ -103,6 +104,46 @@ class HarpSessionTest {
             )
         )
         command.await()
+    }
+
+    @Test
+    fun reportsIncomingSequenceGapAfterHandshake() = runBlocking {
+        val session = HarpSession { }
+        val handshake = async(start = CoroutineStart.UNDISPATCHED) { session.start() }
+
+        session.handleIncoming(HarpCodec.encode(deviceInfoMessage()))
+        handshake.await()
+
+        val gapEvent = session.handleIncoming(
+            HarpCodec.encode(
+                HarpMessage.StringEvent(
+                    seq = 3,
+                    stringId = 5,
+                    midi = 45,
+                    tMs = 1000
+                )
+            )
+        )
+
+        assertTrue(gapEvent is HarpSessionEvent.Message)
+        assertEquals(
+            SequenceGap(expectedSequence = 2, actualSequence = 3),
+            (gapEvent as HarpSessionEvent.Message).sequenceGap
+        )
+
+        val nextEvent = session.handleIncoming(
+            HarpCodec.encode(
+                HarpMessage.StringEvent(
+                    seq = 4,
+                    stringId = 5,
+                    midi = 46,
+                    tMs = 1250
+                )
+            )
+        )
+
+        assertTrue(nextEvent is HarpSessionEvent.Message)
+        assertNull((nextEvent as HarpSessionEvent.Message).sequenceGap)
     }
 
     private fun deviceInfoMessage() = HarpMessage.DeviceInfo(

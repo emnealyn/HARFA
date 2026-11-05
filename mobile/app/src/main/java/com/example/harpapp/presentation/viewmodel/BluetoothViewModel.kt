@@ -28,6 +28,7 @@ class BluetoothViewModel(
             initialValue = false
         )
     val connectedDeviceName: Flow<String?> = instrumentRepository.connectedDeviceName
+    val connectedDeviceId: Flow<Long?> = instrumentRepository.connectedDeviceId
     val discoveredDevices: Flow<List<InstrumentDevice>> = instrumentRepository.discoveredDevices
 
         private val _scanFailed = MutableStateFlow(false)

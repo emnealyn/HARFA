@@ -20,6 +20,9 @@ class FakeInstrumentRepository : InstrumentRepository {
     private val _connectedDeviceName = MutableStateFlow<String?>(null)
     override val connectedDeviceName: Flow<String?> = _connectedDeviceName.asStateFlow()
 
+    private val _connectedDeviceId = MutableStateFlow<Long?>(null)
+    override val connectedDeviceId: Flow<Long?> = _connectedDeviceId.asStateFlow()
+
     private val _discoveredDevices = MutableStateFlow<List<InstrumentDevice>>(emptyList())
     override val discoveredDevices: Flow<List<InstrumentDevice>> =
         _discoveredDevices.asStateFlow()

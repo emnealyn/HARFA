@@ -14,10 +14,18 @@ import kotlinx.coroutines.withTimeout
 import java.io.IOException
 
 internal sealed interface HarpSessionEvent {
-    data class Message(val message: HarpMessage) : HarpSessionEvent
+    data class Message(
+        val message: HarpMessage,
+        val sequenceGap: SequenceGap? = null
+    ) : HarpSessionEvent
 
     data class InvalidFrame(val status: StatusCode) : HarpSessionEvent
 }
+
+internal data class SequenceGap(
+    val expectedSequence: Int,
+    val actualSequence: Int
+)
 
 internal class HarpSession(
     private val sendFrame: suspend (ByteArray) -> Unit
@@ -27,6 +35,7 @@ internal class HarpSession(
     private var deviceInfoWaiter: CompletableDeferred<HarpMessage.DeviceInfo>? = null
     private var pendingAck: PendingAck? = null
     private var nextOutgoingSequence = 0
+    private var lastIncomingSequence: Int? = null
     private val commandMutex = Mutex()
 
     suspend fun start(): HarpMessage.DeviceInfo {
@@ -137,6 +146,7 @@ internal class HarpSession(
         pendingAck?.waiter?.cancel(CancellationException("HARFA session reset"))
         pendingAck = null
         nextOutgoingSequence = 0
+        lastIncomingSequence = null
         state = State.IDLE
     }
 
@@ -144,6 +154,7 @@ internal class HarpSession(
         if (state == State.HANDSHAKING) {
             when (message) {
                 is HarpMessage.DeviceInfo -> {
+                    lastIncomingSequence = message.seq
                     deviceInfoWaiter?.complete(message)
                     return HarpSessionEvent.Message(message)
                 }
@@ -159,6 +170,12 @@ internal class HarpSession(
 
                 else -> Unit
             }
+        }
+
+        val sequenceGap = if (state == State.READY) {
+            detectIncomingSequenceGap(message.seq)
+        } else {
+            null
         }
 
         when (message) {
@@ -183,7 +200,24 @@ internal class HarpSession(
             else -> Unit
         }
 
-        return HarpSessionEvent.Message(message)
+        return HarpSessionEvent.Message(message, sequenceGap)
+    }
+
+    private fun detectIncomingSequenceGap(sequence: Int): SequenceGap? {
+        val previousSequence = lastIncomingSequence
+        lastIncomingSequence = sequence
+
+        if (previousSequence == null) return null
+
+        val expectedSequence = (previousSequence + 1) and 0xFF
+        return if (sequence == expectedSequence) {
+            null
+        } else {
+            SequenceGap(
+                expectedSequence = expectedSequence,
+                actualSequence = sequence
+            )
+        }
     }
 
     private fun completePendingCommandException(message: String) {

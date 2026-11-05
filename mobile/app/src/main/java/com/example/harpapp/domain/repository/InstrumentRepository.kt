@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 interface InstrumentRepository {
     val connectionState: Flow<ConnectionState>
     val connectedDeviceName: Flow<String?>
+    val connectedDeviceId: Flow<Long?>
     val discoveredDevices: Flow<List<InstrumentDevice>>
     val events: Flow<InstrumentEvent>
     val incomingNotes: Flow<NotePlayed>

@@ -16,6 +16,7 @@ import com.example.harpapp.protocol.Capabilities
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +41,8 @@ class BluetoothInstrumentRepository internal constructor(
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val session = HarpSession { frame -> transport.send(frame) }
     private var deviceCapabilities: Int? = null
+    private var stateRecoveryRequested = false
+    private var stateRecoveryJob: Job? = null
 
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     override val connectionState: Flow<ConnectionState> = _connectionState.asStateFlow()
@@ -48,6 +51,15 @@ class BluetoothInstrumentRepository internal constructor(
         preferences.getString(LAST_DEVICE_NAME_KEY, null)
     )
     override val connectedDeviceName: Flow<String?> = _connectedDeviceName.asStateFlow()
+
+    private val _connectedDeviceId = MutableStateFlow<Long?>(
+        if (preferences.contains(LAST_DEVICE_ID_KEY)) {
+            preferences.getLong(LAST_DEVICE_ID_KEY, 0L)
+        } else {
+            null
+        }
+    )
+    override val connectedDeviceId: Flow<Long?> = _connectedDeviceId.asStateFlow()
 
     private val _discoveredDevices = MutableStateFlow<List<InstrumentDevice>>(emptyList())
     override val discoveredDevices: Flow<List<InstrumentDevice>> =
@@ -65,6 +77,7 @@ class BluetoothInstrumentRepository internal constructor(
                 when (event) {
                     is TransportEvent.Data -> handleFrame(event.bytes)
                     TransportEvent.Disconnected -> {
+                        stateRecoveryRequested = false
                         session.reset()
                         deviceCapabilities = null
                         _connectionState.value = ConnectionState.DISCONNECTED
@@ -101,7 +114,12 @@ class BluetoothInstrumentRepository internal constructor(
                 _connectionState.value = ConnectionState.CONNECTED
                 val nameToSave = device.name ?: device.address
                 _connectedDeviceName.value = nameToSave
-                preferences.edit().putString(LAST_DEVICE_NAME_KEY, nameToSave).apply()
+                _connectedDeviceId.value = deviceInfo.deviceId
+                preferences.edit()
+                    .putString(LAST_DEVICE_NAME_KEY, nameToSave)
+                    .putLong(LAST_DEVICE_ID_KEY, deviceInfo.deviceId)
+                    .apply()
+                requestStateRecoveryIfNeeded()
             } catch (exception: CancellationException) {
                 if (!currentCoroutineContext().isActive) {
                     throw exception
@@ -141,6 +159,7 @@ class BluetoothInstrumentRepository internal constructor(
     }
 
     override fun disconnect() {
+        stateRecoveryRequested = false
         session.reset()
         deviceCapabilities = null
         transport.disconnect()
@@ -154,6 +173,16 @@ class BluetoothInstrumentRepository internal constructor(
             }
 
             is HarpSessionEvent.Message -> {
+                event.sequenceGap?.let { gap ->
+                    Log.w(
+                        TAG,
+                        "HARFA sequence gap detected: expected=${gap.expectedSequence}, " +
+                            "actual=${gap.actualSequence}"
+                    )
+                    stateRecoveryRequested = true
+                    requestStateRecoveryIfNeeded()
+                }
+
                 when (val message = event.message) {
                     is HarpMessage.StringEvent -> {
                         val note = NotePlayed(
@@ -204,6 +233,11 @@ class BluetoothInstrumentRepository internal constructor(
                 require(command.flags and StateRequestFlags.KNOWN_MASK == command.flags) {
                     "Unknown state request flags: ${command.flags}"
                 }
+                if (command.flags and StateRequestFlags.BATTERY != 0) {
+                    require(capabilities and Capabilities.BATTERY != 0) {
+                        "Instrument does not support battery state requests"
+                    }
+                }
             }
 
             is InstrumentCommand.SetLeds -> {
@@ -246,6 +280,11 @@ class BluetoothInstrumentRepository internal constructor(
                 "Unsupported HARFA protocol major version: ${deviceInfo.protoMajor}"
             )
         }
+        if (deviceInfo.protoMinor > HarpProtocol.VERSION_MINOR) {
+            throw HarpHandshakeException(
+                "Unsupported HARFA protocol minor version: ${deviceInfo.protoMinor}"
+            )
+        }
         if (deviceInfo.stringCount != HarpProtocol.STRING_COUNT) {
             throw HarpHandshakeException(
                 "Unsupported instrument string count: ${deviceInfo.stringCount}"
@@ -253,8 +292,46 @@ class BluetoothInstrumentRepository internal constructor(
         }
     }
 
+    private fun requestStateRecoveryIfNeeded() {
+        if (
+            !stateRecoveryRequested ||
+            _connectionState.value != ConnectionState.CONNECTED ||
+            stateRecoveryJob?.isActive == true
+        ) {
+            return
+        }
+
+        stateRecoveryJob = ioScope.launch {
+            while (stateRecoveryRequested && _connectionState.value == ConnectionState.CONNECTED) {
+                stateRecoveryRequested = false
+                val flags = StateRequestFlags.CONFIG or
+                    if (deviceCapabilities?.and(Capabilities.BATTERY) != 0) {
+                        StateRequestFlags.BATTERY
+                    } else {
+                        0
+                    }
+
+                try {
+                    send(InstrumentCommand.RequestState(flags))
+                } catch (exception: CancellationException) {
+                    if (!currentCoroutineContext().isActive) {
+                        throw exception
+                    }
+                    Log.w(TAG, "State recovery request was interrupted", exception)
+                } catch (exception: Exception) {
+                    Log.e(TAG, "Could not request state after a sequence gap", exception)
+                    break
+                }
+            }
+
+            stateRecoveryJob = null
+            requestStateRecoveryIfNeeded()
+        }
+    }
+
     private fun handleConnectionFailure(message: String, exception: Throwable) {
         Log.e(TAG, message, exception)
+        stateRecoveryRequested = false
         session.reset()
         deviceCapabilities = null
         transport.disconnect()
@@ -265,5 +342,6 @@ class BluetoothInstrumentRepository internal constructor(
         const val TAG = "BluetoothInstrumentRepository"
         const val PREFERENCES_NAME = "bluetooth_prefs"
         const val LAST_DEVICE_NAME_KEY = "last_device_name"
+        const val LAST_DEVICE_ID_KEY = "last_device_id"
     }
 }
