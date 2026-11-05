@@ -3,7 +3,6 @@ package com.example.harpapp.device.bluetooth
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.util.Log
 import com.example.harpapp.domain.model.ConnectionState
@@ -12,21 +11,20 @@ import com.example.harpapp.domain.model.PairedDevice
 import com.example.harpapp.domain.repository.InstrumentRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.IOException
-import java.util.UUID
 
 @SuppressLint("MissingPermission")
-class BluetoothInstrumentRepository(
+class BluetoothInstrumentRepository internal constructor(
     context: Context,
     private val codec: NoteEventCodec = NoteEventCodec(),
+    private val transport: InstrumentTransport = RfcommInstrumentTransport(context),
     private val targetMacAddresses: Set<String> = DEFAULT_TARGET_MAC_ADDRESSES
 ) : InstrumentRepository {
 
@@ -49,8 +47,23 @@ class BluetoothInstrumentRepository(
     private val _incomingNotes = MutableSharedFlow<NotePlayed>(extraBufferCapacity = 16)
     override val incomingNotes: Flow<NotePlayed> = _incomingNotes
 
-    private var bluetoothSocket: BluetoothSocket? = null
-    private var listeningJob: Job? = null
+    init {
+        ioScope.launch {
+            transport.events.collect { event ->
+                when (event) {
+                    is TransportEvent.Data -> {
+                        codec.decode(event.bytes, event.bytes.size).forEach { note ->
+                            _incomingNotes.emit(note)
+                        }
+                    }
+
+                    TransportEvent.Disconnected -> {
+                        _connectionState.value = ConnectionState.DISCONNECTED
+                    }
+                }
+            }
+        }
+    }
 
     override suspend fun refreshPairedDevices() {
         withContext(Dispatchers.IO) {
@@ -76,101 +89,36 @@ class BluetoothInstrumentRepository(
             disconnect()
             _connectionState.value = ConnectionState.CONNECTING
 
-            val bluetoothAdapter = bluetoothManager?.adapter
-            if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
-                _connectionState.value = ConnectionState.DISCONNECTED
-                return@withContext
-            }
-
-            val bluetoothDevice = try {
-                bluetoothAdapter.getRemoteDevice(device.address)
-            } catch (exception: IllegalArgumentException) {
-                Log.e(TAG, "Invalid Bluetooth address: ${device.address}", exception)
-                _connectionState.value = ConnectionState.DISCONNECTED
-                return@withContext
-            } catch (exception: SecurityException) {
-                Log.e(TAG, "Bluetooth permissions are missing", exception)
-                _connectionState.value = ConnectionState.DISCONNECTED
-                return@withContext
-            }
-
-            val socket = try {
-                bluetoothAdapter.cancelDiscovery()
-                bluetoothDevice.createRfcommSocketToServiceRecord(SPP_UUID)
-            } catch (exception: SecurityException) {
-                Log.e(TAG, "Bluetooth permissions are missing", exception)
-                _connectionState.value = ConnectionState.DISCONNECTED
-                return@withContext
-            }
-
             try {
-                socket.connect()
-                bluetoothSocket = socket
+                transport.connect(device)
                 _connectionState.value = ConnectionState.CONNECTED
 
                 val nameToSave = device.name ?: device.address
                 _connectedDeviceName.value = nameToSave
                 preferences.edit().putString(LAST_DEVICE_NAME_KEY, nameToSave).apply()
-
-                startListening(socket)
-            } catch (exception: IOException) {
+            } catch (exception: IllegalArgumentException) {
+                Log.e(TAG, "Invalid Bluetooth address: ${device.address}", exception)
+                transport.disconnect()
+                _connectionState.value = ConnectionState.DISCONNECTED
+            } catch (exception: IllegalStateException) {
+                Log.e(TAG, "Bluetooth adapter is unavailable", exception)
+                transport.disconnect()
+                _connectionState.value = ConnectionState.DISCONNECTED
+            } catch (exception: java.io.IOException) {
                 Log.e(TAG, "Bluetooth connection failed", exception)
-                closeSocket(socket)
+                transport.disconnect()
                 _connectionState.value = ConnectionState.DISCONNECTED
             } catch (exception: SecurityException) {
                 Log.e(TAG, "Bluetooth permissions are missing", exception)
-                closeSocket(socket)
+                transport.disconnect()
                 _connectionState.value = ConnectionState.DISCONNECTED
             }
         }
     }
 
     override fun disconnect() {
-        listeningJob?.cancel()
-        listeningJob = null
-
-        val socket = bluetoothSocket
-        bluetoothSocket = null
-        closeSocket(socket)
+        transport.disconnect()
         _connectionState.value = ConnectionState.DISCONNECTED
-    }
-
-    private fun startListening(socket: BluetoothSocket) {
-        listeningJob?.cancel()
-        listeningJob = ioScope.launch {
-            try {
-                val inputStream = socket.inputStream
-                val buffer = ByteArray(BUFFER_SIZE)
-
-                while (socket == bluetoothSocket) {
-                    val bytesRead = inputStream.read(buffer)
-                    if (bytesRead <= 0) {
-                        break
-                    }
-
-                    codec.decode(buffer, bytesRead).forEach { note ->
-                        _incomingNotes.emit(note)
-                    }
-                }
-            } catch (exception: IOException) {
-                Log.e(TAG, "Disconnected or error reading Bluetooth stream", exception)
-            } catch (exception: SecurityException) {
-                Log.e(TAG, "Bluetooth permissions are missing", exception)
-            } finally {
-                if (socket == bluetoothSocket) {
-                    bluetoothSocket = null
-                    _connectionState.value = ConnectionState.DISCONNECTED
-                }
-            }
-        }
-    }
-
-    private fun closeSocket(socket: BluetoothSocket?) {
-        try {
-            socket?.close()
-        } catch (exception: IOException) {
-            Log.e(TAG, "Could not close Bluetooth socket", exception)
-        }
     }
 
     private fun BluetoothDevice.toPairedDevice(): PairedDevice {
@@ -191,8 +139,6 @@ class BluetoothInstrumentRepository(
         const val TAG = "BluetoothInstrumentRepository"
         const val PREFERENCES_NAME = "bluetooth_prefs"
         const val LAST_DEVICE_NAME_KEY = "last_device_name"
-        const val BUFFER_SIZE = 1024
-        val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
         val DEFAULT_TARGET_MAC_ADDRESSES = setOf("20:E7:C8:5A:67:4E")
     }
 }
