@@ -11,9 +11,10 @@
     <string name="connected">Połączono</string>
     <string name="disconnected">Rozłączono</string>
     <string name="no_device">Brak urządzenia</string>
-    <string name="paired_devices">Sparowane urządzenia</string>
+    <string name="discovered_devices">Instrumenty w pobliżu</string>
     <string name="bluetooth_permissions_are_required">Wymagane są uprawnienia Bluetooth.</string>
-    <string name="no_paired_devices_found">Nie znaleziono sparowanych urządzeń</string>
+    <string name="bluetooth_scan_failed">Nie udało się wyszukać żadnych instrumentów.</string>
+    <string name="no_discovered_devices_found">Nie znaleziono instrumentów</string>
     <string name="unknown_device">Nieznane urządzenie</string>
     <string name="what_will_you_play_today">Co dzisiaj zagrasz?</string>
     <string name="search_for_song_or_artist">Wyszukaj utwór lub artystę...</string>
@@ -31,7 +32,6 @@
     <string name="difficulty_medium">Średni</string>
     <string name="difficulty_hard">Trudny</string>
     <string name="settings_language_title">Język</string>
-
     <string name="nav_home">Główna</string>
     <string name="nav_song">Utwór</string>
     <string name="nav_settings">Ustawienia</string>

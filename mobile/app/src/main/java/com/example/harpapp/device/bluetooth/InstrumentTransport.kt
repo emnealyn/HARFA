@@ -1,6 +1,6 @@
 package com.example.harpapp.device.bluetooth
 
-import com.example.harpapp.domain.model.PairedDevice
+import com.example.harpapp.domain.model.InstrumentDevice
 import kotlinx.coroutines.flow.Flow
 
 internal sealed interface TransportEvent {
@@ -12,7 +12,9 @@ internal sealed interface TransportEvent {
 internal interface InstrumentTransport {
     val events: Flow<TransportEvent>
 
-    suspend fun connect(device: PairedDevice)
+    suspend fun connect(device: InstrumentDevice)
+
+    suspend fun send(bytes: ByteArray)
 
     fun disconnect()
 }

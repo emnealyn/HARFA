@@ -10,9 +10,10 @@
     <string name="connected">Connected</string>
     <string name="disconnected">Disconnected</string>
     <string name="no_device">No device</string>
-    <string name="paired_devices">Paired Devices</string>
+    <string name="discovered_devices">Nearby instruments</string>
     <string name="bluetooth_permissions_are_required">Bluetooth permissions are required.</string>
-    <string name="no_paired_devices_found">No paired devices found</string>
+    <string name="bluetooth_scan_failed">Could not scan for instruments.</string>
+    <string name="no_discovered_devices_found">No instruments found</string>
     <string name="unknown_device">Unknown device</string>
     <string name="what_will_you_play_today">What will you play today?</string>
     <string name="search_for_song_or_artist">Search for song or artist...</string>

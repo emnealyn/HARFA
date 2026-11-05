@@ -38,7 +38,7 @@ class SongViewModel(
     private val noteListenerJob: Job = viewModelScope.launch {
         incomingNotes.collect { playedNote ->
             if (_isLearningMode.value) {
-                handleIncomingNote(playedNote.note)
+                handleIncomingNote(playedNote.midi)
             }
         }
     }
@@ -54,15 +54,15 @@ class SongViewModel(
         }
     }
 
-    private fun handleIncomingNote(note: String) {
+    private fun handleIncomingNote(midi: Int) {
         val lyrics = _song.value?.lyricsWithNotes ?: return
         if (_learningComplete.value) return
 
         val index = _currentNoteIndex.value
         if (index >= lyrics.size) return
 
-        val expectedNote = lyrics[index].note.trim().uppercase().firstOrNull()?.toString() ?: return
-        if (evaluateNoteUseCase(expectedNote, note)) {
+        val expectedNote = lyrics[index].note
+        if (evaluateNoteUseCase(expectedNote, midi)) {
             val nextIndex = index + 1
             _currentNoteIndex.value = nextIndex
             if (nextIndex >= lyrics.size) {

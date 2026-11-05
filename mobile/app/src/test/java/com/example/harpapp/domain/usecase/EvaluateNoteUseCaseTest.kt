@@ -18,4 +18,11 @@ class EvaluateNoteUseCaseTest {
         assertFalse(evaluateNote("G4", "G5"))
         assertFalse(evaluateNote("G4", "G#4"))
     }
+
+    @Test
+    fun comparesSongNoteWithAuthoritativeMidiValue() {
+        assertTrue(evaluateNote("G4", 67))
+        assertTrue(evaluateNote("F#4", 66))
+        assertFalse(evaluateNote("G4", 79))
+    }
 }

@@ -3,11 +3,14 @@ package com.example.harpapp.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.harpapp.domain.model.ConnectionState
-import com.example.harpapp.domain.model.PairedDevice
+import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.repository.InstrumentRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -25,15 +28,25 @@ class BluetoothViewModel(
             initialValue = false
         )
     val connectedDeviceName: Flow<String?> = instrumentRepository.connectedDeviceName
-    val pairedDevices: Flow<List<PairedDevice>> = instrumentRepository.pairedDevices
+    val discoveredDevices: Flow<List<InstrumentDevice>> = instrumentRepository.discoveredDevices
 
-    fun fetchPairedDevices() {
-        viewModelScope.launch {
-            instrumentRepository.refreshPairedDevices()
+        private val _scanFailed = MutableStateFlow(false)
+        val scanFailed: StateFlow<Boolean> = _scanFailed.asStateFlow()
+
+        fun scanForDevices() {
+            viewModelScope.launch {
+                _scanFailed.value = false
+                try {
+                    instrumentRepository.scanForDevices()
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    _scanFailed.value = true
+                }
+            }
         }
-    }
 
-    fun connectToDevice(device: PairedDevice) {
+    fun connectToDevice(device: InstrumentDevice) {
         viewModelScope.launch {
             instrumentRepository.connect(device)
         }

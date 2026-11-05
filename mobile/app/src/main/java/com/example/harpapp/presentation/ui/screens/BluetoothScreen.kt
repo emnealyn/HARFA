@@ -30,7 +30,8 @@ fun BluetoothScreen(
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
     val connectedDeviceName by viewModel.connectedDeviceName.collectAsState(initial = null)
-    val pairedDevices by viewModel.pairedDevices.collectAsState(initial = emptyList())
+    val discoveredDevices by viewModel.discoveredDevices.collectAsState(initial = emptyList())
+    val scanFailed by viewModel.scanFailed.collectAsState()
 
     var hasPermissions by remember { mutableStateOf(false) }
 
@@ -38,7 +39,7 @@ fun BluetoothScreen(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         hasPermissions = permissions.values.all { it }
-        if (hasPermissions) viewModel.fetchPairedDevices()
+        if (hasPermissions) viewModel.scanForDevices()
     }
 
     LaunchedEffect(Unit) {
@@ -145,13 +146,13 @@ fun BluetoothScreen(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Text(
-                        text = stringResource(R.string.paired_devices),
+                        text = stringResource(R.string.discovered_devices),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f)
                     )
 
-                    IconButton(onClick = { viewModel.fetchPairedDevices() }) {
+                    IconButton(onClick = { viewModel.scanForDevices() }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh",
@@ -174,21 +175,34 @@ fun BluetoothScreen(
                         )
                     }
                 }
-            } else if (pairedDevices.isEmpty()) {
+            } else if (scanFailed) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.bluetooth_scan_failed),
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            } else if (discoveredDevices.isEmpty()) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Text(
-                            text = stringResource(R.string.no_paired_devices_found),
+                            text = stringResource(R.string.no_discovered_devices_found),
                             modifier = Modifier.padding(16.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             } else {
-                items(pairedDevices) { device ->
+                items(discoveredDevices) { device ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()

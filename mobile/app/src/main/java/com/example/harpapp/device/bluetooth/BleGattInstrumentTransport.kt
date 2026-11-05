@@ -11,7 +11,7 @@ import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import com.example.harpapp.domain.model.PairedDevice
+import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.protocol.HarpProtocol
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CancellableContinuation
@@ -35,8 +35,10 @@ internal class BleGattInstrumentTransport(
 
     private var bluetoothGatt: BluetoothGatt? = null
     private var connectContinuation: CancellableContinuation<Unit>? = null
+    private var writeContinuation: CancellableContinuation<Unit>? = null
+    private var rxCharacteristic: BluetoothGattCharacteristic? = null
 
-    override suspend fun connect(device: PairedDevice) {
+    override suspend fun connect(device: InstrumentDevice) {
         suspendCancellableCoroutine { continuation ->
             disconnect()
             connectContinuation = continuation
@@ -79,10 +81,76 @@ internal class BleGattInstrumentTransport(
         }
     }
 
+    override suspend fun send(bytes: ByteArray) {
+        require(bytes.isNotEmpty()) { "Cannot send an empty BLE frame" }
+        require(bytes.size <= HarpProtocol.MAX_FRAME_SIZE) {
+            "BLE frame cannot exceed ${HarpProtocol.MAX_FRAME_SIZE} bytes"
+        }
+
+        suspendCancellableCoroutine { continuation ->
+            val gatt = bluetoothGatt
+            val rx = rxCharacteristic
+            if (gatt == null || rx == null) {
+                continuation.resumeWithException(
+                    IllegalStateException("BLE GATT RX characteristic is unavailable")
+                )
+                return@suspendCancellableCoroutine
+            }
+
+            if (writeContinuation != null) {
+                continuation.resumeWithException(
+                    IllegalStateException("Another BLE write is already pending")
+                )
+                return@suspendCancellableCoroutine
+            }
+
+            writeContinuation = continuation
+            continuation.invokeOnCancellation {
+                if (writeContinuation === continuation) {
+                    writeContinuation = null
+                }
+            }
+
+            val writeType = if (
+                rx.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0
+            ) {
+                BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            } else {
+                BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            }
+
+            val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                gatt.writeCharacteristic(rx, bytes, writeType)
+            } else {
+                @Suppress("DEPRECATION")
+                rx.writeType = writeType
+                @Suppress("DEPRECATION")
+                rx.value = bytes
+                @Suppress("DEPRECATION")
+                if (gatt.writeCharacteristic(rx)) {
+                    BluetoothGatt.GATT_SUCCESS
+                } else {
+                    BluetoothGatt.GATT_FAILURE
+                }
+            }
+
+            if (result != BluetoothGatt.GATT_SUCCESS) {
+                resumeWriteWithException(
+                    IOException("Could not start RX write: status=$result")
+                )
+            } else if (writeType == BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE) {
+                val completedContinuation = writeContinuation
+                writeContinuation = null
+                completedContinuation?.resume(Unit)
+            }
+        }
+    }
+
     override fun disconnect() {
         val hadConnection = bluetoothGatt != null || connectContinuation != null
         val gatt = bluetoothGatt
         bluetoothGatt = null
+        rxCharacteristic = null
 
         val continuation = connectContinuation
         connectContinuation = null
@@ -91,6 +159,7 @@ internal class BleGattInstrumentTransport(
                 CancellationException("BLE GATT connection was cancelled")
             )
         }
+        resumeWriteWithException(CancellationException("BLE GATT connection was cancelled"))
 
         gatt?.disconnect()
         gatt?.close()
@@ -159,6 +228,8 @@ internal class BleGattInstrumentTransport(
                 return
             }
 
+            rxCharacteristic = rx
+
             if (!gatt.setCharacteristicNotification(tx, true)) {
                 failConnection(IOException("Could not enable TX notifications"))
                 return
@@ -199,6 +270,24 @@ internal class BleGattInstrumentTransport(
             value: ByteArray
         ) {
             publishNotification(gatt, characteristic, value)
+        }
+
+        override fun onCharacteristicWrite(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            if (gatt !== bluetoothGatt || characteristic !== rxCharacteristic) return
+
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                val continuation = writeContinuation ?: return
+                writeContinuation = null
+                continuation.resume(Unit)
+            } else {
+                resumeWriteWithException(
+                    IOException("RX write failed: status=$status")
+                )
+            }
         }
     }
 
@@ -242,6 +331,7 @@ internal class BleGattInstrumentTransport(
     private fun failConnection(error: Throwable) {
         closeGatt(bluetoothGatt)
         resumeConnectionWithException(error)
+        resumeWriteWithException(error)
     }
 
     private fun resumeConnectionWithException(error: Throwable) {
@@ -255,9 +345,18 @@ internal class BleGattInstrumentTransport(
     private fun closeGatt(gatt: BluetoothGatt?) {
         if (gatt === bluetoothGatt) {
             bluetoothGatt = null
+            rxCharacteristic = null
         }
         gatt?.disconnect()
         gatt?.close()
+    }
+
+    private fun resumeWriteWithException(error: Throwable) {
+        val continuation = writeContinuation ?: return
+        writeContinuation = null
+        if (continuation.isActive) {
+            continuation.resumeWithException(error)
+        }
     }
 
     private companion object {
