@@ -2,26 +2,29 @@ package com.example.harpapp.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.harpapp.domain.model.NotePlayed
+import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.repository.AudioPlayer
-import com.example.harpapp.domain.usecase.EvaluateNoteUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
+import com.example.harpapp.domain.usecase.PrepareLessonUseCase
 import kotlinx.coroutines.flow.Flow
 
 class SongViewModelFactory(
     private val getSongUseCase: GetSongUseCase,
-    private val evaluateNoteUseCase: EvaluateNoteUseCase,
+    private val prepareLessonUseCase: PrepareLessonUseCase,
     private val audioPlayer: AudioPlayer,
-    private val incomingNotes: Flow<NotePlayed>
+    private val noteEvents: Flow<NoteEvent>,
+    private val connectionState: Flow<ConnectionState>
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SongViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
             return SongViewModel(
                 getSongUseCase = getSongUseCase,
-                evaluateNoteUseCase = evaluateNoteUseCase,
+                prepareLessonUseCase = prepareLessonUseCase,
                 audioPlayer = audioPlayer,
-                incomingNotes = incomingNotes
+                noteEvents = noteEvents,
+                connectionState = connectionState
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

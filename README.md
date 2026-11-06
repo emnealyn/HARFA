@@ -14,6 +14,7 @@
 ## Architektura systemu
 
 - [Granice odpowiedzialności STM32WB55 i aplikacji mobilnej](docs/adr/001-system-responsibilities.md)
+- [Model domenowy aplikacji: lekcje, nuty i zdarzenia instrumentu](docs/domain-model.md)
 
 --- 
 

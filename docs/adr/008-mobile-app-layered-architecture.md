@@ -125,10 +125,11 @@ Androida i sposobu przechowywania danych.
 
 Znajdują się w niej:
 
-* modele domenowe, na przykład `Song`, `NotePlayed` i `ThemeMode`,
+* modele domenowe, na przykład `Song`, `NoteEvent` i `ThemeMode`
+  (model lekcji, nut i zdarzeń instrumentu opisuje [ADR 009](009-domain-model.md)),
 * interfejsy repozytoriów,
 * przypadki użycia, na przykład pobieranie, filtrowanie i oznaczanie utworów
-  oraz ocena zagranej nuty.
+  oraz przygotowanie lekcji z utworu.
 
 Warstwa `domain` nie importuje klas Androida, Room, MediaPlayer ani Bluetooth.
 Może być testowana jako zwykły kod Kotlin/JVM.
@@ -225,9 +226,10 @@ ekran Compose
 Przykładowo podczas nauki:
 
 1. Instrument przekazuje zdarzenie do warstwy `device`.
-2. Kodek tłumaczy komunikat na zdarzenie domenowe.
+2. Kodek tłumaczy komunikat na zdarzenie domenowe `NoteEvent`.
 3. `SongViewModel` odbiera zdarzenie przez `InstrumentRepository`.
-4. `EvaluateNoteUseCase` ocenia nutę.
+4. `LessonProgress` ocenia zdarzenie względem bieżącego kroku lekcji
+   ([ADR 009](009-domain-model.md)).
 5. ViewModel aktualizuje stan lekcji.
 6. Compose wyświetla wynik użytkownikowi.
 

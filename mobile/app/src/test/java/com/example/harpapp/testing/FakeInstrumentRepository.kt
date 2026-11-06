@@ -4,7 +4,9 @@ import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
-import com.example.harpapp.domain.model.NotePlayed
+import com.example.harpapp.domain.model.InstrumentState
+import com.example.harpapp.domain.model.NoteEvent
+import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.domain.repository.InstrumentRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -30,8 +32,11 @@ class FakeInstrumentRepository : InstrumentRepository {
     private val _events = MutableSharedFlow<InstrumentEvent>(extraBufferCapacity = 16)
     override val events: Flow<InstrumentEvent> = _events
 
-    private val _incomingNotes = MutableSharedFlow<NotePlayed>(extraBufferCapacity = 16)
-    override val incomingNotes: Flow<NotePlayed> = _incomingNotes
+    private val _noteEvents = MutableSharedFlow<NoteEvent>(extraBufferCapacity = 16)
+    override val noteEvents: Flow<NoteEvent> = _noteEvents
+
+    private val _instrumentState = MutableStateFlow(InstrumentState.DEFAULT)
+    override val instrumentState: Flow<InstrumentState> = _instrumentState.asStateFlow()
 
     private val recordedCommands = mutableListOf<InstrumentCommand>()
     private val scanFailures = ArrayDeque<Throwable>()
@@ -69,19 +74,25 @@ class FakeInstrumentRepository : InstrumentRepository {
 
     suspend fun emitEvent(event: InstrumentEvent) {
         _events.emit(event)
-        if (event is NotePlayed) {
-            _incomingNotes.emit(event)
+        when (event) {
+            is NoteEvent -> _noteEvents.emit(event)
+            is InstrumentEvent.ConfigurationUpdated -> _instrumentState.value = event.state
+            else -> Unit
         }
     }
 
     suspend fun emitStringEvent(stringId: Int, midi: Int, timestampMs: Int) {
         emitEvent(
-            NotePlayed(
-                stringId = stringId,
+            NoteEvent(
+                stringId = requireNotNull(StringId.of(stringId)) { "Invalid string id: $stringId" },
                 midi = midi,
                 timestampMs = timestampMs
             )
         )
+    }
+
+    suspend fun emitConfiguration(state: InstrumentState) {
+        emitEvent(InstrumentEvent.ConfigurationUpdated(state))
     }
 
     suspend fun emitBatteryState(percent: Int, millivolts: Int, flags: Int) {

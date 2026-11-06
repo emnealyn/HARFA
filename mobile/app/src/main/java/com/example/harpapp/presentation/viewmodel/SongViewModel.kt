@@ -1,23 +1,29 @@
 package com.example.harpapp.presentation.viewmodel
 
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.harpapp.domain.model.NotePlayed
+import com.example.harpapp.domain.model.CatalogIssue
+import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.LessonProgress
+import com.example.harpapp.domain.model.LessonValidation
+import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.model.Song
-import com.example.harpapp.domain.usecase.EvaluateNoteUseCase
-import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.repository.AudioPlayer
+import com.example.harpapp.domain.usecase.GetSongUseCase
+import com.example.harpapp.domain.usecase.PrepareLessonUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 class SongViewModel(
     private val getSongUseCase: GetSongUseCase,
-    private val evaluateNoteUseCase: EvaluateNoteUseCase,
+    private val prepareLessonUseCase: PrepareLessonUseCase,
     private val audioPlayer: AudioPlayer,
-    incomingNotes: Flow<NotePlayed>
+    noteEvents: Flow<NoteEvent>,
+    connectionState: Flow<ConnectionState>
 ) : ViewModel() {
 
     private val _song = mutableStateOf<Song?>(null)
@@ -26,19 +32,32 @@ class SongViewModel(
     private val _isPlaying = mutableStateOf(false)
     val isPlaying: State<Boolean> = _isPlaying
 
-    private val _isLearningMode = mutableStateOf(false)
-    val isLearningMode: State<Boolean> = _isLearningMode
+    /** Bieżąca lekcja albo `null`, gdy tryb nauki jest wyłączony (docs/domain-model.md §5.2). */
+    private val _progress = mutableStateOf<LessonProgress?>(null)
+    val progress: State<LessonProgress?> = _progress
 
-    private val _currentNoteIndex = mutableStateOf(0)
-    val currentNoteIndex: State<Int> = _currentNoteIndex
+    /** Problemy w danych utworu, przez które nie można rozpocząć nauki (docs/domain-model.md §6). */
+    private val _lessonIssues = mutableStateOf<List<CatalogIssue>>(emptyList())
+    val lessonIssues: State<List<CatalogIssue>> = _lessonIssues
 
-    private val _learningComplete = mutableStateOf(false)
-    val learningComplete: State<Boolean> = _learningComplete
+    val isLearningMode: State<Boolean> = derivedStateOf { _progress.value != null }
+    val currentNoteIndex: State<Int> = derivedStateOf { _progress.value?.currentIndex ?: 0 }
+    val learningComplete: State<Boolean> = derivedStateOf { _progress.value?.isCompleted == true }
 
     private val noteListenerJob: Job = viewModelScope.launch {
-        incomingNotes.collect { playedNote ->
-            if (_isLearningMode.value) {
-                handleIncomingNote(playedNote.midi)
+        noteEvents.collect { event ->
+            _progress.value?.let { _progress.value = it.onNoteEvent(event).progress }
+        }
+    }
+
+    // ADR 001: po utracie połączenia lekcja jest wstrzymana na ostatnim kroku, po powrocie wznawiana.
+    private val connectionListenerJob: Job = viewModelScope.launch {
+        connectionState.collect { state ->
+            val current = _progress.value ?: return@collect
+            _progress.value = when (state) {
+                ConnectionState.DISCONNECTED -> current.pause()
+                ConnectionState.CONNECTED -> current.resume()
+                ConnectionState.CONNECTING -> current
             }
         }
     }
@@ -54,25 +73,8 @@ class SongViewModel(
         }
     }
 
-    private fun handleIncomingNote(midi: Int) {
-        val lyrics = _song.value?.lyricsWithNotes ?: return
-        if (_learningComplete.value) return
-
-        val index = _currentNoteIndex.value
-        if (index >= lyrics.size) return
-
-        val expectedNote = lyrics[index].note
-        if (evaluateNoteUseCase(expectedNote, midi)) {
-            val nextIndex = index + 1
-            _currentNoteIndex.value = nextIndex
-            if (nextIndex >= lyrics.size) {
-                _learningComplete.value = true
-            }
-        }
-    }
-
     fun toggleLearningMode() {
-        if (_isLearningMode.value) {
+        if (_progress.value != null) {
             stopLearning()
         } else {
             startLearning()
@@ -80,20 +82,30 @@ class SongViewModel(
     }
 
     private fun startLearning() {
-        _currentNoteIndex.value = 0
-        _learningComplete.value = false
-        _isLearningMode.value = true
+        val song = _song.value ?: return
+        when (val validation = prepareLessonUseCase(song)) {
+            is LessonValidation.Valid -> {
+                _lessonIssues.value = emptyList()
+                _progress.value = LessonProgress.start(validation.lesson)
+            }
+            is LessonValidation.Invalid -> {
+                _lessonIssues.value = validation.issues
+                _progress.value = null
+            }
+        }
     }
 
     private fun stopLearning() {
-        _isLearningMode.value = false
-        _currentNoteIndex.value = 0
-        _learningComplete.value = false
+        _progress.value = null
+        _lessonIssues.value = emptyList()
     }
 
     fun dismissLearningCompleteDialog() {
-        _learningComplete.value = false
         stopLearning()
+    }
+
+    fun dismissLessonIssues() {
+        _lessonIssues.value = emptyList()
     }
 
     fun togglePlayPause() {
@@ -105,6 +117,7 @@ class SongViewModel(
 
     override fun onCleared() {
         noteListenerJob.cancel()
+        connectionListenerJob.cancel()
         audioPlayer.release()
         super.onCleared()
     }
