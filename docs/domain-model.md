@@ -155,7 +155,9 @@ Ramka, z której nie da się utworzyć poprawnego `NoteEvent` (np. `string_id > 
 
 ### 4.2 Źródła zdarzeń
 
-Tryb nauki reaguje **wyłącznie** na `NoteEvent`. Stary format mocka (pojedyncza litera, np. `"F\n"` przez SPP) nie niesie oktawy ani numeru struny, więc nie jest przekładany na `NoteEvent`. Do czasu przejścia aplikacji i mocka na BLE (ADR 007) tryb nauki nie reaguje na stary mock.
+Tryb nauki reaguje **wyłącznie** na `NoteEvent`. Stary format mocka (pojedyncza litera, np. `"F\n"` przez SPP) nie niesie oktawy ani numeru struny, więc nie jest przekładany na `NoteEvent`.
+
+Źródłem `NoteEvent` jest klient BLE GATT (ADR 007). `HarpSession` dekoduje notyfikacje TX harfy i kontroluje numery sekwencyjne, a następnie `InstrumentEventStream` zamienia `STRING_EVENT` i `CONFIG_STATE` na `NoteEvent` i `InstrumentState`. Oba trafiają do `InstrumentRepository` jako osobne strumienie (`noteEvents`, `instrumentState`) oraz do wspólnego strumienia `events`. Mock harfy musi wysyłać ramki protokołu przez BLE, bo stary mock SPP nie jest obsługiwany.
 
 ---
 

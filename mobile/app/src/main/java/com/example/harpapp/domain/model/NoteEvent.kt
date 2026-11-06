@@ -11,6 +11,6 @@ data class NoteEvent(
     val stringId: StringId,
     val midi: Int,
     val timestampMs: Int
-) {
+) : InstrumentEvent {
     val pitch: Pitch get() = Pitch.fromMidi(midi)
 }

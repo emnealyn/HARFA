@@ -1,9 +1,8 @@
 package com.example.harpapp.device.bluetooth
 
+import com.example.harpapp.domain.model.InstrumentEvent
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
-import com.example.harpapp.protocol.DecodeResult
-import com.example.harpapp.protocol.HarpCodec
 import com.example.harpapp.protocol.HarpMessage
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -14,13 +13,11 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Zamienia ramki protokołu odebrane z harfy na zdarzenia domenowe.
- * Nie zależy od Androida ani od transportu: transport (BLE) podaje tu kompletne ramki.
- *
- * Niepoprawne ramki oraz wiadomości nieistotne dla trybu nauki są pomijane
- * (docs/protocol/ble-protocol.md §6.2).
+ * Zamienia zdekodowane wiadomości harfy na zdarzenia domenowe trybu nauki
+ * i przechowuje aktualne strojenie. Dekodowanie ramek i kontrola sekwencji należą do [HarpSession].
+ * Nie zależy od Androida.
  */
-class InstrumentEventStream {
+internal class InstrumentEventStream {
 
     private val _noteEvents = MutableSharedFlow<NoteEvent>(
         extraBufferCapacity = EVENT_BUFFER_SIZE,
@@ -31,19 +28,18 @@ class InstrumentEventStream {
     private val _instrumentState = MutableStateFlow(InstrumentState.DEFAULT)
     val instrumentState: StateFlow<InstrumentState> = _instrumentState.asStateFlow()
 
-    /** Przyjmuje jedną ramkę. Zwraca `true`, gdy ramka zmieniła stan domenowy. */
-    fun accept(frame: ByteArray): Boolean {
-        val result = HarpCodec.decode(frame)
-        return result is DecodeResult.Success && accept(result.message)
-    }
-
-    fun accept(message: HarpMessage): Boolean = when (message) {
-        is HarpMessage.StringEvent -> message.toNoteEvent()?.let { _noteEvents.tryEmit(it) } ?: false
-        is HarpMessage.ConfigState -> message.toInstrumentState()?.let {
-            _instrumentState.value = it
-            true
-        } ?: false
-        else -> false
+    /**
+     * Przyjmuje wiadomość od harfy. Zwraca zdarzenie domenowe ([NoteEvent] albo
+     * [InstrumentEvent.ConfigurationUpdated]) albo `null`, gdy wiadomość nie dotyczy trybu nauki
+     * lub ma niepoprawne wartości.
+     */
+    fun accept(message: HarpMessage): InstrumentEvent? = when (message) {
+        is HarpMessage.StringEvent -> message.toNoteEvent()?.also { _noteEvents.tryEmit(it) }
+        is HarpMessage.ConfigState -> message.toInstrumentState()?.let { state ->
+            _instrumentState.value = state
+            InstrumentEvent.ConfigurationUpdated(state)
+        }
+        else -> null
     }
 
     /** Po zerwaniu połączenia strojenie jest nieznane do kolejnego handshake (protokół §8). */

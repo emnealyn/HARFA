@@ -93,5 +93,5 @@ Pełna definicja modelu znajduje się w [docs/domain-model.md](../domain-model.m
 * Ocena zagrania w aplikacji jest zgodna z kontraktem BLE: porównywane jest autorytatywne `midi` harfy.
 * `NotePlayed`, `EvaluateNoteUseCase` i kodek liter `NoteEventCodec` z [ADR 008](008-mobile-app-layered-architecture.md) zostają usunięte. Zastępują je `NoteEvent`, `LessonProgress` i odwzorowanie ramek protokołu.
 * *Hallelujah* nie będzie dostępne w trybie nauki, dopóki jego dane nie zostaną poprawione (osobne zadanie).
-* Do czasu przejścia na BLE (ADR 007) tryb nauki nie reaguje na stary mock SPP.
+* Tryb nauki nie reaguje na stary mock SPP. Zdarzenia dostarcza klient BLE GATT (ADR 007), a mock harfy musi wysyłać ramki protokołu przez BLE.
 * `LessonProgress` ze stanem `PAUSED` realizuje zachowanie po utracie BLE z [ADR 001](001-system-responsibilities.md). Wynik kroku odpowiada `LESSON_RESULT` z protokołu.
