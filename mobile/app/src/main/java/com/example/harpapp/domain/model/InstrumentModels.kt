@@ -11,6 +11,10 @@ enum class ConnectionState {
     CONNECTED
 }
 
+/**
+ * Zdarzenia raportowane przez harfę. Zagranie struny to [NoteEvent] (docs/domain-model.md §4),
+ * które również implementuje ten interfejs.
+ */
 sealed interface InstrumentEvent {
     data class BatteryUpdated(
         val percent: Int,
@@ -18,10 +22,9 @@ sealed interface InstrumentEvent {
         val flags: Int
     ) : InstrumentEvent
 
+    /** Nowe strojenie instrumentu (`CONFIG_STATE`, docs/domain-model.md §3). */
     data class ConfigurationUpdated(
-        val octaveShift: Int,
-        val lever: List<Int>,
-        val baseOctave: Int
+        val state: InstrumentState
     ) : InstrumentEvent
 
     data class ErrorReported(
@@ -30,12 +33,6 @@ sealed interface InstrumentEvent {
         val referenceType: Int
     ) : InstrumentEvent
 }
-
-data class NotePlayed(
-    val stringId: Int,
-    val midi: Int,
-    val timestampMs: Int
-) : InstrumentEvent
 
 sealed interface InstrumentCommand {
     data class RequestState(

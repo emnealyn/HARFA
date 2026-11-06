@@ -69,6 +69,8 @@ Gdzie:
 
 Tak uzyskany effectiveMIDI będzie nam służył jako forma identyfikacji przekształconej nuty w Aplikacji Mobilej oraz w samej Harfie.
 
+Sposób, w jaki aplikacja mobilna reprezentuje struny, nuty, stan instrumentu i lekcje (w tym walidację katalogu utworów), opisuje [model domenowy aplikacji](./domain-model.md).
+
 ---
 
 ## 5. Pełne spektrum dźwięków Harfy

@@ -7,7 +7,8 @@ import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
-import com.example.harpapp.domain.model.NotePlayed
+import com.example.harpapp.domain.model.InstrumentState
+import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.HarpProtocol
@@ -40,6 +41,7 @@ class BluetoothInstrumentRepository internal constructor(
     private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val session = HarpSession { frame -> transport.send(frame) }
+    private val eventStream = InstrumentEventStream()
     private var deviceCapabilities: Int? = null
     private var stateRecoveryRequested = false
     private var stateRecoveryJob: Job? = null
@@ -68,8 +70,8 @@ class BluetoothInstrumentRepository internal constructor(
     private val _events = MutableSharedFlow<InstrumentEvent>(extraBufferCapacity = 16)
     override val events: Flow<InstrumentEvent> = _events
 
-    private val _incomingNotes = MutableSharedFlow<NotePlayed>(extraBufferCapacity = 16)
-    override val incomingNotes: Flow<NotePlayed> = _incomingNotes
+    override val noteEvents: Flow<NoteEvent> = eventStream.noteEvents
+    override val instrumentState: Flow<InstrumentState> = eventStream.instrumentState
 
     init {
         ioScope.launch {
@@ -79,6 +81,7 @@ class BluetoothInstrumentRepository internal constructor(
                     TransportEvent.Disconnected -> {
                         stateRecoveryRequested = false
                         session.reset()
+                        eventStream.reset()
                         deviceCapabilities = null
                         _connectionState.value = ConnectionState.DISCONNECTED
                     }
@@ -161,6 +164,7 @@ class BluetoothInstrumentRepository internal constructor(
     override fun disconnect() {
         stateRecoveryRequested = false
         session.reset()
+        eventStream.reset()
         deviceCapabilities = null
         transport.disconnect()
         _connectionState.value = ConnectionState.DISCONNECTED
@@ -184,14 +188,15 @@ class BluetoothInstrumentRepository internal constructor(
                 }
 
                 when (val message = event.message) {
-                    is HarpMessage.StringEvent -> {
-                        val note = NotePlayed(
-                            stringId = message.stringId,
-                            midi = message.midi,
-                            timestampMs = message.tMs
-                        )
-                        _events.emit(note)
-                        _incomingNotes.emit(note)
+                    // Zagrania i strojenie trafiają do modelu domenowego (docs/domain-model.md §7).
+                    is HarpMessage.StringEvent,
+                    is HarpMessage.ConfigState -> {
+                        val domainEvent = eventStream.accept(message)
+                        if (domainEvent != null) {
+                            _events.emit(domainEvent)
+                        } else {
+                            Log.w(TAG, "Ignoring HARFA message with invalid values: $message")
+                        }
                     }
 
                     is HarpMessage.BatteryState -> _events.emit(
@@ -199,14 +204,6 @@ class BluetoothInstrumentRepository internal constructor(
                             percent = message.percent,
                             millivolts = message.millivolts,
                             flags = message.flags
-                        )
-                    )
-
-                    is HarpMessage.ConfigState -> _events.emit(
-                        InstrumentEvent.ConfigurationUpdated(
-                            octaveShift = message.octaveShift,
-                            lever = message.lever,
-                            baseOctave = message.baseOctave
                         )
                     )
 
@@ -333,6 +330,7 @@ class BluetoothInstrumentRepository internal constructor(
         Log.e(TAG, message, exception)
         stateRecoveryRequested = false
         session.reset()
+        eventStream.reset()
         deviceCapabilities = null
         transport.disconnect()
         _connectionState.value = ConnectionState.DISCONNECTED

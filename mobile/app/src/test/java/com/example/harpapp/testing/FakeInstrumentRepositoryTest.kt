@@ -36,13 +36,13 @@ class FakeInstrumentRepositoryTest {
     fun emitsStringEventsWithoutAndroidBluetooth() = runBlocking {
         val repository = FakeInstrumentRepository()
         val note = async(start = CoroutineStart.UNDISPATCHED) {
-            repository.incomingNotes.first()
+            repository.noteEvents.first()
         }
 
         repository.emitStringEvent(stringId = 5, midi = 45, timestampMs = 1000)
 
         val emittedNote = note.await()
-        assertEquals(5, emittedNote.stringId)
+        assertEquals(5, emittedNote.stringId.index)
         assertEquals(45, emittedNote.midi)
         assertEquals(1000, emittedNote.timestampMs)
     }
