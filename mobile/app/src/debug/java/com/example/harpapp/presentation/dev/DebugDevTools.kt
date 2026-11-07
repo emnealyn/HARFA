@@ -338,7 +338,9 @@ class DebugDevTools(
                 if (!expanded) {
                     SmallFloatingActionButton(
                         onClick = { expanded = true },
-                        modifier = dragModifier
+                        modifier = dragModifier,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ) {
                         Icon(Icons.Default.MusicNote, contentDescription = "Pokaż struny symulatora")
                     }
