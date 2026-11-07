@@ -1,8 +1,10 @@
 package com.example.harpapp.domain.usecase
 
 import com.example.harpapp.device.simulator.FakeInstrumentRepository
+import com.example.harpapp.domain.model.Accidental
 import com.example.harpapp.domain.model.HarpLayout
 import com.example.harpapp.domain.model.InstrumentCommand
+import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.InstrumentCommand.LessonResult
 import com.example.harpapp.domain.model.Lesson
 import com.example.harpapp.domain.model.LessonProgress
@@ -100,6 +102,76 @@ class InstrumentLessonControllerTest {
                 InstrumentCommand.StartLesson(totalSteps = 2),
                 InstrumentCommand.LessonStep(index = 1, mask = 1 shl 5)
             ),
+            repository.sentCommands
+        )
+    }
+
+    private fun sharpenedString(string: Int) =
+        InstrumentState.DEFAULT.withLever(HarpLayout.noteNameOf(StringId.of(string)!!), Accidental.SHARP)
+
+    private fun expectedMask(state: InstrumentState, string: Int) =
+        state.stringFor(HarpLayout.basePitch(StringId.of(string)!!))?.let { 1 shl it.index } ?: 0
+
+    @Test
+    fun tuningChangeDuringStepResendsSameStepWithNewMask() = runBlocking {
+        repository.reconnect()
+        controller.start(LessonProgress.start(lessonOnStrings(11, 3)))
+        repository.clearRecordedCommands()
+
+        val retuned = sharpenedString(11)
+        repository.emitConfiguration(retuned)
+
+        val newMask = expectedMask(retuned, 11)
+        assertTrue(newMask != 1 shl 11)
+        assertEquals(
+            listOf(InstrumentCommand.LessonStep(index = 0, mask = newMask)),
+            repository.sentCommands
+        )
+        assertEquals(newMask, repository.litStrings.value)
+    }
+
+    @Test
+    fun tuningChangeAfterCompleteSendsNothing() = runBlocking {
+        repository.reconnect()
+        val progress = LessonProgress.start(lessonOnStrings(2))
+        controller.start(progress)
+        controller.onUpdate(progress.onNoteEvent(noteOn(2)))
+        repository.clearRecordedCommands()
+
+        repository.emitConfiguration(sharpenedString(2))
+
+        assertTrue(repository.sentCommands.isEmpty())
+    }
+
+    @Test
+    fun tuningChangeAfterConnectionLossSendsNothingUntilResumed() = runBlocking {
+        repository.reconnect()
+        val progress = LessonProgress.start(lessonOnStrings(11, 3))
+        controller.start(progress)
+
+        repository.simulateConnectionLoss()
+        repository.reconnect()
+        repository.clearRecordedCommands()
+        repository.emitConfiguration(sharpenedString(11))
+
+        assertTrue(repository.sentCommands.isEmpty())
+    }
+
+    @Test
+    fun resumeAfterReconnectUsesTuningReportedByHarp() = runBlocking {
+        repository.reconnect()
+        val progress = LessonProgress.start(lessonOnStrings(11, 3))
+        controller.start(progress)
+        repository.simulateConnectionLoss()
+
+        repository.reconnect()
+        controller.resume(progress)
+        repository.clearRecordedCommands()
+        val retuned = sharpenedString(11)
+        repository.emitConfiguration(retuned)
+
+        assertEquals(
+            listOf(InstrumentCommand.LessonStep(index = 0, mask = expectedMask(retuned, 11))),
             repository.sentCommands
         )
     }

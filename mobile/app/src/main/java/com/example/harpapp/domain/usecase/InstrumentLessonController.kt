@@ -2,13 +2,16 @@ package com.example.harpapp.domain.usecase
 
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentCommand
+import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.LessonProgress
+import com.example.harpapp.domain.model.LessonStep
 import com.example.harpapp.domain.model.ProgressUpdate
 import com.example.harpapp.domain.model.StepOutcome
 import com.example.harpapp.domain.repository.InstrumentRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -24,13 +27,28 @@ class InstrumentLessonController private constructor(
         data class Start(val progress: LessonProgress) : Signal
         data class Update(val update: ProgressUpdate) : Signal
         data object End : Signal
+        data class TuningChanged(val state: InstrumentState) : Signal
+        data object SessionLost : Signal
     }
 
     private val signals = Channel<Signal>(Channel.UNLIMITED)
 
+    private var litStep: LessonStep? = null
+    private var litMask: Int = 0
+
     init {
         scope.launch {
             for (signal in signals) handle(signal)
+        }
+        scope.launch {
+            repository.instrumentState.distinctUntilChanged().collect {
+                signals.trySend(Signal.TuningChanged(it))
+            }
+        }
+        scope.launch {
+            repository.connectionState.distinctUntilChanged().collect {
+                if (it != ConnectionState.CONNECTED) signals.trySend(Signal.SessionLost)
+            }
         }
     }
 
@@ -65,27 +83,47 @@ class InstrumentLessonController private constructor(
     }
 
     private suspend fun handle(signal: Signal) {
+        if (signal == Signal.SessionLost) {
+            litStep = null
+            return
+        }
         if (repository.connectionState.first() != ConnectionState.CONNECTED) return
 
         val commands: List<InstrumentCommand> = when (signal) {
-            is Signal.Start -> listOfNotNull(
-                InstrumentCommand.StartLesson(signal.progress.lesson.steps.size),
-                stepCommand(signal.progress)
-            )
+            is Signal.Start -> {
+                litStep = null
+                listOfNotNull(
+                    InstrumentCommand.StartLesson(signal.progress.lesson.steps.size),
+                    stepCommand(signal.progress.currentStep)
+                )
+            }
 
             is Signal.Update -> when (signal.update.outcome) {
                 StepOutcome.HIT -> listOfNotNull(
                     InstrumentCommand.LessonResult(InstrumentCommand.LessonResult.HIT),
-                    stepCommand(signal.update.progress)
+                    stepCommand(signal.update.progress.currentStep)
                 )
                 StepOutcome.MISS ->
                     listOf(InstrumentCommand.LessonResult(InstrumentCommand.LessonResult.MISS))
-                StepOutcome.COMPLETE ->
+                StepOutcome.COMPLETE -> {
+                    litStep = null
                     listOf(InstrumentCommand.LessonResult(InstrumentCommand.LessonResult.COMPLETE))
+                }
                 StepOutcome.IGNORED -> emptyList()
             }
 
-            Signal.End -> listOf(InstrumentCommand.EndLesson)
+            Signal.End -> {
+                litStep = null
+                listOf(InstrumentCommand.EndLesson)
+            }
+
+            is Signal.TuningChanged -> {
+                val step = litStep
+                if (step == null || maskFor(step, signal.state) == litMask) emptyList()
+                else listOfNotNull(stepCommand(step, signal.state))
+            }
+
+            Signal.SessionLost -> emptyList()
         }
 
         for (command in commands) {
@@ -97,16 +135,22 @@ class InstrumentLessonController private constructor(
                 onError(e)
                 return // pozostałe komendy tego sygnału nie mają sensu
             }
+            if (command is InstrumentCommand.LessonStep) litMask = command.mask
         }
     }
 
-    /** Krok z maską struny, która przy obecnym strojeniu daje wymagany dźwięk (0, gdy żadna). */
-    private suspend fun stepCommand(progress: LessonProgress): InstrumentCommand.LessonStep? {
-        val step = progress.currentStep ?: return null
-        val string = repository.instrumentState.first().stringFor(step.pitch)
-        val mask = string?.let { 1 shl it.index } ?: 0
+    private suspend fun stepCommand(
+        step: LessonStep?,
+        state: InstrumentState? = null
+    ): InstrumentCommand.LessonStep? {
+        step ?: return null
+        val mask = maskFor(step, state ?: repository.instrumentState.first())
+        litStep = step
         return InstrumentCommand.LessonStep(index = step.index, mask = mask)
     }
+
+    private fun maskFor(step: LessonStep, state: InstrumentState): Int =
+        state.stringFor(step.pitch)?.let { 1 shl it.index } ?: 0
 
     class Factory(private val repository: InstrumentRepository) {
         fun create(
