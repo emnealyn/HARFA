@@ -26,6 +26,9 @@
     <string name="play_midi">Play MIDI</string>
     <string name="stop_learning">Stop Learning!</string>
     <string name="start_learning">Start Learning!</string>
+    <string name="pause_learning">Pause lesson</string>
+    <string name="resume_learning">Resume lesson</string>
+    <string name="play_again">Play again</string>
     <string name="lyrics_notes">Lyrics/Notes:</string>
     <string name="difficulty_easy">Easy</string>
     <string name="difficulty_medium">Medium</string>

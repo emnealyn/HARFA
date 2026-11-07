@@ -52,6 +52,14 @@ class InstrumentLessonController private constructor(
         if (!progress.isCompleted) signals.trySend(Signal.Start(progress))
     }
 
+    /**
+     * Ręczna pauza. Protokół nie ma osobnej komendy pauzy, więc lekcja na harfie jest kończona
+     * (`LESSON_END` gasi diody). Wznowienie przez [resume] wysyła `LESSON_START` i bieżący krok.
+     */
+    fun pause() {
+        signals.trySend(Signal.End)
+    }
+
     fun end() {
         signals.trySend(Signal.End)
     }

@@ -8,7 +8,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.harpapp.domain.model.CatalogIssue
 import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.Lesson
 import com.example.harpapp.domain.model.LessonProgress
+import com.example.harpapp.domain.model.LessonStatus
 import com.example.harpapp.domain.model.LessonValidation
 import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.model.Song
@@ -39,17 +41,31 @@ class SongViewModel(
     private val _isPlaying = mutableStateOf(false)
     val isPlaying: State<Boolean> = _isPlaying
 
-    /** Bieżąca lekcja albo `null`, gdy tryb nauki jest wyłączony (docs/domain-model.md §5.2). */
     private val _progress = mutableStateOf<LessonProgress?>(null)
     val progress: State<LessonProgress?> = _progress
 
-    /** Problemy w danych utworu, przez które nie można rozpocząć nauki (docs/domain-model.md §6). */
+
     private val _lessonIssues = mutableStateOf<List<CatalogIssue>>(emptyList())
     val lessonIssues: State<List<CatalogIssue>> = _lessonIssues
+
+    private val _pausedByUser = mutableStateOf(false)
+
+    private var lastConnectionState: ConnectionState = ConnectionState.DISCONNECTED
 
     val isLearningMode: State<Boolean> = derivedStateOf { _progress.value != null }
     val currentNoteIndex: State<Int> = derivedStateOf { _progress.value?.currentIndex ?: 0 }
     val learningComplete: State<Boolean> = derivedStateOf { _progress.value?.isCompleted == true }
+
+    val isLessonPaused: State<Boolean> =
+        derivedStateOf { _progress.value?.status == LessonStatus.PAUSED }
+
+    val canToggleLessonPause: State<Boolean> = derivedStateOf {
+        when (_progress.value?.status) {
+            LessonStatus.IN_PROGRESS -> true
+            LessonStatus.PAUSED -> _pausedByUser.value
+            LessonStatus.COMPLETED, null -> false
+        }
+    }
 
     private val noteListenerJob: Job = viewModelScope.launch {
         noteEvents.collect { event ->
@@ -62,12 +78,13 @@ class SongViewModel(
 
     private val connectionListenerJob: Job = viewModelScope.launch {
         connectionState.collect { state ->
+            lastConnectionState = state
             val current = _progress.value ?: return@collect
             _progress.value = when (state) {
                 ConnectionState.DISCONNECTED -> current.pause()
-                ConnectionState.CONNECTED -> current.resume().also {
-                    lessonController.resume(it)
-                }
+                ConnectionState.CONNECTED ->
+                    if (_pausedByUser.value) current
+                    else current.resume().also { lessonController.resume(it) }
                 ConnectionState.CONNECTING -> current
             }
         }
@@ -97,9 +114,7 @@ class SongViewModel(
         when (val validation = prepareLessonUseCase(song)) {
             is LessonValidation.Valid -> {
                 _lessonIssues.value = emptyList()
-                val progress = LessonProgress.start(validation.lesson)
-                _progress.value = progress
-                lessonController.start(progress)
+                beginLesson(validation.lesson)
             }
             is LessonValidation.Invalid -> {
                 _lessonIssues.value = validation.issues
@@ -108,9 +123,44 @@ class SongViewModel(
         }
     }
 
+    private fun beginLesson(lesson: Lesson) {
+        _pausedByUser.value = false
+        val progress = LessonProgress.start(lesson)
+        _progress.value = progress
+        lessonController.start(progress)
+    }
+
+    fun restartLearning() {
+        val current = _progress.value ?: return
+        beginLesson(current.lesson)
+    }
+    
+    fun toggleLessonPause() {
+        val current = _progress.value ?: return
+        when (current.status) {
+            LessonStatus.IN_PROGRESS -> {
+                _pausedByUser.value = true
+                _progress.value = current.pause()
+                lessonController.pause()
+            }
+            LessonStatus.PAUSED -> {
+                if (!_pausedByUser.value) return
+                _pausedByUser.value = false
+                // Bez połączenia lekcja zostaje wstrzymana i wznowi się sama po CONNECTED.
+                if (lastConnectionState == ConnectionState.CONNECTED) {
+                    val resumed = current.resume()
+                    _progress.value = resumed
+                    lessonController.resume(resumed)
+                }
+            }
+            LessonStatus.COMPLETED -> Unit
+        }
+    }
+
     private fun stopLearning() {
         if (_progress.value != null) lessonController.end()
         _progress.value = null
+        _pausedByUser.value = false
         _lessonIssues.value = emptyList()
     }
 

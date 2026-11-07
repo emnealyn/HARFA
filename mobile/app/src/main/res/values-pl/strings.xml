@@ -27,6 +27,9 @@
     <string name="play_midi">Odtwórz MIDI</string>
     <string name="stop_learning">Zatrzymaj tryb nauki!</string>
     <string name="start_learning">Rozpocznij tryb nauki!</string>
+    <string name="pause_learning">Wstrzymaj lekcję</string>
+    <string name="resume_learning">Wznów lekcję</string>
+    <string name="play_again">Zagraj ponownie</string>
     <string name="lyrics_notes">Tekst/Nuty:</string>
     <string name="difficulty_easy">Łatwy</string>
     <string name="difficulty_medium">Średni</string>
