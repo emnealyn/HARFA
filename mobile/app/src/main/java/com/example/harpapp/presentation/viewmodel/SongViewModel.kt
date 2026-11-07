@@ -110,7 +110,7 @@ class SongViewModel(
 
     private fun stopLearning() {
         if (_progress.value != null) lessonController.end()
-        _progress.value != null
+        _progress.value = null
         _lessonIssues.value = emptyList()
     }
 
