@@ -1,0 +1,109 @@
+package com.example.harpapp.domain.usecase
+
+import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.InstrumentCommand
+import com.example.harpapp.domain.model.LessonProgress
+import com.example.harpapp.domain.model.ProgressUpdate
+import com.example.harpapp.domain.model.StepOutcome
+import com.example.harpapp.domain.repository.InstrumentRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
+/**
+ * Przekłada przebieg lekcji na komendy LESSON_* dla harfy.
+ */
+class InstrumentLessonController private constructor(
+    private val repository: InstrumentRepository,
+    scope: CoroutineScope,
+    private val onError: (Throwable) -> Unit
+) {
+    private sealed interface Signal {
+        data class Start(val progress: LessonProgress) : Signal
+        data class Update(val update: ProgressUpdate) : Signal
+        data object End : Signal
+    }
+
+    private val signals = Channel<Signal>(Channel.UNLIMITED)
+
+    init {
+        scope.launch {
+            for (signal in signals) handle(signal)
+        }
+    }
+
+    /** Nowa lekcja: LESSON_START i pierwszy LESSON_STEP. */
+    fun start(progress: LessonProgress) {
+        signals.trySend(Signal.Start(progress))
+    }
+
+    /** Wynik zagrania: LESSON_RESULT, a po trafieniu także kolejny LESSON_STEP. */
+    fun onUpdate(update: ProgressUpdate) {
+        if (update.outcome != StepOutcome.IGNORED) signals.trySend(Signal.Update(update))
+    }
+
+    /**
+     * Wznowienie po ponownym połączeniu. Spec §6 pkt 9: w nowej sesji trzeba wysłać
+     * LESSON_START i ostatni nieukończony LESSON_STEP.
+     */
+    fun resume(progress: LessonProgress) {
+        if (!progress.isCompleted) signals.trySend(Signal.Start(progress))
+    }
+
+    fun end() {
+        signals.trySend(Signal.End)
+    }
+
+    private suspend fun handle(signal: Signal) {
+        if (repository.connectionState.first() != ConnectionState.CONNECTED) return
+
+        val commands: List<InstrumentCommand> = when (signal) {
+            is Signal.Start -> listOfNotNull(
+                InstrumentCommand.StartLesson(signal.progress.lesson.steps.size),
+                stepCommand(signal.progress)
+            )
+
+            is Signal.Update -> when (signal.update.outcome) {
+                StepOutcome.HIT -> listOfNotNull(
+                    InstrumentCommand.LessonResult(InstrumentCommand.LessonResult.HIT),
+                    stepCommand(signal.update.progress)
+                )
+                StepOutcome.MISS ->
+                    listOf(InstrumentCommand.LessonResult(InstrumentCommand.LessonResult.MISS))
+                StepOutcome.COMPLETE ->
+                    listOf(InstrumentCommand.LessonResult(InstrumentCommand.LessonResult.COMPLETE))
+                StepOutcome.IGNORED -> emptyList()
+            }
+
+            Signal.End -> listOf(InstrumentCommand.EndLesson)
+        }
+
+        for (command in commands) {
+            try {
+                repository.send(command)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                onError(e)
+                return // pozostałe komendy tego sygnału nie mają sensu
+            }
+        }
+    }
+
+    /** Krok z maską struny, która przy obecnym strojeniu daje wymagany dźwięk (0, gdy żadna). */
+    private suspend fun stepCommand(progress: LessonProgress): InstrumentCommand.LessonStep? {
+        val step = progress.currentStep ?: return null
+        val string = repository.instrumentState.first().stringFor(step.pitch)
+        val mask = string?.let { 1 shl it.index } ?: 0
+        return InstrumentCommand.LessonStep(index = step.index, mask = mask)
+    }
+
+    class Factory(private val repository: InstrumentRepository) {
+        fun create(
+            scope: CoroutineScope,
+            onError: (Throwable) -> Unit = {}
+        ): InstrumentLessonController = InstrumentLessonController(repository, scope, onError)
+    }
+}

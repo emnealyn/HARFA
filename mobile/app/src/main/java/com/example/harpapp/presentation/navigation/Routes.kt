@@ -8,4 +8,6 @@ object Routes {
     const val SONG_PATTERN = "song/{songId}"
     fun createSongRoute(songId: Int): String = "song/$songId"
     const val BLUETOOTH = "bluetooth"
+
+    const val DEV_SIMULATOR = "dev_simulator"
 }

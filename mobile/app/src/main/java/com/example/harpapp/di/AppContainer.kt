@@ -6,16 +6,17 @@ import com.example.harpapp.data.local.RoomSongRepository
 import com.example.harpapp.data.media.AndroidAssetAudioPlayer
 import com.example.harpapp.data.preferences.DataStoreSettingsRepository
 import com.example.harpapp.data.preferences.dataStore
-import com.example.harpapp.device.bluetooth.BluetoothInstrumentRepository
 import com.example.harpapp.domain.repository.AudioPlayer
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.domain.repository.SettingsRepository
 import com.example.harpapp.domain.repository.SongRepository
 import com.example.harpapp.domain.usecase.FilterSongsUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
+import com.example.harpapp.domain.usecase.InstrumentLessonController
 import com.example.harpapp.domain.usecase.ObserveSongsUseCase
 import com.example.harpapp.domain.usecase.PrepareLessonUseCase
 import com.example.harpapp.domain.usecase.SetFavoriteUseCase
+import com.example.harpapp.presentation.dev.DevTools
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModelFactory
 import com.example.harpapp.presentation.viewmodel.HomeViewModelFactory
 import com.example.harpapp.presentation.viewmodel.SettingsViewModelFactory
@@ -36,8 +37,13 @@ class AppContainer(
     val settingsRepository: SettingsRepository =
         DataStoreSettingsRepository(appContext.dataStore)
     val audioPlayer: AudioPlayer = AndroidAssetAudioPlayer(appContext)
+    private val instrumentSetup: InstrumentSetup? =
+        if (instrumentRepositoryOverride == null)
+            InstrumentModule.create(appContext) else null
     val instrumentRepository: InstrumentRepository =
-        instrumentRepositoryOverride ?: BluetoothInstrumentRepository(appContext)
+        instrumentRepositoryOverride ?: instrumentSetup!!.repository
+
+    val devTools: DevTools? = instrumentSetup?.devTools
 
     private val observeSongsUseCase = ObserveSongsUseCase(songRepository)
     private val getSongUseCase = GetSongUseCase(songRepository)
@@ -56,7 +62,8 @@ class AppContainer(
         prepareLessonUseCase = prepareLessonUseCase,
         audioPlayer = audioPlayer,
         noteEvents = instrumentRepository.noteEvents,
-        connectionState = instrumentRepository.connectionState
+        connectionState = instrumentRepository.connectionState,
+        lessonControllerFactory = InstrumentLessonController.Factory(instrumentRepository)
     )
 
     val settingsViewModelFactory = SettingsViewModelFactory(settingsRepository)
