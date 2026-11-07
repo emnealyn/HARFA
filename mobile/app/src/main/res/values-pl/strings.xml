@@ -30,6 +30,7 @@
     <string name="pause_learning">Wstrzymaj lekcję</string>
     <string name="resume_learning">Wznów lekcję</string>
     <string name="play_again">Zagraj ponownie</string>
+    <string name="lesson_paused_no_connection">Brak połączenia z harfą. Lekcja jest wstrzymana i wznowi się po połączeniu.</string>
     <string name="lyrics_notes">Tekst/Nuty:</string>
     <string name="difficulty_easy">Łatwy</string>
     <string name="difficulty_medium">Średni</string>

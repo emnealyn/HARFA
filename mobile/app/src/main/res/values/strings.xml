@@ -29,6 +29,7 @@
     <string name="pause_learning">Pause lesson</string>
     <string name="resume_learning">Resume lesson</string>
     <string name="play_again">Play again</string>
+    <string name="lesson_paused_no_connection">No connection to the harp. The lesson is paused and will resume once connected.</string>
     <string name="lyrics_notes">Lyrics/Notes:</string>
     <string name="difficulty_easy">Easy</string>
     <string name="difficulty_medium">Medium</string>

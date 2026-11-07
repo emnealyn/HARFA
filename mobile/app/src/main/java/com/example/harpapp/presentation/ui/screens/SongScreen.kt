@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -57,6 +58,7 @@ fun SongScreen(
     val lessonIssues by viewModel.lessonIssues
     val isLessonPaused by viewModel.isLessonPaused
     val canToggleLessonPause by viewModel.canToggleLessonPause
+    val isPausedByConnection by viewModel.isPausedByConnection
 
     SongContent(
         song = song,
@@ -73,8 +75,35 @@ fun SongScreen(
         canToggleLessonPause = canToggleLessonPause,
         onLessonPauseClick = { viewModel.toggleLessonPause() },
         onPlayAgainClick = { viewModel.restartLearning() },
+        isPausedByConnection = isPausedByConnection,
         modifier = modifier
     )
+}
+
+@Composable
+private fun ConnectionLostBanner(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.BluetoothDisabled,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = stringResource(R.string.lesson_paused_no_connection),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
 }
 
 /** Przycisk wstrzymania/wznowienia lekcji, widoczny tylko w trakcie nauki. */
@@ -121,6 +150,7 @@ fun SongContent(
     canToggleLessonPause: Boolean = false,
     onLessonPauseClick: () -> Unit = {},
     onPlayAgainClick: () -> Unit = {},
+    isPausedByConnection: Boolean = false,
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -240,6 +270,11 @@ fun SongContent(
                             enabled = canToggleLessonPause,
                             onClick = onLessonPauseClick
                         )
+                    }
+
+                    if (isPausedByConnection) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ConnectionLostBanner()
                     }
                 }
 
@@ -397,6 +432,10 @@ fun SongContent(
                         onClick = onLessonPauseClick,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
+                }
+
+                if (isPausedByConnection) {
+                    ConnectionLostBanner(modifier = Modifier.padding(bottom = 16.dp))
                 }
 
                 Column(

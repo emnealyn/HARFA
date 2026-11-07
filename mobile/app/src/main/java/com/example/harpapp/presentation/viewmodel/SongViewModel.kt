@@ -59,6 +59,10 @@ class SongViewModel(
     val isLessonPaused: State<Boolean> =
         derivedStateOf { _progress.value?.status == LessonStatus.PAUSED }
 
+    val isPausedByConnection: State<Boolean> = derivedStateOf {
+        _progress.value?.status == LessonStatus.PAUSED && !_pausedByUser.value
+    }
+
     val canToggleLessonPause: State<Boolean> = derivedStateOf {
         when (_progress.value?.status) {
             LessonStatus.IN_PROGRESS -> true
@@ -126,8 +130,12 @@ class SongViewModel(
     private fun beginLesson(lesson: Lesson) {
         _pausedByUser.value = false
         val progress = LessonProgress.start(lesson)
-        _progress.value = progress
-        lessonController.start(progress)
+        if (lastConnectionState == ConnectionState.CONNECTED) {
+            _progress.value = progress
+            lessonController.start(progress)
+        } else {
+            _progress.value = progress.pause()
+        }
     }
 
     fun restartLearning() {
