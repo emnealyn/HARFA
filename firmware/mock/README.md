@@ -100,8 +100,36 @@ prawdziwego BLE.
    pojawia się `wynik HIT` i kolejny krok.
 4. Wpisz `s` z inną struną. Pojawi się `wynik MISS`.
 5. Wpisz `b 10 3400 4`. Aplikacja dostaje niski stan baterii.
-6. Wpisz `d`. Lekcja w aplikacji jest wstrzymana, a mock znowu się reklamuje. Po ponownym połączeniu
-   pojawia się nowe `HELLO`, `Lekcja: start` i bieżący krok (spec §8 pkt 9).
+6. Wpisz `d`. Lekcja w aplikacji jest wstrzymana i pokazuje baner o braku połączenia, a mock znowu
+   się reklamuje. Po ponownym połączeniu pojawia się nowe `HELLO`, `Lekcja: start` i bieżący krok
+   (spec §8 pkt 9).
+
+### Scenariusz akceptacyjny trybu nauki (HARFA-14)
+
+Pełna lista do przejścia przed oddaniem zmian w trybie nauki. Kolumna „Serial” pokazuje, czego
+szukać w logu mocka (pomijając linie `RX`/`TX`).
+
+| # | Akcja | Aplikacja | Serial |
+| :---: | :--- | :--- | :--- |
+| 1 | Połącz się z `HARFA-XXXX`, włącz tryb nauki | krok 0 podświetlony w tekście | `Lekcja: start, krokow N`, `Lekcja: krok 0`, `LED:` z jedną struną |
+| 2 | `s <podświetlona struna>` | lekcja przechodzi do kroku 1 | `wynik HIT`, `Lekcja: krok 1` |
+| 3 | `s <inna struna>` | krok bez zmian | `wynik MISS` |
+| 4 | `l <nuta bieżącego kroku> 1` | krok bez zmian | `Lekcja: krok 1` ponownie, `LED:` z nową maską (albo pustą, gdy dźwięku nie da się zagrać) |
+| 5 | `l <ta sama nuta> 0` | krok bez zmian | `Lekcja: krok 1`, `LED:` jak w pkt 2 |
+| 6 | „Wstrzymaj lekcję” | przycisk zmienia się na „Wznów lekcję” | `Lekcja: koniec`, `LED:` pusta |
+| 7 | `s <dowolna struna>` | krok bez zmian (zagranie ignorowane) | brak `LESSON_RESULT` w `RX` |
+| 8 | `d`, potem ponowne połączenie | lekcja nadal wstrzymana | `HELLO`, ale bez `Lekcja: start` |
+| 9 | „Wznów lekcję” | lekcja trwa od tego samego kroku | `Lekcja: start`, `Lekcja: krok 1` |
+| 10 | `d` | baner „Brak połączenia z harfą”, przycisk pauzy nieaktywny | rozłączenie, reklamowanie |
+| 11 | Ponowne połączenie | baner znika, lekcja trwa od tego samego kroku | `HELLO`, `Lekcja: start`, `Lekcja: krok 1` |
+| 12 | Graj podświetlone struny do końca | okno „Gratulacje!” | `wynik COMPLETE`, `LED:` pusta |
+| 13 | „Zagraj ponownie” | krok 0 | `Lekcja: start`, `Lekcja: krok 0` |
+| 14 | „Zatrzymaj tryb nauki” | tryb nauki wyłączony | `Lekcja: koniec` |
+| 15 | Rozłącz, włącz tryb nauki, połącz | najpierw baner, po połączeniu krok 0 | po `HELLO`: `Lekcja: start`, `Lekcja: krok 0` |
+
+Mock zawsze zgłasza `CAP_LESSON`, więc zachowania harfy z samymi LED-ami (`LED_SET` zamiast
+`LESSON_*`) nie da się nim sprawdzić bez zmiany `CAPS` w `mock_harp.ino`. Obejmują je testy
+jednostkowe `InstrumentLessonControllerTest`.
 
 ## Znane ograniczenia
 
