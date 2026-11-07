@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
@@ -42,7 +43,14 @@ class BluetoothInstrumentRepository internal constructor(
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val session = HarpSession { frame -> transport.send(frame) }
     private val eventStream = InstrumentEventStream()
+    private val _capabilities = MutableStateFlow(InstrumentCapabilities.NONE)
+    override val capabilities: Flow<InstrumentCapabilities> = _capabilities.asStateFlow()
+
     private var deviceCapabilities: Int? = null
+        set(value) {
+            field = value
+            _capabilities.value = value?.let(::instrumentCapabilitiesOf) ?: InstrumentCapabilities.NONE
+        }
     private var stateRecoveryRequested = false
     private var stateRecoveryJob: Job? = null
 

@@ -1,6 +1,7 @@
 package com.example.harpapp.domain.usecase
 
 import com.example.harpapp.device.simulator.FakeInstrumentRepository
+import com.example.harpapp.device.simulator.SimulatorConfig
 import com.example.harpapp.domain.model.Accidental
 import com.example.harpapp.domain.model.HarpLayout
 import com.example.harpapp.domain.model.InstrumentCommand
@@ -11,6 +12,7 @@ import com.example.harpapp.domain.model.LessonProgress
 import com.example.harpapp.domain.model.LessonStep
 import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.model.StringId
+import com.example.harpapp.protocol.Capabilities
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -174,6 +176,62 @@ class InstrumentLessonControllerTest {
             listOf(InstrumentCommand.LessonStep(index = 0, mask = expectedMask(retuned, 11))),
             repository.sentCommands
         )
+    }
+
+    private fun runLessonOn(harp: FakeInstrumentRepository) = runBlocking {
+        val harpController = InstrumentLessonController.Factory(harp).create(scope) { errors += it }
+        harp.reconnect()
+        var progress = LessonProgress.start(lessonOnStrings(2, 4))
+        harpController.start(progress)
+        progress.onNoteEvent(noteOn(9)).also { harpController.onUpdate(it); progress = it.progress }
+        progress.onNoteEvent(noteOn(2)).also { harpController.onUpdate(it); progress = it.progress }
+        progress.onNoteEvent(noteOn(4)).also { harpController.onUpdate(it); progress = it.progress }
+        harpController.end()
+    }
+
+    @Test
+    fun ledsOnlyHarpGetsLedSetInsteadOfLessonCommands() {
+        val harp = FakeInstrumentRepository(SimulatorConfig(capabilities = Capabilities.LEDS))
+
+        runLessonOn(harp)
+
+        assertEquals(
+            listOf(
+                InstrumentCommand.SetLeds(1 shl 2, InstrumentCommand.SetLeds.STEADY),
+                InstrumentCommand.SetLeds(1 shl 4, InstrumentCommand.SetLeds.STEADY),
+                InstrumentCommand.SetLeds(0, InstrumentCommand.SetLeds.STEADY),
+                InstrumentCommand.SetLeds(0, InstrumentCommand.SetLeds.STEADY)
+            ),
+            harp.sentCommands
+        )
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun ledsOnlyHarpGetsLedSetAfterTuningChange() = runBlocking {
+        val harp = FakeInstrumentRepository(SimulatorConfig(capabilities = Capabilities.LEDS))
+        val harpController = InstrumentLessonController.Factory(harp).create(scope) { errors += it }
+        harp.reconnect()
+        harpController.start(LessonProgress.start(lessonOnStrings(11, 3)))
+        harp.clearRecordedCommands()
+
+        val retuned = sharpenedString(11)
+        harp.emitConfiguration(retuned)
+
+        assertEquals(
+            listOf(InstrumentCommand.SetLeds(expectedMask(retuned, 11), InstrumentCommand.SetLeds.STEADY)),
+            harp.sentCommands
+        )
+    }
+
+    @Test
+    fun harpWithoutLedsAndLessonReceivesNoLessonCommands() {
+        val harp = FakeInstrumentRepository(SimulatorConfig(capabilities = Capabilities.BATTERY))
+
+        runLessonOn(harp)
+
+        assertTrue(harp.sentCommands.isEmpty())
+        assertTrue(errors.isEmpty())
     }
 
     @Test

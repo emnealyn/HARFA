@@ -11,6 +11,16 @@ enum class ConnectionState {
     CONNECTED
 }
 
+data class InstrumentCapabilities(
+    val leds: Boolean = false,
+    val battery: Boolean = false,
+    val lesson: Boolean = false
+) {
+    companion object {
+        val NONE = InstrumentCapabilities()
+    }
+}
+
 /**
  * Zdarzenia raportowane przez harfę. Zagranie struny to [NoteEvent] (docs/domain-model.md §4),
  * które również implementuje ten interfejs.
@@ -42,7 +52,12 @@ sealed interface InstrumentCommand {
     data class SetLeds(
         val mask: Int,
         val mode: Int
-    ) : InstrumentCommand
+    ) : InstrumentCommand {
+        companion object {
+            const val STEADY = 0
+            const val BLINK = 1
+        }
+    }
 
     data class StartLesson(
         val totalSteps: Int

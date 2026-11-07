@@ -1,6 +1,7 @@
 package com.example.harpapp.domain.usecase
 
 import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.LessonProgress
@@ -126,18 +127,40 @@ class InstrumentLessonController private constructor(
             Signal.SessionLost -> emptyList()
         }
 
+        val capabilities = repository.capabilities.first()
         for (command in commands) {
-            try {
-                repository.send(command)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                onError(e)
-                return // pozostałe komendy tego sygnału nie mają sensu
+            val wireCommand = adaptTo(capabilities, command)
+            if (wireCommand != null) {
+                try {
+                    repository.send(wireCommand)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    onError(e)
+                    return // pozostałe komendy tego sygnału nie mają sensu
+                }
             }
             if (command is InstrumentCommand.LessonStep) litMask = command.mask
         }
     }
+
+    private fun adaptTo(
+        capabilities: InstrumentCapabilities,
+        command: InstrumentCommand
+    ): InstrumentCommand? = when {
+        capabilities.lesson -> command
+        !capabilities.leds -> null
+        else -> when (command) {
+            is InstrumentCommand.LessonStep ->
+                InstrumentCommand.SetLeds(command.mask, InstrumentCommand.SetLeds.STEADY)
+            is InstrumentCommand.LessonResult ->
+                if (command.result == InstrumentCommand.LessonResult.COMPLETE) ledsOff() else null
+            InstrumentCommand.EndLesson -> ledsOff()
+            else -> null
+        }
+    }
+
+    private fun ledsOff() = InstrumentCommand.SetLeds(0, InstrumentCommand.SetLeds.STEADY)
 
     private suspend fun stepCommand(
         step: LessonStep?,
