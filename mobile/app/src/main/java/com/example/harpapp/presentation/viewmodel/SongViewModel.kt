@@ -1,5 +1,6 @@
 package com.example.harpapp.presentation.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -14,6 +15,7 @@ import com.example.harpapp.domain.model.Song
 import com.example.harpapp.domain.repository.AudioPlayer
 import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.usecase.PrepareLessonUseCase
+import com.example.harpapp.domain.usecase.InstrumentLessonController
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -23,9 +25,14 @@ class SongViewModel(
     private val prepareLessonUseCase: PrepareLessonUseCase,
     private val audioPlayer: AudioPlayer,
     noteEvents: Flow<NoteEvent>,
-    connectionState: Flow<ConnectionState>
+    connectionState: Flow<ConnectionState>,
+    lessonControllerFactory: InstrumentLessonController.Factory
 ) : ViewModel() {
 
+    private val lessonController =
+    lessonControllerFactory.create(viewModelScope) { error ->
+    Log.w(TAG, "Nie udało się wysłać komendy lekcji do harfy", error)
+    }
     private val _song = mutableStateOf<Song?>(null)
     val song: State<Song?> = _song
 
@@ -46,17 +53,21 @@ class SongViewModel(
 
     private val noteListenerJob: Job = viewModelScope.launch {
         noteEvents.collect { event ->
-            _progress.value?.let { _progress.value = it.onNoteEvent(event).progress }
+            val current = _progress.value ?: return@collect
+            val update = current.onNoteEvent(event)
+            _progress.value = update.progress
+            lessonController.onUpdate(update)
         }
     }
 
-    // ADR 001: po utracie połączenia lekcja jest wstrzymana na ostatnim kroku, po powrocie wznawiana.
     private val connectionListenerJob: Job = viewModelScope.launch {
         connectionState.collect { state ->
             val current = _progress.value ?: return@collect
             _progress.value = when (state) {
                 ConnectionState.DISCONNECTED -> current.pause()
-                ConnectionState.CONNECTED -> current.resume()
+                ConnectionState.CONNECTED -> current.resume().also {
+                    lessonController.resume(it)
+                }
                 ConnectionState.CONNECTING -> current
             }
         }
@@ -86,7 +97,9 @@ class SongViewModel(
         when (val validation = prepareLessonUseCase(song)) {
             is LessonValidation.Valid -> {
                 _lessonIssues.value = emptyList()
-                _progress.value = LessonProgress.start(validation.lesson)
+                val progress = LessonProgress.start(validation.lesson)
+                _progress.value = progress
+                lessonController.start(progress)
             }
             is LessonValidation.Invalid -> {
                 _lessonIssues.value = validation.issues
@@ -96,7 +109,8 @@ class SongViewModel(
     }
 
     private fun stopLearning() {
-        _progress.value = null
+        if (_progress.value != null) lessonController.end()
+        _progress.value != null
         _lessonIssues.value = emptyList()
     }
 
@@ -120,5 +134,9 @@ class SongViewModel(
         connectionListenerJob.cancel()
         audioPlayer.release()
         super.onCleared()
+    }
+
+    private companion object {
+        const val TAG = "SongViewModel"
     }
 }

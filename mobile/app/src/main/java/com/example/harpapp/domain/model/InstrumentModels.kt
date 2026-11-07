@@ -55,7 +55,13 @@ sealed interface InstrumentCommand {
 
     data class LessonResult(
         val result: Int
-    ) : InstrumentCommand
+    ) : InstrumentCommand {
+        companion object {
+            const val MISS = 0
+            const val HIT = 1
+            const val COMPLETE = 2
+        }
+    }
 
     data object EndLesson : InstrumentCommand
 }

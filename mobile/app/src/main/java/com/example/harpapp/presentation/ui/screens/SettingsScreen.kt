@@ -50,13 +50,17 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
+import com.example.harpapp.presentation.dev.DevTools
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    onNavigateToBluetooth: () -> Unit
+    onNavigateToBluetooth: () -> Unit,
+    devTools: DevTools? = null,
+    onNavigateToSimulator: () -> Unit = {}
 ) {
     val mode by viewModel.themeMode.collectAsState()
     val currentLanguage by viewModel.currentLanguage.collectAsState()
@@ -228,6 +232,16 @@ fun SettingsScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
+            }
+            if (devTools != null) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Developer",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                )
+                devTools.SettingsEntry(onOpenSimulatorPanel = onNavigateToSimulator)
             }
         }
     }

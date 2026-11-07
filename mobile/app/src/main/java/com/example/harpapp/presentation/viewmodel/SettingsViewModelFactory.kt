@@ -3,6 +3,7 @@ package com.example.harpapp.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.harpapp.domain.repository.SettingsRepository
+import com.example.harpapp.domain.usecase.InstrumentLessonController
 
 class SettingsViewModelFactory(
     private val repository: SettingsRepository
