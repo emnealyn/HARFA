@@ -1,9 +1,13 @@
 package com.example.harpapp.device.simulator
 
+import com.example.harpapp.domain.model.BatteryPowerState
+import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
+import com.example.harpapp.protocol.BatteryFlags
+import com.example.harpapp.protocol.Capabilities
 import com.example.harpapp.protocol.LessonResultCode
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -12,6 +16,8 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.take
@@ -163,5 +169,47 @@ class FakeInstrumentRepositoryTest {
 
         assertEquals(listOf(3, 5), notes.await().map { it.stringId.index })
         assertEquals(listOf(250, 500), notes.await().map { it.timestampMs })
+    }
+
+    @Test
+    fun batteryScenarioUpdatesStatus() = runBlocking {
+        val repository = FakeInstrumentRepository()
+
+        repository.runScenario(
+            listOf(SimulatorStep.Connect, SimulatorStep.Battery(10, 3400, BatteryFlags.LOW))
+        )
+
+        assertEquals(
+            BatteryStatus(10, 3400, BatteryPowerState.DISCHARGING, isLow = true),
+            repository.batteryStatus.first()
+        )
+    }
+
+    @Test
+    fun batteryStatusIsHiddenWithoutConnection() = runBlocking {
+        val repository = FakeInstrumentRepository()
+        assertNull(repository.batteryStatus.first())
+
+        repository.reconnect()
+        assertNotNull(repository.batteryStatus.first())
+
+        repository.disconnect()
+        assertNull(repository.batteryStatus.first())
+
+        repository.reconnect()
+        repository.simulateConnectionLoss()
+        assertNull(repository.batteryStatus.first())
+    }
+
+    @Test
+    fun batteryStatusIsHiddenWithoutCapability() = runBlocking {
+        val repository = FakeInstrumentRepository(
+            SimulatorConfig(capabilities = Capabilities.LEDS or Capabilities.LESSON)
+        )
+
+        repository.reconnect()
+        repository.emitBatteryState(percent = 10, millivolts = 3400, flags = BatteryFlags.LOW)
+
+        assertNull(repository.batteryStatus.first())
     }
 }
