@@ -20,6 +20,16 @@ data class InstrumentState(
             lever(HarpLayout.noteNameOf(id)).offset +
             octaveShift.offset * 12
 
+    fun pitchOf(id: StringId): Pitch {
+        val name = HarpLayout.noteNameOf(id)
+        val octave = HarpLayout.basePitch(id, baseOctave).octave + octaveShift.offset
+        return Pitch(name, lever(name), octave)
+    }
+
+    val lowestPitch: Pitch get() = pitchOf(StringId.ALL.first())
+
+    val highestPitch: Pitch get() = pitchOf(StringId.ALL.last())
+
     /**
      * Struna, która przy obecnym strojeniu wyda [pitch] (porównanie po MIDI).
      * `null` – dźwięk poza zakresem albo wymaga innego ustawienia przełączników lub transpozycji.

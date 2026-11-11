@@ -11,6 +11,49 @@ class InstrumentStateTest {
     private fun pitch(raw: String): Pitch = (Pitch.parse(raw) as PitchParseResult.Valid).pitch
 
     @Test
+    fun `stringsOf zwraca wszystkie struny danej nuty`() {
+        assertEquals(listOf(0, 7, 14), HarpLayout.stringsOf(NoteName.C).map { it.index })
+        assertEquals(listOf(1, 8), HarpLayout.stringsOf(NoteName.D).map { it.index })
+        assertEquals(listOf(6, 13), HarpLayout.stringsOf(NoteName.B).map { it.index })
+    }
+
+    @Test
+    fun `zakres domyslnego strojenia to C2 do C4`() {
+        assertEquals(pitch("C2"), InstrumentState.DEFAULT.lowestPitch)
+        assertEquals(pitch("C4"), InstrumentState.DEFAULT.highestPitch)
+    }
+
+    @Test
+    fun `zakres uwzglednia przelacznik i transpozycje w dol`() {
+        val state = InstrumentState(
+            levers = NoteName.entries.associateWith { Accidental.FLAT },
+            octaveShift = OctaveShift.DOWN
+        )
+
+        assertEquals(pitch("Cb1"), state.lowestPitch)
+        assertEquals(pitch("Cb3"), state.highestPitch)
+    }
+
+    @Test
+    fun `zakres uwzglednia przelacznik i transpozycje w gore`() {
+        val state = InstrumentState(
+            levers = NoteName.entries.associateWith { Accidental.SHARP },
+            octaveShift = OctaveShift.UP
+        )
+
+        assertEquals(pitch("C#3"), state.lowestPitch)
+        assertEquals(pitch("C#5"), state.highestPitch)
+    }
+
+    @Test
+    fun `pitchOf zapisuje dzwiek wedlug przelacznika`() {
+        val state = InstrumentState.DEFAULT.withLever(NoteName.B, Accidental.FLAT)
+
+        assertEquals(pitch("Bb2"), state.pitchOf(string(6)))
+        assertEquals(state.effectiveMidi(string(6)), state.pitchOf(string(6)).midi)
+    }
+
+    @Test
     fun `StringId istnieje tylko dla 0 do 14`() {
         assertNull(StringId.of(-1))
         assertNull(StringId.of(15))

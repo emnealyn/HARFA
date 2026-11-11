@@ -22,11 +22,13 @@ import com.example.harpapp.di.AppContainer
 import com.example.harpapp.presentation.ui.components.NavBar
 import com.example.harpapp.presentation.ui.components.TopBar
 import com.example.harpapp.presentation.ui.screens.BluetoothScreen
+import com.example.harpapp.presentation.ui.screens.HarpScreen
 import com.example.harpapp.presentation.ui.screens.HomeScreen
 import com.example.harpapp.presentation.ui.screens.SettingsScreen
 import com.example.harpapp.presentation.ui.screens.SongScreen
 import com.example.harpapp.presentation.ui.screens.SplashScreen
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
+import com.example.harpapp.presentation.viewmodel.HarpViewModel
 import com.example.harpapp.presentation.viewmodel.HomeViewModel
 import com.example.harpapp.presentation.viewmodel.SettingsViewModel
 import com.example.harpapp.presentation.viewmodel.SongViewModel
@@ -45,6 +47,7 @@ fun AppNavGraph(
         currentRoute == Routes.HOME -> Routes.HOME
         currentRoute == Routes.SETTINGS -> Routes.SETTINGS
         currentRoute == Routes.BLUETOOTH -> Routes.BLUETOOTH
+        currentRoute == Routes.HARP -> Routes.HARP
         currentRoute == Routes.DEV_SIMULATOR -> Routes.DEV_SIMULATOR
         currentRoute?.startsWith("song/") == true -> Routes.SONG
         else -> currentRoute
@@ -54,6 +57,7 @@ fun AppNavGraph(
     val bluetoothViewModel: BluetoothViewModel =
         viewModel(factory = appContainer.bluetoothViewModelFactory)
     val songViewModel: SongViewModel = viewModel(factory = appContainer.songViewModelFactory)
+    val harpViewModel: HarpViewModel = viewModel(factory = appContainer.harpViewModelFactory)
 
     val isBluetoothConnected by bluetoothViewModel.isConnected.collectAsState()
     val connectedDeviceName by bluetoothViewModel.connectedDeviceName.collectAsState(initial = null)
@@ -64,6 +68,7 @@ fun AppNavGraph(
                 Routes.HOME -> stringResource(R.string.app_name)
                 Routes.SETTINGS -> stringResource(R.string.nav_settings)
                 Routes.BLUETOOTH -> stringResource(R.string.title_bluetooth)
+                Routes.HARP -> stringResource(R.string.title_harp)
                 Routes.SONG -> stringResource(R.string.title_song_details)
                 Routes.DEV_SIMULATOR -> "Symulator harfy" //to jest tylko w trybie debug więc nie dodawałam tego do string.xml
                 else -> stringResource(R.string.app_name)
@@ -79,7 +84,7 @@ fun AppNavGraph(
                     },
                     isBluetoothConnected = isBluetoothConnected,
                     onBluetoothClick = {
-                        navController.navigate(Routes.BLUETOOTH)
+                        navController.navigate(Routes.HARP)
                     },
                     connectedDeviceName = connectedDeviceName
                 )
@@ -106,11 +111,11 @@ fun AppNavGraph(
                             val startDestinationId = navController.graph.findStartDestination().id
 
                             popUpTo(startDestinationId) {
-                                saveState = (targetRoute == Routes.SETTINGS)
+                                saveState = (targetRoute == Routes.SETTINGS || targetRoute == Routes.HARP)
                             }
 
                             launchSingleTop = true
-                            restoreState = (targetRoute == Routes.SETTINGS)
+                            restoreState = (targetRoute == Routes.SETTINGS || targetRoute == Routes.HARP)
 
                         }
                     }
@@ -164,6 +169,15 @@ fun AppNavGraph(
                     devTools = appContainer.devTools,
                     onNavigateToSimulator = {
                         navController.navigate(Routes.DEV_SIMULATOR)
+                    }
+                )
+            }
+
+            composable(Routes.HARP) {
+                HarpScreen(
+                    viewModel = harpViewModel,
+                    onNavigateToBluetooth = {
+                        navController.navigate(Routes.BLUETOOTH)
                     }
                 )
             }

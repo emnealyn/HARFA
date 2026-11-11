@@ -47,4 +47,22 @@
     <string name="lesson_issue_empty">Krok %1$d: pusta nuta</string>
     <string name="lesson_issue_malformed">Krok %1$d: niepoprawny zapis nuty „%2$s”</string>
     <string name="lesson_issue_out_of_range">Krok %1$d: %2$s jest poza zakresem harfy (B0–C#5)</string>
+    <string name="nav_harp">Harfa</string>
+    <string name="title_harp">Harfa</string>
+    <string name="harp_disconnected_title">Harfa nie jest połączona</string>
+    <string name="harp_disconnected_message">Połącz się z harfą, aby zobaczyć jej aktualne strojenie.</string>
+    <string name="harp_connect_button">Połącz z harfą</string>
+    <string name="harp_connecting">Łączenie z harfą…</string>
+    <string name="harp_tuning_hint">Strojenie zmienia się na samej harfie – jej przełącznikami i przełącznikiem oktawy. Kliknięcie nuty tutaj tylko wskazuje jej struny.</string>
+    <string name="harp_octave_shift_title">Transpozycja oktawowa</string>
+    <string name="harp_range">%1$s – %2$s</string>
+    <string name="harp_device_title">Urządzenie</string>
+    <string name="harp_tab_tuning">Strojenie</string>
+    <string name="harp_tab_device">Urządzenie</string>
+    <string name="harp_battery_title">Bateria</string>
+    <string name="harp_battery_level">Poziom naładowania</string>
+    <string name="harp_battery_voltage">Napięcie</string>
+    <string name="harp_battery_charging">Ładowanie</string>
+    <string name="harp_battery_external_power">Zasilanie zewnętrzne</string>
+    <string name="harp_battery_low">Niski poziom baterii</string>
 </resources>
