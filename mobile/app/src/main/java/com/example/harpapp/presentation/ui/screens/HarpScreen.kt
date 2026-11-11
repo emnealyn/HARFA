@@ -2,9 +2,6 @@ package com.example.harpapp.presentation.ui.screens
 
 import android.content.res.Configuration
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.graphics.res.animatedVectorResource
-import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
-import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -48,6 +45,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -135,11 +133,8 @@ fun HarpScreen(
 
 @Composable
 fun HarpIllustration(modifier: Modifier = Modifier) {
-    val image = AnimatedImageVector.animatedVectorResource(R.drawable.harp)
-    val painter = rememberAnimatedVectorPainter(image, atEnd = true)
-
     Image(
-        painter = painter,
+        painter = painterResource(R.drawable.harp_illustration),
         contentDescription = null,
         colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary),
         modifier = modifier.aspectRatio(3f / 4f, matchHeightConstraintsFirst = true)
