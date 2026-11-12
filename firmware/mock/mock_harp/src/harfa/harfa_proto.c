@@ -45,6 +45,7 @@ static int min_payload_size(uint8_t type)
     case HARFA_MSG_LESSON_STEP: return 4;
     case HARFA_MSG_LESSON_RESULT: return 1;
     case HARFA_MSG_LESSON_END: return 0;
+    case HARFA_MSG_LESSON_PAUSE: return 1;
     default: return -1;
     }
 }
@@ -59,6 +60,8 @@ static int has_valid_arguments(const harfa_msg_t *msg)
     unsigned i;
 
     switch (msg->type) {
+    case HARFA_MSG_HELLO:
+        return msg->sid != HARFA_SID_NONE;
     case HARFA_MSG_STRING_EVENT:
         return msg->body.string_event.string_id < HARFA_STRING_COUNT;
     case HARFA_MSG_CONFIG_STATE:
@@ -81,6 +84,8 @@ static int has_valid_arguments(const harfa_msg_t *msg)
         return msg->body.lesson_step.mask < STRING_MASK_LIMIT;
     case HARFA_MSG_LESSON_RESULT:
         return msg->body.lesson_result.result <= HARFA_LESSON_COMPLETE;
+    case HARFA_MSG_LESSON_PAUSE:
+        return msg->body.lesson_pause.paused <= HARFA_LESSON_PAUSE;
     default:
         return 1;
     }
@@ -96,14 +101,14 @@ harfa_status_t harfa_decode(const uint8_t *frame, size_t frame_len, harfa_msg_t 
     if (frame == NULL || out == NULL || frame_len < HARFA_HEADER_SIZE) {
         return HARFA_STATUS_MALFORMED;
     }
-    if (frame[0] != HARFA_PROTO_VERSION_MAJOR) {
+    if (frame[HARFA_OFF_VER] != HARFA_PROTO_VERSION_MAJOR) {
         return HARFA_STATUS_UNSUPPORTED_VERSION;
     }
-    len = frame[3];
+    len = frame[HARFA_OFF_LEN];
     if (len > HARFA_MAX_PAYLOAD_SIZE || frame_len != (size_t)HARFA_HEADER_SIZE + len) {
         return HARFA_STATUS_MALFORMED;
     }
-    min_len = min_payload_size(frame[1]);
+    min_len = min_payload_size(frame[HARFA_OFF_TYPE]);
     if (min_len < 0) {
         return HARFA_STATUS_UNKNOWN_TYPE;
     }
@@ -112,8 +117,9 @@ harfa_status_t harfa_decode(const uint8_t *frame, size_t frame_len, harfa_msg_t 
     }
 
     memset(out, 0, sizeof(*out));
-    out->type = (harfa_msg_type_t)frame[1];
-    out->seq = frame[2];
+    out->type = (harfa_msg_type_t)frame[HARFA_OFF_TYPE];
+    out->seq = frame[HARFA_OFF_SEQ];
+    out->sid = frame[HARFA_OFF_SID];
     p = frame + HARFA_HEADER_SIZE;
 
     /* Nadmiarowe bajty na końcu payloadu są pomijane (zgodność z przyszłymi wersjami minor) */
@@ -183,6 +189,9 @@ harfa_status_t harfa_decode(const uint8_t *frame, size_t frame_len, harfa_msg_t 
         out->body.lesson_result.result = p[0];
         break;
     case HARFA_MSG_LESSON_END:
+        break;
+    case HARFA_MSG_LESSON_PAUSE:
+        out->body.lesson_pause.paused = p[0];
         break;
     }
 
@@ -262,6 +271,9 @@ size_t harfa_encode(const harfa_msg_t *msg, uint8_t *buf, size_t buf_size)
         break;
     case HARFA_MSG_LESSON_END:
         break;
+    case HARFA_MSG_LESSON_PAUSE:
+        *p++ = msg->body.lesson_pause.paused;
+        break;
     }
 
     len = (size_t)(p - payload);
@@ -269,10 +281,11 @@ size_t harfa_encode(const harfa_msg_t *msg, uint8_t *buf, size_t buf_size)
         return 0;
     }
 
-    buf[0] = HARFA_PROTO_VERSION_MAJOR;
-    buf[1] = (uint8_t)msg->type;
-    buf[2] = msg->seq;
-    buf[3] = (uint8_t)len;
+    buf[HARFA_OFF_VER] = HARFA_PROTO_VERSION_MAJOR;
+    buf[HARFA_OFF_TYPE] = (uint8_t)msg->type;
+    buf[HARFA_OFF_SEQ] = msg->seq;
+    buf[HARFA_OFF_SID] = msg->sid;
+    buf[HARFA_OFF_LEN] = (uint8_t)len;
     memcpy(buf + HARFA_HEADER_SIZE, payload, len);
     return HARFA_HEADER_SIZE + len;
 }
@@ -293,6 +306,7 @@ const char *harfa_msg_type_name(uint8_t type)
     case HARFA_MSG_LESSON_STEP: return "LESSON_STEP";
     case HARFA_MSG_LESSON_RESULT: return "LESSON_RESULT";
     case HARFA_MSG_LESSON_END: return "LESSON_END";
+    case HARFA_MSG_LESSON_PAUSE: return "LESSON_PAUSE";
     default: return NULL;
     }
 }
@@ -308,6 +322,7 @@ const char *harfa_status_name(uint8_t status)
     case HARFA_STATUS_NOT_READY: return "NOT_READY";
     case HARFA_STATUS_BUSY: return "BUSY";
     case HARFA_STATUS_INTERNAL: return "INTERNAL";
+    case HARFA_STATUS_STALE_SESSION: return "STALE_SESSION";
     default: return NULL;
     }
 }
