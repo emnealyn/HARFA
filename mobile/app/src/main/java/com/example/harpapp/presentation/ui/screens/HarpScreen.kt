@@ -2,16 +2,15 @@ package com.example.harpapp.presentation.ui.screens
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,12 +46,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -67,6 +64,8 @@ import com.example.harpapp.domain.model.NoteName
 import com.example.harpapp.domain.model.OctaveShift
 import com.example.harpapp.domain.model.Pitch
 import com.example.harpapp.presentation.ui.components.BatteryIndicator
+import com.example.harpapp.presentation.ui.components.HarpIllustration
+import com.example.harpapp.presentation.ui.components.tuningColor
 import com.example.harpapp.presentation.viewmodel.HarpTab
 import com.example.harpapp.presentation.viewmodel.HarpUiState
 import com.example.harpapp.presentation.viewmodel.HarpViewModel
@@ -79,6 +78,8 @@ fun HarpScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedNote by viewModel.selectedNote.collectAsState()
+    val selectedStrings by viewModel.selectedStrings.collectAsState()
+    val tuning = (uiState as? HarpUiState.Connected)?.tuning
     val selectedTab by viewModel.selectedTab.collectAsState()
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -100,7 +101,11 @@ fun HarpScreen(
                         .weight(0.4f),
                     contentAlignment = Alignment.Center
                 ) {
-                    HarpIllustration(modifier = Modifier.fillMaxHeight())
+                    HarpIllustration(
+                        tuning = tuning,
+                        selectedStrings = selectedStrings,
+                        modifier = Modifier.fillMaxHeight()
+                    )
                 }
                 HarpContent(
                     uiState = uiState,
@@ -124,7 +129,11 @@ fun HarpScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                HarpIllustration(modifier = Modifier.height(336.dp))
+                HarpIllustration(
+                    tuning = tuning,
+                    selectedStrings = selectedStrings,
+                    modifier = Modifier.height(336.dp)
+                )
                 HarpContent(
                     uiState = uiState,
                     selectedNote = selectedNote,
@@ -139,16 +148,6 @@ fun HarpScreen(
             }
         }
     }
-}
-
-@Composable
-fun HarpIllustration(modifier: Modifier = Modifier) {
-    Image(
-        painter = painterResource(R.drawable.harp_illustration),
-        contentDescription = null,
-        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.secondary),
-        modifier = modifier.aspectRatio(3f / 4f, matchHeightConstraintsFirst = true)
-    )
 }
 
 @Composable
@@ -337,16 +336,19 @@ private fun LeverButton(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
-    val accentColor = if (position == Accidental.NATURAL) colors.primary else colors.secondary
+    val tuningBackground by animateColorAsState(
+        targetValue = tuningColor(position).copy(alpha = 0.2f),
+        label = "leverBackground"
+    )
 
     Surface(
         selected = selected,
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = if (selected) colors.primary else Color.Transparent,
-        contentColor = if (selected) colors.onPrimary else accentColor,
-        border = BorderStroke(1.dp, if (selected) colors.primary else accentColor)
+        color = if (selected) colors.primary else tuningBackground,
+        contentColor = if (selected) colors.onPrimary else colors.primary,
+        border = BorderStroke(1.dp, colors.primary)
     ) {
         Column(
             modifier = Modifier.padding(vertical = 10.dp),
