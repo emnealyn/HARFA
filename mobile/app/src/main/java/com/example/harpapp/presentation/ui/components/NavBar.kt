@@ -18,7 +18,9 @@ fun NavBar(
     items: List<NavBarItem> = listOf(
         NavBarItem.Home,
         NavBarItem.Song,
+        NavBarItem.Harp,
         NavBarItem.Settings
+
     ),
     alwaysShowLabel: Boolean = false
 ) {

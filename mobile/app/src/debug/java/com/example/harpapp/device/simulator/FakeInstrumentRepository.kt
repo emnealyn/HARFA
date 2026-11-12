@@ -1,6 +1,9 @@
 package com.example.harpapp.device.simulator
 
 import com.example.harpapp.device.bluetooth.instrumentCapabilitiesOf
+import com.example.harpapp.device.bluetooth.toBatteryStatus
+import com.example.harpapp.domain.model.BatteryPowerState
+import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.InstrumentCommand
@@ -11,6 +14,7 @@ import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.protocol.Capabilities
+import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.LessonResultCode
 import com.example.harpapp.protocol.StateRequestFlags
 import kotlinx.coroutines.delay
@@ -19,6 +23,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import java.util.ArrayDeque
 
 /**
@@ -66,12 +71,25 @@ class FakeInstrumentRepository(
 
     private val _battery = MutableStateFlow(
         InstrumentEvent.BatteryUpdated(
-            percent = config.batteryPercent,
-            millivolts = config.batteryMillivolts,
-            flags = 0
+            BatteryStatus(
+                percent = config.batteryPercent,
+                millivolts = config.batteryMillivolts,
+                powerState = BatteryPowerState.DISCHARGING,
+                isLow = false
+            )
         )
     )
     val battery: StateFlow<InstrumentEvent.BatteryUpdated> = _battery.asStateFlow()
+
+    override val batteryStatus: Flow<BatteryStatus?> = combine(
+        _connectionState,
+        _battery
+    ) { connection, battery ->
+        battery.status.takeIf {
+            connection == ConnectionState.CONNECTED &&
+                config.capabilities and Capabilities.BATTERY != 0
+        }
+    }
 
     val currentConnectionState: ConnectionState
         get() = _connectionState.value
@@ -203,13 +221,15 @@ class FakeInstrumentRepository(
     }
 
     suspend fun emitBatteryState(percent: Int, millivolts: Int, flags: Int) {
-        emitEvent(
-            InstrumentEvent.BatteryUpdated(
+        val status = requireNotNull(
+            HarpMessage.BatteryState(
+                seq = 0,
                 percent = percent,
                 millivolts = millivolts,
                 flags = flags
-            )
-        )
+            ).toBatteryStatus()
+        ) { "Invalid battery percent: $percent" }
+        emitEvent(InstrumentEvent.BatteryUpdated(status))
     }
 
     suspend fun emitError(code: Int, referenceSequence: Int, referenceType: Int) {

@@ -14,6 +14,8 @@ object HarpLayout {
     /** Stopień gamy struny: 0 → C, 1 → D, …, 6 → B, 7 → C, … */
     fun noteNameOf(id: StringId): NoteName = NoteName.entries[id.index % NoteName.entries.size]
 
+    fun stringsOf(name: NoteName): List<StringId> = StringId.ALL.filter { noteNameOf(it) == name }
+
     /** Dźwięk struny przy przełącznikach naturalnych i bez transpozycji. */
     fun basePitch(id: StringId, baseOctave: Int = BASE_OCTAVE): Pitch =
         Pitch(noteNameOf(id), Accidental.NATURAL, baseOctave + id.index / NoteName.entries.size)

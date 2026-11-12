@@ -167,7 +167,7 @@ class DebugDevTools(
         val log by sim.commandLog.collectAsState()
         val battery by sim.battery.collectAsState()
         val tuning by sim.instrumentState.collectAsState(initial = InstrumentState.DEFAULT)
-        var batteryPercent by remember { mutableFloatStateOf(battery.percent.toFloat()) }
+        var batteryPercent by remember { mutableFloatStateOf((battery.status.percent ?: 0).toFloat()) }
         var charging by remember { mutableStateOf(false) }
 
         Column(
@@ -179,7 +179,7 @@ class DebugDevTools(
         ) {
             Text("Połączenie", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Stan: $connection  ·  ${deviceName ?: "-"}  ·  bateria ${battery.percent}%",
+                "Stan: $connection  ·  ${deviceName ?: "-"}  ·  bateria ${battery.status.percent?.let { "$it%" } ?: "?"}",
                 style = MaterialTheme.typography.bodySmall
             )
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -276,7 +276,7 @@ class DebugDevTools(
                 Button(onClick = {
                     val percent = batteryPercent.toInt()
                     var flags = if (charging) BatteryFlags.CHARGING else 0
-                    if (percent < LOW_BATTERY_PERCENT) flags = flags or BatteryFlags.LOW
+                    if (percent <= LOW_BATTERY_PERCENT) flags = flags or BatteryFlags.LOW
                     scope.launch { sim.emitBatteryState(percent, 3300 + percent * 9, flags) }
                 }) { Text("Wyślij stan") }
             }

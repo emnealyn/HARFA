@@ -13,5 +13,6 @@ sealed class NavBarItem(
 ){
     object Home : NavBarItem(Routes.HOME, R.string.nav_home, Icons.Default.Home)
     object Song : NavBarItem(Routes.SONG, R.string.nav_song, Icons.Default.LibraryMusic)
+    object Harp : NavBarItem(Routes.HARP, R.string.nav_harp, Icons.Default.Piano)
     object Settings : NavBarItem(Routes.SETTINGS, R.string.nav_settings, Icons.Default.Settings)
 }

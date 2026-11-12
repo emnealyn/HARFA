@@ -7,6 +7,7 @@ import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
+import com.example.harpapp.domain.model.BatteryStatus
 import kotlinx.coroutines.flow.Flow
 
 interface InstrumentRepository {
@@ -25,6 +26,8 @@ interface InstrumentRepository {
     val instrumentState: Flow<InstrumentState>
 
     val capabilities: Flow<InstrumentCapabilities>
+
+    val batteryStatus: Flow<BatteryStatus?>
 
     suspend fun scanForDevices()
 

@@ -9,6 +9,10 @@ import com.example.harpapp.domain.model.OctaveShift
 import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.protocol.Capabilities
 import com.example.harpapp.protocol.HarpMessage
+import com.example.harpapp.domain.model.BatteryPowerState
+import com.example.harpapp.domain.model.BatteryStatus
+import com.example.harpapp.protocol.BatteryFlags
+import com.example.harpapp.protocol.BatteryPercent
 
 // Odwzorowanie ramek protokołu na model domenowy (docs/domain-model.md §7).
 // Niepoprawne wartości dają null zamiast wyjątku.
@@ -32,4 +36,23 @@ fun HarpMessage.ConfigState.toInstrumentState(): InstrumentState? {
         Accidental.fromOffset(lever[name.step]) ?: return null
     }
     return InstrumentState(levers = levers, octaveShift = shift, baseOctave = baseOctave)
+}
+
+fun HarpMessage.BatteryState.toBatteryStatus(): BatteryStatus? {
+    val knownPercent = when (percent) {
+        BatteryPercent.UNKNOWN -> null
+        in 0..100 -> percent
+        else -> return null
+    }
+    val powerState = when {
+        flags and BatteryFlags.CHARGING != 0 -> BatteryPowerState.CHARGING
+        flags and BatteryFlags.EXTERNAL_POWER != 0 -> BatteryPowerState.EXTERNAL_POWER
+        else -> BatteryPowerState.DISCHARGING
+    }
+    return BatteryStatus(
+        percent = knownPercent,
+        millivolts = millivolts.takeIf { it != 0 },
+        powerState = powerState,
+        isLow = flags and BatteryFlags.LOW != 0
+    )
 }

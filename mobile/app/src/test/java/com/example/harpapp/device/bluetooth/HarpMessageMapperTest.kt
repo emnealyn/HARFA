@@ -2,6 +2,8 @@ package com.example.harpapp.device.bluetooth
 
 import com.example.harpapp.domain.model.Accidental
 import com.example.harpapp.domain.model.InstrumentCapabilities
+import com.example.harpapp.domain.model.BatteryPowerState
+import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.model.NoteName
@@ -99,5 +101,51 @@ class HarpMessageMapperTest {
         assertNull(HarpMessage.ConfigState(seq = 0, octaveShift = 2, lever = List(7) { 0 }, baseOctave = 2).toInstrumentState())
         assertNull(HarpMessage.ConfigState(seq = 0, octaveShift = 0, lever = List(6) { 0 }, baseOctave = 2).toInstrumentState())
         assertNull(HarpMessage.ConfigState(seq = 0, octaveShift = 0, lever = List(7) { if (it == 3) 2 else 0 }, baseOctave = 2).toInstrumentState())
+        assertNull(HarpMessage.BatteryState(seq = 0, percent = 101, millivolts = 3900, flags = 0).toBatteryStatus())
+    }
+
+    private fun batteryVector(name: String): BatteryStatus? =
+        (decodeVector(name) as HarpMessage.BatteryState).toBatteryStatus()
+
+    private fun batteryWithFlags(flags: Int): BatteryStatus =
+        HarpMessage.BatteryState(seq = 0, percent = 50, millivolts = 3800, flags = flags).toBatteryStatus()!!
+
+    @Test
+    fun batteryStateBezFlagOznaczaRozladowywanie() {
+        assertEquals(
+            BatteryStatus(80, 3900, BatteryPowerState.DISCHARGING, isLow = false),
+            batteryVector("battery_state_normal")
+        )
+    }
+
+    @Test
+    fun batteryStateZFlagaLowOznaczaNiskiPoziom() {
+        assertEquals(
+            BatteryStatus(15, 3450, BatteryPowerState.DISCHARGING, isLow = true),
+            batteryVector("battery_state_low")
+        )
+    }
+
+    @Test
+    fun batteryStateZeWszystkimiFlagamiToLadowanieINiskiPoziom() {
+        assertEquals(
+            BatteryStatus(15, 3450, BatteryPowerState.CHARGING, isLow = true),
+            batteryVector("battery_state_low_charging")
+        )
+    }
+
+    @Test
+    fun batteryStateNieznanyNieMaLiczby() {
+        assertEquals(
+            BatteryStatus(null, null, BatteryPowerState.DISCHARGING, isLow = false),
+            batteryVector("battery_state_unknown")
+        )
+    }
+
+    @Test
+    fun flagiZasilaniaWybierajaJedenStan() {
+        assertEquals(BatteryPowerState.CHARGING, batteryWithFlags(1).powerState)
+        assertEquals(BatteryPowerState.EXTERNAL_POWER, batteryWithFlags(2).powerState)
+        assertEquals(BatteryPowerState.CHARGING, batteryWithFlags(3).powerState)
     }
 }

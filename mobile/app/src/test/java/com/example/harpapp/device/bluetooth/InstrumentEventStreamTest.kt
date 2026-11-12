@@ -1,6 +1,8 @@
 package com.example.harpapp.device.bluetooth
 
 import com.example.harpapp.domain.model.Accidental
+import com.example.harpapp.domain.model.BatteryPowerState
+import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.InstrumentEvent
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
@@ -66,9 +68,35 @@ class InstrumentEventStreamTest {
     }
 
     @Test
+    fun batteryStateZapisujeStanIZwracaBatteryUpdated() {
+        val event = stream.accept(message("battery_state_low"))
+
+        val expected = BatteryStatus(15, 3450, BatteryPowerState.DISCHARGING, isLow = true)
+        assertEquals(InstrumentEvent.BatteryUpdated(expected), event)
+        assertEquals(expected, stream.batteryStatus.value)
+    }
+
+    @Test
+    fun resetCzysciStanBaterii() {
+        stream.accept(message("battery_state_normal"))
+        stream.reset()
+
+        assertNull(stream.batteryStatus.value)
+    }
+
+    @Test
+    fun niepoprawnyBatteryStateNieNadpisujeStanu() {
+        stream.accept(message("battery_state_normal"))
+        val before = stream.batteryStatus.value
+
+        assertNull(stream.accept(HarpMessage.BatteryState(seq = 0, percent = 101, millivolts = 0, flags = 0)))
+        assertEquals(before, stream.batteryStatus.value)
+    }
+
+    @Test
     fun inneINiepoprawneWiadomosciSaPomijane() {
         val events = collectNoteEvents {
-            assertNull(stream.accept(message("battery_state_normal")))
+            assertNull(stream.accept(HarpMessage.LessonEnd(seq = 0)))
             assertNull(stream.accept(HarpMessage.StringEvent(seq = 0, stringId = 15, midi = 60, tMs = 0)))
             assertNull(
                 stream.accept(HarpMessage.ConfigState(seq = 0, octaveShift = 5, lever = List(7) { 0 }, baseOctave = 2))

@@ -136,6 +136,18 @@ Przykłady:
 | domyślny | `stringFor(G4)` | brak (wymaga transpozycji) |
 | `octaveShift = +1` | `stringFor(G4)` | `StringId(11)` |
 
+
+### 3.3 Strojenie na ekranie „Harfa”
+
+Ekran pokazuje `InstrumentRepository.instrumentState` tylko przy aktywnym połączeniu, a bez niego wyświetla stan pusty z przejściem do łączenia. Między połączeniem a pierwszą ramką `CONFIG_STATE` (zwykle krócej niż sekundę) ekran może pokazać stan domyślny z §3.1. To świadome uproszczenie.
+
+Strojenie i stan instrumentu pokazuje osobna, czwarta zakładka „Harfa” w dolnej nawigacji. Ekran Bluetooth służy tylko do wyszukiwania harfy i łączenia z nią, więc stan instrumentu nie trafia do niego. Ikona połączenia na górnym pasku prowadzi do ekranu „Harfa”, a z niego można przejść do ekranu Bluetooth. Ekran nie ma kontrolek zmiany strojenia, bo jego źródłem prawdy jest harfa (ADR 001).
+
+Po połączeniu ekran ma dwie zakładki:
+
+- **Strojenie** pokazuje 7 przełączników (C–B, ♭/♮/♯) i transpozycję oktawową jako suwak z trzema pozycjami. Pod każdą pozycją jest stały zakres strun dla przełączników naturalnych (np. C2–C4), niezależny od ustawienia przełączników. Kliknięcie nuty zaznacza wszystkie jej struny (`HarpLayout.stringsOf`) na potrzeby przyszłej animacji. Zaznaczenie jest tylko stanem interfejsu w `HarpViewModel` i nie zmienia strojenia.
+- **Urządzenie** pokazuje nazwę i identyfikator podłączonej harfy oraz sekcję baterii z `InstrumentRepository.batteryStatus`: poziom naładowania, napięcie, źródło zasilania (`BatteryPowerState`) i niski poziom (`isLow`). Gdy `batteryStatus` albo któreś z jego pól ma wartość `null` (harfa bez `CAP_BATTERY`, brak ramki `BATTERY_STATE` albo nieznana wartość), sekcja pokazuje „—”.
+
 ---
 
 ## 4. Zdarzenia instrumentu
@@ -158,6 +170,8 @@ Ramka, z której nie da się utworzyć poprawnego `NoteEvent` (np. `string_id > 
 Tryb nauki reaguje **wyłącznie** na `NoteEvent`. Stary format mocka (pojedyncza litera, np. `"F\n"` przez SPP) nie niesie oktawy ani numeru struny, więc nie jest przekładany na `NoteEvent`.
 
 Źródłem `NoteEvent` jest klient BLE GATT (ADR 007). `HarpSession` dekoduje notyfikacje TX harfy i kontroluje numery sekwencyjne, a następnie `InstrumentEventStream` zamienia `STRING_EVENT` i `CONFIG_STATE` na `NoteEvent` i `InstrumentState`. Oba trafiają do `InstrumentRepository` jako osobne strumienie (`noteEvents`, `instrumentState`) oraz do wspólnego strumienia `events`. Mock harfy musi wysyłać ramki protokołu przez BLE, bo stary mock SPP nie jest obsługiwany.
+
+`InstrumentEventStream` zamienia też `BATTERY_STATE` na `BatteryStatus`. `InstrumentRepository.batteryStatus` udostępnia go tylko przy aktywnym połączeniu z harfą deklarującą `CAP_BATTERY`, a w pozostałych przypadkach ma wartość `null`.
 
 ---
 
@@ -271,6 +285,10 @@ Stan obecnego katalogu: utwór *Hallelujah* zawiera `D5`, `E5` i `F#5` (MIDI 74,
 | `CONFIG_STATE.octave_shift − 1` | `InstrumentState.octaveShift` |
 | `CONFIG_STATE.lever[i] − 1` | `InstrumentState.levers[NoteName o indeksie i]` (`Accidental`) |
 | `CONFIG_STATE.base_octave` | `InstrumentState.baseOctave` |
+| `BATTERY_STATE.percent` | `BatteryStatus.percent` (`0xFF` → `null`) |
+| `BATTERY_STATE.millivolts` | `BatteryStatus.millivolts` (`0` → `null`) |
+| `BATTERY_STATE.flags` bity 0–1 | `BatteryStatus.powerState` (priorytet: `CHARGING`, `EXTERNAL_POWER`, `DISCHARGING`) |
+| `BATTERY_STATE.flags` bit 2 | `BatteryStatus.isLow` |
 | `LESSON_START.total_steps` | `Lesson.steps.size` |
 | `LESSON_STEP.index` | `LessonProgress.currentIndex` |
 | `LESSON_STEP.mask` | bit `stringFor(currentStep.pitch)` (pusta maska, gdy brak struny), wyliczany ponownie po każdej zmianie `InstrumentState` |

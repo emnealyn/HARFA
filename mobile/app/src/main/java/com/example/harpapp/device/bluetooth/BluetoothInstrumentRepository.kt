@@ -3,6 +3,7 @@ package com.example.harpapp.device.bluetooth
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.InstrumentCommand
@@ -15,6 +16,7 @@ import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.HarpProtocol
 import com.example.harpapp.protocol.StateRequestFlags
 import com.example.harpapp.protocol.Capabilities
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +27,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -43,14 +45,9 @@ class BluetoothInstrumentRepository internal constructor(
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val session = HarpSession { frame -> transport.send(frame) }
     private val eventStream = InstrumentEventStream()
-    private val _capabilities = MutableStateFlow(InstrumentCapabilities.NONE)
-    override val capabilities: Flow<InstrumentCapabilities> = _capabilities.asStateFlow()
-
-    private var deviceCapabilities: Int? = null
-        set(value) {
-            field = value
-            _capabilities.value = value?.let(::instrumentCapabilitiesOf) ?: InstrumentCapabilities.NONE
-        }
+    private val deviceCapabilities = MutableStateFlow<Int?>(null)
+    override val capabilities: Flow<InstrumentCapabilities> =
+        deviceCapabilities.map { it?.let(::instrumentCapabilitiesOf) ?: InstrumentCapabilities.NONE }
     private var stateRecoveryRequested = false
     private var stateRecoveryJob: Job? = null
 
@@ -81,6 +78,18 @@ class BluetoothInstrumentRepository internal constructor(
     override val noteEvents: Flow<NoteEvent> = eventStream.noteEvents
     override val instrumentState: Flow<InstrumentState> = eventStream.instrumentState
 
+    override val batteryStatus: Flow<BatteryStatus?> = combine(
+        _connectionState,
+        deviceCapabilities,
+        eventStream.batteryStatus
+    ) { connection, capabilities, status ->
+        status.takeIf {
+            connection == ConnectionState.CONNECTED &&
+                    capabilities != null &&
+                    capabilities and Capabilities.BATTERY != 0
+        }
+    }
+
     init {
         ioScope.launch {
             transport.events.collect { event ->
@@ -90,7 +99,7 @@ class BluetoothInstrumentRepository internal constructor(
                         stateRecoveryRequested = false
                         session.reset()
                         eventStream.reset()
-                        deviceCapabilities = null
+                        deviceCapabilities.value = null
                         _connectionState.value = ConnectionState.DISCONNECTED
                     }
                 }
@@ -120,7 +129,7 @@ class BluetoothInstrumentRepository internal constructor(
                 transport.connect(device)
                 val deviceInfo = session.start()
                 validateDeviceInfo(deviceInfo)
-                deviceCapabilities = deviceInfo.caps
+                deviceCapabilities.value = deviceInfo.caps
 
                 _connectionState.value = ConnectionState.CONNECTED
                 val nameToSave = device.name ?: device.address
@@ -151,7 +160,7 @@ class BluetoothInstrumentRepository internal constructor(
     override suspend fun send(command: InstrumentCommand) {
         withContext(Dispatchers.IO) {
             try {
-                val capabilities = deviceCapabilities
+                val capabilities = deviceCapabilities.value
                     ?: throw IllegalStateException("HARFA instrument is not connected")
                 validateCommandCapability(command, capabilities)
                 session.sendCommand { sequence -> command.toHarpMessage(sequence) }
@@ -173,7 +182,7 @@ class BluetoothInstrumentRepository internal constructor(
         stateRecoveryRequested = false
         session.reset()
         eventStream.reset()
-        deviceCapabilities = null
+        deviceCapabilities.value = null
         transport.disconnect()
         _connectionState.value = ConnectionState.DISCONNECTED
     }
@@ -196,9 +205,10 @@ class BluetoothInstrumentRepository internal constructor(
                 }
 
                 when (val message = event.message) {
-                    // Zagrania i strojenie trafiają do modelu domenowego (docs/domain-model.md §7).
+                    // Zagrania, strojenie i bateria trafiają do modelu domenowego (docs/domain-model.md §7).
                     is HarpMessage.StringEvent,
-                    is HarpMessage.ConfigState -> {
+                    is HarpMessage.ConfigState,
+                    is HarpMessage.BatteryState -> {
                         val domainEvent = eventStream.accept(message)
                         if (domainEvent != null) {
                             _events.emit(domainEvent)
@@ -206,14 +216,6 @@ class BluetoothInstrumentRepository internal constructor(
                             Log.w(TAG, "Ignoring HARFA message with invalid values: $message")
                         }
                     }
-
-                    is HarpMessage.BatteryState -> _events.emit(
-                        InstrumentEvent.BatteryUpdated(
-                            percent = message.percent,
-                            millivolts = message.millivolts,
-                            flags = message.flags
-                        )
-                    )
 
                     is HarpMessage.Error -> _events.emit(
                         InstrumentEvent.ErrorReported(
@@ -310,7 +312,7 @@ class BluetoothInstrumentRepository internal constructor(
             while (stateRecoveryRequested && _connectionState.value == ConnectionState.CONNECTED) {
                 stateRecoveryRequested = false
                 val flags = StateRequestFlags.CONFIG or
-                    if (deviceCapabilities?.and(Capabilities.BATTERY) != 0) {
+                    if (deviceCapabilities.value?.and(Capabilities.BATTERY) != 0) {
                         StateRequestFlags.BATTERY
                     } else {
                         0
@@ -339,7 +341,7 @@ class BluetoothInstrumentRepository internal constructor(
         stateRecoveryRequested = false
         session.reset()
         eventStream.reset()
-        deviceCapabilities = null
+        deviceCapabilities.value = null
         transport.disconnect()
         _connectionState.value = ConnectionState.DISCONNECTED
     }
