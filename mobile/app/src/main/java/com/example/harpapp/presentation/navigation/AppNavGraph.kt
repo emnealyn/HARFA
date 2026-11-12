@@ -4,9 +4,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -57,8 +61,19 @@ fun AppNavGraph(
 
     val isBluetoothConnected by bluetoothViewModel.isConnected.collectAsState()
     val connectedDeviceName by bluetoothViewModel.connectedDeviceName.collectAsState(initial = null)
+    val batteryStatus by bluetoothViewModel.batteryStatus.collectAsState()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val lowBatteryMessage = stringResource(R.string.battery_low_warning)
+
+    LaunchedEffect(lowBatteryMessage) {
+        bluetoothViewModel.lowBatteryWarnings.collect {
+            snackbarHostState.showSnackbar(lowBatteryMessage)
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             val title = when (normalizedRoute) {
                 Routes.HOME -> stringResource(R.string.app_name)
@@ -81,7 +96,8 @@ fun AppNavGraph(
                     onBluetoothClick = {
                         navController.navigate(Routes.BLUETOOTH)
                     },
-                    connectedDeviceName = connectedDeviceName
+                    connectedDeviceName = connectedDeviceName,
+                    batteryStatus = batteryStatus
                 )
             }
         },

@@ -11,15 +11,26 @@ enum class ConnectionState {
     CONNECTED
 }
 
+enum class BatteryPowerState {
+    DISCHARGING,
+    CHARGING,
+    EXTERNAL_POWER
+}
+
+data class BatteryStatus(
+    val percent: Int?,
+    val millivolts: Int?,
+    val powerState: BatteryPowerState,
+    val isLow: Boolean
+)
+
 /**
  * Zdarzenia raportowane przez harfę. Zagranie struny to [NoteEvent] (docs/domain-model.md §4),
  * które również implementuje ten interfejs.
  */
 sealed interface InstrumentEvent {
     data class BatteryUpdated(
-        val percent: Int,
-        val millivolts: Int,
-        val flags: Int
+        val status: BatteryStatus
     ) : InstrumentEvent
 
     /** Nowe strojenie instrumentu (`CONFIG_STATE`, docs/domain-model.md §3). */

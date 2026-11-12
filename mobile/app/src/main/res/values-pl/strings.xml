@@ -47,4 +47,12 @@
     <string name="lesson_issue_empty">Krok %1$d: pusta nuta</string>
     <string name="lesson_issue_malformed">Krok %1$d: niepoprawny zapis nuty „%2$s”</string>
     <string name="lesson_issue_out_of_range">Krok %1$d: %2$s jest poza zakresem harfy (B0–C#5)</string>
+    <string name="battery_description">Bateria harfy: %1$s</string>
+    <string name="battery_level_percent">%1$d%%</string>
+    <string name="battery_level_unknown">poziom nieznany</string>
+    <string name="battery_state_discharging">rozładowywanie</string>
+    <string name="battery_state_charging">ładowanie</string>
+    <string name="battery_state_external_power">zasilacz</string>
+    <string name="battery_state_low">niski poziom</string>
+    <string name="battery_low_warning">Niski poziom baterii harfy. Wkrótce podłącz ładowarkę.</string>
 </resources>

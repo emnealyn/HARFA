@@ -4,6 +4,7 @@ import com.example.harpapp.domain.model.InstrumentEvent
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.protocol.HarpMessage
+import com.example.harpapp.domain.model.BatteryStatus
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,10 +29,13 @@ internal class InstrumentEventStream {
     private val _instrumentState = MutableStateFlow(InstrumentState.DEFAULT)
     val instrumentState: StateFlow<InstrumentState> = _instrumentState.asStateFlow()
 
+    private val _batteryStatus = MutableStateFlow<BatteryStatus?>(null)
+    val batteryStatus: StateFlow<BatteryStatus?> = _batteryStatus.asStateFlow()
+
     /**
-     * Przyjmuje wiadomość od harfy. Zwraca zdarzenie domenowe ([NoteEvent] albo
-     * [InstrumentEvent.ConfigurationUpdated]) albo `null`, gdy wiadomość nie dotyczy trybu nauki
-     * lub ma niepoprawne wartości.
+     * Przyjmuje wiadomość od harfy. Zwraca zdarzenie domenowe ([NoteEvent],
+     * [InstrumentEvent.ConfigurationUpdated] albo [InstrumentEvent.BatteryUpdated]) albo `null`,
+     * gdy wiadomość nie ma odpowiednika w modelu domenowym lub ma niepoprawne wartości.
      */
     fun accept(message: HarpMessage): InstrumentEvent? = when (message) {
         is HarpMessage.StringEvent -> message.toNoteEvent()?.also { _noteEvents.tryEmit(it) }
@@ -39,12 +43,17 @@ internal class InstrumentEventStream {
             _instrumentState.value = state
             InstrumentEvent.ConfigurationUpdated(state)
         }
+        is HarpMessage.BatteryState -> message.toBatteryStatus()?.let { status ->
+            _batteryStatus.value = status
+            InstrumentEvent.BatteryUpdated(status)
+        }
         else -> null
     }
 
     /** Po zerwaniu połączenia strojenie jest nieznane do kolejnego handshake (protokół §8). */
     fun reset() {
         _instrumentState.value = InstrumentState.DEFAULT
+        _batteryStatus.value = null
     }
 
     private companion object {
