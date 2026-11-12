@@ -1,4 +1,4 @@
-package com.example.harpapp.presentation.ui.components
+package com.example.harpapp.presentation.ui.components.harp
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState

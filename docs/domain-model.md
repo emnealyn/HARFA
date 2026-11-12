@@ -136,7 +136,6 @@ Przykłady:
 | domyślny | `stringFor(G4)` | brak (wymaga transpozycji) |
 | `octaveShift = +1` | `stringFor(G4)` | `StringId(11)` |
 
-- **`pitchOf(StringId)`**: dźwięk struny zapisany według pozycji przełącznika (np. `Bb2`, a nie `A#2`). `lowestPitch` i `highestPitch` to dźwięki struny 0 i 14, czyli zakres całej harfy przy obecnym strojeniu.
 
 ### 3.3 Strojenie na ekranie „Harfa”
 

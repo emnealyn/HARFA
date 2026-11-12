@@ -99,7 +99,13 @@ fun AppNavGraph(
                     },
                     isBluetoothConnected = isBluetoothConnected,
                     onBluetoothClick = {
-                        navController.navigate(Routes.HARP)
+                        navController.navigate(Routes.HARP) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     },
                     connectedDeviceName = connectedDeviceName,
                     batteryStatus = batteryStatus

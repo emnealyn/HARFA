@@ -14,8 +14,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 sealed interface HarpUiState {
     data object Disconnected : HarpUiState
@@ -57,6 +59,14 @@ class HarpViewModel(
 
     private val _selectedNote = MutableStateFlow<NoteName?>(null)
     val selectedNote: StateFlow<NoteName?> = _selectedNote.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            instrumentRepository.connectionState
+                .filter { it != ConnectionState.CONNECTED }
+                .collect { _selectedNote.value = null }
+        }
+    }
 
     val selectedStrings: StateFlow<List<StringId>> = _selectedNote
         .map { name -> name?.let(HarpLayout::stringsOf).orEmpty() }
