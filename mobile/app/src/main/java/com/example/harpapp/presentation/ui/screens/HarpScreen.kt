@@ -1,6 +1,7 @@
 package com.example.harpapp.presentation.ui.screens
 
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -24,6 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BluetoothConnected
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,6 +38,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -53,10 +60,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.harpapp.R
 import com.example.harpapp.domain.model.Accidental
+import com.example.harpapp.domain.model.BatteryPowerState
+import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteName
 import com.example.harpapp.domain.model.OctaveShift
 import com.example.harpapp.domain.model.Pitch
+import com.example.harpapp.presentation.ui.components.BatteryIndicator
 import com.example.harpapp.presentation.viewmodel.HarpTab
 import com.example.harpapp.presentation.viewmodel.HarpUiState
 import com.example.harpapp.presentation.viewmodel.HarpViewModel
@@ -176,7 +186,7 @@ private fun HarpContent(
                     }
                     HarpTab.DEVICE -> {
                         DeviceCard(uiState.deviceName, uiState.deviceId, onNavigateToBluetooth)
-                        BatterySection()
+                        BatterySection(uiState.battery)
                     }
                 }
             }
@@ -513,15 +523,23 @@ private fun DeviceCard(deviceName: String?, deviceId: Long?, onNavigateToBluetoo
 }
 
 @Composable
-private fun BatterySection() {
+private fun BatterySection(battery: BatteryStatus?) {
+    val colors = MaterialTheme.colorScheme
     val unavailable = stringResource(R.string.harp_value_unavailable)
-    val rows = listOf(
-        R.string.harp_battery_level,
-        R.string.harp_battery_voltage,
-        R.string.harp_battery_charging,
-        R.string.harp_battery_external_power,
-        R.string.harp_battery_low
-    )
+    val level = battery?.percent?.let { stringResource(R.string.battery_level_percent, it) } ?: unavailable
+    val voltage = battery?.millivolts?.let { stringResource(R.string.harp_battery_voltage_value, it / 1000.0) }
+        ?: unavailable
+    val power = when (battery?.powerState) {
+        null -> unavailable
+        BatteryPowerState.DISCHARGING -> stringResource(R.string.harp_battery_power_battery)
+        BatteryPowerState.CHARGING -> stringResource(R.string.harp_battery_charging)
+        BatteryPowerState.EXTERNAL_POWER -> stringResource(R.string.harp_battery_external_power)
+    }
+    val low = when (battery?.isLow) {
+        null -> unavailable
+        true -> stringResource(R.string.harp_yes)
+        false -> stringResource(R.string.harp_no)
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         SectionTitle(stringResource(R.string.harp_battery_title))
@@ -539,8 +557,17 @@ private fun BatterySection() {
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                rows.forEach { label ->
-                    InfoRow(label = stringResource(label), value = unavailable)
+                InfoRow(label = stringResource(R.string.harp_battery_level), value = level) {
+                    if (battery != null) {
+                        BatteryIndicator(status = battery, tint = if (battery.isLow) colors.error else colors.primary)
+                    }
+                }
+                InfoRow(label = stringResource(R.string.harp_battery_voltage), value = voltage)
+                InfoRow(label = stringResource(R.string.harp_battery_power), value = power)
+                if (battery?.isLow == true) {
+                    LowBatteryRow(value = low)
+                } else {
+                    InfoRow(label = stringResource(R.string.harp_battery_low), value = low)
                 }
             }
         }
@@ -548,10 +575,71 @@ private fun BatterySection() {
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
+private fun LowBatteryRow(value: String) {
+    val colors = MaterialTheme.colorScheme
+    var expanded by rememberSaveable { mutableStateOf(false) }
+
+    Surface(
+        onClick = { expanded = !expanded },
+        modifier = Modifier
+            .layout { measurable, constraints ->
+                val bleed = 8.dp.roundToPx()
+                val placeable = measurable.measure(
+                    constraints.copy(
+                        minWidth = constraints.maxWidth + 2 * bleed,
+                        maxWidth = constraints.maxWidth + 2 * bleed
+                    )
+                )
+                layout(constraints.maxWidth, placeable.height) {
+                    placeable.place(-bleed, 0)
+                }
+            },
+        shape = MaterialTheme.shapes.small,
+        color = colors.errorContainer,
+        contentColor = colors.onErrorContainer
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.harp_battery_low),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Text(
+                    text = stringResource(R.string.harp_battery_low_hint),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(
+    label: String,
+    value: String,
+    icon: @Composable () -> Unit = {}
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -560,6 +648,7 @@ private fun InfoRow(label: String, value: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f)
         )
+        icon()
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge,

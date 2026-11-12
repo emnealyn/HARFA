@@ -65,6 +65,12 @@
     <string name="harp_battery_charging">Charging</string>
     <string name="harp_battery_external_power">External power</string>
     <string name="harp_battery_low">Low battery</string>
+    <string name="harp_battery_low_hint">Connect the harp to a charger so it does not switch off while you play.</string>
+    <string name="harp_battery_power">Power source</string>
+    <string name="harp_battery_power_battery">Battery</string>
+    <string name="harp_battery_voltage_value" translatable="false">%1$.2f V</string>
+    <string name="harp_yes">Yes</string>
+    <string name="harp_no">No</string>
     <string name="harp_value_unavailable" translatable="false">—</string>
     <string name="battery_description">Harp battery: %1$s</string>
     <string name="battery_level_percent">%1$d%%</string>

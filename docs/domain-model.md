@@ -147,7 +147,7 @@ Strojenie i stan instrumentu pokazuje osobna, czwarta zakładka „Harfa” w do
 Po połączeniu ekran ma dwie zakładki:
 
 - **Strojenie** pokazuje 7 przełączników (C–B, ♭/♮/♯) i transpozycję oktawową jako suwak z trzema pozycjami. Pod każdą pozycją jest stały zakres strun dla przełączników naturalnych (np. C2–C4), niezależny od ustawienia przełączników. Kliknięcie nuty zaznacza wszystkie jej struny (`HarpLayout.stringsOf`) na potrzeby przyszłej animacji. Zaznaczenie jest tylko stanem interfejsu w `HarpViewModel` i nie zmienia strojenia.
-- **Urządzenie** pokazuje nazwę i identyfikator podłączonej harfy oraz sekcję baterii z miejscem na dane z `BATTERY_STATE`: procent, napięcie i flagi (ładowanie, zasilanie zewnętrzne, niski poziom). Do czasu podłączenia obsługi baterii sekcja pokazuje puste wartości.
+- **Urządzenie** pokazuje nazwę i identyfikator podłączonej harfy oraz sekcję baterii z `InstrumentRepository.batteryStatus`: poziom naładowania, napięcie, źródło zasilania (`BatteryPowerState`) i niski poziom (`isLow`). Gdy `batteryStatus` albo któreś z jego pól ma wartość `null` (harfa bez `CAP_BATTERY`, brak ramki `BATTERY_STATE` albo nieznana wartość), sekcja pokazuje „—”.
 
 ---
 

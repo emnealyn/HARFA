@@ -65,6 +65,11 @@
     <string name="harp_battery_charging">Ładowanie</string>
     <string name="harp_battery_external_power">Zasilanie zewnętrzne</string>
     <string name="harp_battery_low">Niski poziom baterii</string>
+    <string name="harp_battery_low_hint">Podłącz harfę do ładowarki, żeby nie wyłączyła się w trakcie gry.</string>
+    <string name="harp_battery_power">Zasilanie</string>
+    <string name="harp_battery_power_battery">Bateria</string>
+    <string name="harp_yes">Tak</string>
+    <string name="harp_no">Nie</string>
     <string name="battery_description">Bateria harfy: %1$s</string>
     <string name="battery_level_percent">%1$d%%</string>
     <string name="battery_level_unknown">poziom nieznany</string>

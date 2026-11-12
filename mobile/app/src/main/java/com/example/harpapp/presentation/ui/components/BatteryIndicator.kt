@@ -8,7 +8,6 @@ import androidx.compose.material.icons.filled.Battery2Bar
 import androidx.compose.material.icons.filled.Battery3Bar
 import androidx.compose.material.icons.filled.Battery4Bar
 import androidx.compose.material.icons.filled.Battery5Bar
-import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.Power
@@ -62,7 +61,6 @@ private fun batteryIcon(status: BatteryStatus): ImageVector {
     return when {
         status.powerState == BatteryPowerState.CHARGING -> Icons.Filled.BatteryChargingFull
         status.powerState == BatteryPowerState.EXTERNAL_POWER -> Icons.Filled.Power
-        status.isLow -> Icons.Filled.BatteryAlert
         percent == null -> Icons.AutoMirrored.Filled.BatteryUnknown
         percent >= 90 -> Icons.Filled.BatteryFull
         percent >= 75 -> Icons.Filled.Battery5Bar

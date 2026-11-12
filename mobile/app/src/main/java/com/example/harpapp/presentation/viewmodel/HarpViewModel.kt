@@ -2,6 +2,7 @@ package com.example.harpapp.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.HarpLayout
 import com.example.harpapp.domain.model.InstrumentState
@@ -22,7 +23,8 @@ sealed interface HarpUiState {
     data class Connected(
         val deviceName: String?,
         val deviceId: Long?,
-        val tuning: InstrumentState
+        val tuning: InstrumentState,
+        val battery: BatteryStatus?
     ) : HarpUiState
 }
 
@@ -39,12 +41,13 @@ class HarpViewModel(
         instrumentRepository.connectionState,
         instrumentRepository.instrumentState,
         instrumentRepository.connectedDeviceName,
-        instrumentRepository.connectedDeviceId
-    ) { connection, tuning, deviceName, deviceId ->
+        instrumentRepository.connectedDeviceId,
+        instrumentRepository.batteryStatus
+    ) { connection, tuning, deviceName, deviceId, battery ->
         when (connection) {
             ConnectionState.DISCONNECTED -> HarpUiState.Disconnected
             ConnectionState.CONNECTING -> HarpUiState.Connecting
-            ConnectionState.CONNECTED -> HarpUiState.Connected(deviceName, deviceId, tuning)
+            ConnectionState.CONNECTED -> HarpUiState.Connected(deviceName, deviceId, tuning, battery)
         }
     }.stateIn(
         scope = viewModelScope,
