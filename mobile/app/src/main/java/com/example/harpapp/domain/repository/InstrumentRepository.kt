@@ -1,6 +1,7 @@
 package com.example.harpapp.domain.repository
 
 import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
@@ -23,6 +24,8 @@ interface InstrumentRepository {
 
     /** Aktualne strojenie harfy (`CONFIG_STATE`). Przed pierwszą ramką: [InstrumentState.DEFAULT]. */
     val instrumentState: Flow<InstrumentState>
+
+    val capabilities: Flow<InstrumentCapabilities>
 
     val batteryStatus: Flow<BatteryStatus?>
 

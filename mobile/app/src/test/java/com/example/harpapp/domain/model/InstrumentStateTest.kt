@@ -11,6 +11,13 @@ class InstrumentStateTest {
     private fun pitch(raw: String): Pitch = (Pitch.parse(raw) as PitchParseResult.Valid).pitch
 
     @Test
+    fun `stringsOf zwraca wszystkie struny danej nuty`() {
+        assertEquals(listOf(0, 7, 14), HarpLayout.stringsOf(NoteName.C).map { it.index })
+        assertEquals(listOf(1, 8), HarpLayout.stringsOf(NoteName.D).map { it.index })
+        assertEquals(listOf(6, 13), HarpLayout.stringsOf(NoteName.B).map { it.index })
+    }
+
+    @Test
     fun `StringId istnieje tylko dla 0 do 14`() {
         assertNull(StringId.of(-1))
         assertNull(StringId.of(15))

@@ -18,6 +18,7 @@ import com.example.harpapp.domain.usecase.PrepareLessonUseCase
 import com.example.harpapp.domain.usecase.SetFavoriteUseCase
 import com.example.harpapp.presentation.dev.DevTools
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModelFactory
+import com.example.harpapp.presentation.viewmodel.HarpViewModelFactory
 import com.example.harpapp.presentation.viewmodel.HomeViewModelFactory
 import com.example.harpapp.presentation.viewmodel.SettingsViewModelFactory
 import com.example.harpapp.presentation.viewmodel.SongViewModelFactory
@@ -68,4 +69,5 @@ class AppContainer(
 
     val settingsViewModelFactory = SettingsViewModelFactory(settingsRepository)
     val bluetoothViewModelFactory = BluetoothViewModelFactory(instrumentRepository)
+    val harpViewModelFactory = HarpViewModelFactory(instrumentRepository)
 }

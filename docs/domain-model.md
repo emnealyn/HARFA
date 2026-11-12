@@ -136,6 +136,18 @@ Przykłady:
 | domyślny | `stringFor(G4)` | brak (wymaga transpozycji) |
 | `octaveShift = +1` | `stringFor(G4)` | `StringId(11)` |
 
+
+### 3.3 Strojenie na ekranie „Harfa”
+
+Ekran pokazuje `InstrumentRepository.instrumentState` tylko przy aktywnym połączeniu, a bez niego wyświetla stan pusty z przejściem do łączenia. Między połączeniem a pierwszą ramką `CONFIG_STATE` (zwykle krócej niż sekundę) ekran może pokazać stan domyślny z §3.1. To świadome uproszczenie.
+
+Strojenie i stan instrumentu pokazuje osobna, czwarta zakładka „Harfa” w dolnej nawigacji. Ekran Bluetooth służy tylko do wyszukiwania harfy i łączenia z nią, więc stan instrumentu nie trafia do niego. Ikona połączenia na górnym pasku prowadzi do ekranu „Harfa”, a z niego można przejść do ekranu Bluetooth. Ekran nie ma kontrolek zmiany strojenia, bo jego źródłem prawdy jest harfa (ADR 001).
+
+Po połączeniu ekran ma dwie zakładki:
+
+- **Strojenie** pokazuje 7 przełączników (C–B, ♭/♮/♯) i transpozycję oktawową jako suwak z trzema pozycjami. Pod każdą pozycją jest stały zakres strun dla przełączników naturalnych (np. C2–C4), niezależny od ustawienia przełączników. Kliknięcie nuty zaznacza wszystkie jej struny (`HarpLayout.stringsOf`) na potrzeby przyszłej animacji. Zaznaczenie jest tylko stanem interfejsu w `HarpViewModel` i nie zmienia strojenia.
+- **Urządzenie** pokazuje nazwę i identyfikator podłączonej harfy oraz sekcję baterii z `InstrumentRepository.batteryStatus`: poziom naładowania, napięcie, źródło zasilania (`BatteryPowerState`) i niski poziom (`isLow`). Gdy `batteryStatus` albo któreś z jego pól ma wartość `null` (harfa bez `CAP_BATTERY`, brak ramki `BATTERY_STATE` albo nieznana wartość), sekcja pokazuje „—”.
+
 ---
 
 ## 4. Zdarzenia instrumentu
@@ -195,6 +207,41 @@ Każde zdarzenie daje nowy stan oraz wynik kroku, który odpowiada `LESSON_RESUL
 
 `PAUSED` realizuje zachowanie po utracie BLE z ADR 001: zachowany jest ostatni potwierdzony krok, a wznowienie wraca do `IN_PROGRESS` od tego samego `currentIndex`.
 
+Do `PAUSED` prowadzą trzy sytuacje:
+
+| Przyczyna | Wznowienie |
+| :--- | :--- |
+| Utrata połączenia z harfą | Automatycznie po ponownym połączeniu. Użytkownik nie może wznowić lekcji ręcznie. |
+| Pauza użytkownika | Tylko przez użytkownika. Ponowne połączenie nie wznawia lekcji. |
+| Start lekcji bez połączonej harfy | Automatycznie po połączeniu, od pierwszego kroku. |
+
+Gdy użytkownik wznowi lekcję bez połączenia, pozostaje ona wstrzymana jak po utracie BLE i rusza sama po połączeniu. Powtórzenie lekcji („Zagraj ponownie”) tworzy nowy `LessonProgress` od kroku 0.
+
+### 5.3 Sterowanie lekcją na harfie
+
+Przebieg lekcji na komendy protokołu przekłada `InstrumentLessonController` (warstwa `domain`). Komendy wysyła tylko przy aktywnym połączeniu, a komendy z poprzedniej sesji nie są ponawiane (spec §8 pkt 9).
+
+| Zdarzenie w aplikacji | Komendy |
+| :--- | :--- |
+| Start lub powtórzenie lekcji | `LESSON_START`, `LESSON_STEP` dla kroku 0 |
+| `HIT` | `LESSON_RESULT(HIT)`, `LESSON_STEP` dla kolejnego kroku |
+| `MISS` | `LESSON_RESULT(MISS)` |
+| `COMPLETE` | `LESSON_RESULT(COMPLETE)` |
+| Pauza użytkownika | `LESSON_END`, bo protokół nie ma komendy pauzy |
+| Wznowienie (ręczne albo po ponownym połączeniu) | `LESSON_START`, `LESSON_STEP` dla bieżącego kroku |
+| Zmiana `InstrumentState` w trakcie kroku | ponowny `LESSON_STEP` z tym samym indeksem, gdy zmieniła się maska |
+| Zakończenie nauki | `LESSON_END` |
+
+Ponowny `LESSON_STEP` po zmianie strojenia obsługuje zarówno przestawienie przełącznika, jak i `CONFIG_STATE`, które po handshake dociera już po wznowieniu lekcji. Komenda jest idempotentna (spec §4.9). Po `COMPLETE`, `LESSON_END` i utracie połączenia harfa nie ma aktywnego kroku, więc zmiana strojenia niczego nie wysyła.
+
+Zestaw komend zależy od możliwości z `DEVICE_INFO` (`InstrumentCapabilities`):
+
+| Możliwości | Zachowanie |
+| :--- | :--- |
+| `CAP_LESSON` | Komendy `LESSON_*` jak w tabeli powyżej. |
+| tylko `CAP_LEDS` | `LESSON_STEP` → `LED_SET(mask, świecenie ciągłe)`, `COMPLETE` i `LESSON_END` → `LED_SET(0)`. `LESSON_START` oraz `HIT`/`MISS` są pomijane. |
+| brak obu | Nic nie jest wysyłane. Lekcja działa wyłącznie na ekranie aplikacji. |
+
 ---
 
 ## 6. Walidacja katalogu
@@ -244,7 +291,8 @@ Stan obecnego katalogu: utwór *Hallelujah* zawiera `D5`, `E5` i `F#5` (MIDI 74,
 | `BATTERY_STATE.flags` bit 2 | `BatteryStatus.isLow` |
 | `LESSON_START.total_steps` | `Lesson.steps.size` |
 | `LESSON_STEP.index` | `LessonProgress.currentIndex` |
-| `LESSON_STEP.mask` | bit `stringFor(currentStep.pitch)` (pusta maska, gdy brak struny) |
+| `LESSON_STEP.mask` | bit `stringFor(currentStep.pitch)` (pusta maska, gdy brak struny), wyliczany ponownie po każdej zmianie `InstrumentState` |
+| `DEVICE_INFO.caps` | `InstrumentCapabilities` (`leds`, `battery`, `lesson`; nieznane bity są pomijane) |
 | `LESSON_RESULT.result` | wynik kroku: `MISS`, `HIT`, `COMPLETE` (`IGNORED` nie jest wysyłany) |
 
 Odwzorowanie ramki na model zwraca „brak wartości” zamiast zgłaszać wyjątek, gdy pola są niepoprawne. Należy ono do warstwy urządzenia (klient BLE i kodek), a nie do modelu domenowego.
@@ -263,3 +311,4 @@ Model **MUSI** przechodzić testy jednostkowe, które obejmują co najmniej:
 6. Postęp lekcji: `HIT` przesuwa krok, `MISS` nie przesuwa. Ostatni `HIT` daje `COMPLETE`, a potem wszystkie zdarzenia są `IGNORED`. Zagranie `G#4` przy oczekiwanym `G4` to `MISS`. W stanie `PAUSED` zdarzenia są `IGNORED`.
 7. Walidacja całego `songs.json` kończy się bez wyjątku: *Hallelujah* jest `Invalid`, a pozostałe utwory `Valid`.
 8. Ramki `STRING_EVENT` i `CONFIG_STATE` z [`test-vectors.json`](protocol/test-vectors.json) poprawnie przekładają się na `NoteEvent` i `InstrumentState`.
+9. Sterowanie lekcją z `FakeInstrumentRepository` (`InstrumentLessonControllerTest`, `SongViewModelTest`) wysyła komendy z tabel w §5.3. Obejmuje to: pełną lekcję, pauzę i wznowienie, powtórzenie, utratę i odzyskanie połączenia, start bez połączenia, zmianę strojenia w trakcie kroku oraz harfę bez `CAP_LESSON`.

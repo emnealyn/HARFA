@@ -1,9 +1,11 @@
 package com.example.harpapp.device.simulator
 
+import com.example.harpapp.device.bluetooth.instrumentCapabilitiesOf
 import com.example.harpapp.device.bluetooth.toBatteryStatus
 import com.example.harpapp.domain.model.BatteryPowerState
 import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
@@ -54,6 +56,9 @@ class FakeInstrumentRepository(
 
     private val _instrumentState = MutableStateFlow(InstrumentState.DEFAULT)
     override val instrumentState: Flow<InstrumentState> = _instrumentState.asStateFlow()
+
+    private val _capabilities = MutableStateFlow(InstrumentCapabilities.NONE)
+    override val capabilities: Flow<InstrumentCapabilities> = _capabilities.asStateFlow()
 
     // --- Stan widoczny dla panelu demo ---
 
@@ -128,17 +133,20 @@ class FakeInstrumentRepository(
         state: ConnectionState,
         deviceName: String? = _connectedDeviceName.value
     ) {
-        _connectionState.value = state
         if (state == ConnectionState.CONNECTED) {
             _connectedDeviceName.value = deviceName
+            _capabilities.value = instrumentCapabilitiesOf(config.capabilities)
         } else if (state == ConnectionState.DISCONNECTED) {
             clearLessonState()
+            _capabilities.value = InstrumentCapabilities.NONE
         }
+        _connectionState.value = state
     }
 
     /** Nagłe zerwanie połączenia: harfa kończy lekcję i gasi diody (spec §6 pkt 8). */
     fun simulateConnectionLoss() {
         _connectionState.value = ConnectionState.DISCONNECTED
+        _capabilities.value = InstrumentCapabilities.NONE
         clearLessonState()
     }
 
@@ -266,6 +274,7 @@ class FakeInstrumentRepository(
         _connectedDeviceName.value = device.name
         _connectedDeviceId.value = config.deviceId
         clearLessonState()
+        _capabilities.value = instrumentCapabilitiesOf(config.capabilities)
         _connectionState.value = ConnectionState.CONNECTED
 
         // Jak po handshake: CONFIG_STATE, potem BATTERY_STATE (spec §6).
@@ -291,6 +300,7 @@ class FakeInstrumentRepository(
 
     override fun disconnect() {
         _connectionState.value = ConnectionState.DISCONNECTED
+        _capabilities.value = InstrumentCapabilities.NONE
         clearLessonState()
     }
 
