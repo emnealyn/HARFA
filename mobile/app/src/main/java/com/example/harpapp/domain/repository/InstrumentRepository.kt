@@ -6,6 +6,7 @@ import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
+import com.example.harpapp.domain.model.BatteryStatus
 import kotlinx.coroutines.flow.Flow
 
 interface InstrumentRepository {
@@ -22,6 +23,8 @@ interface InstrumentRepository {
 
     /** Aktualne strojenie harfy (`CONFIG_STATE`). Przed pierwszą ramką: [InstrumentState.DEFAULT]. */
     val instrumentState: Flow<InstrumentState>
+
+    val batteryStatus: Flow<BatteryStatus?>
 
     suspend fun scanForDevices()
 

@@ -66,4 +66,12 @@
     <string name="harp_battery_external_power">External power</string>
     <string name="harp_battery_low">Low battery</string>
     <string name="harp_value_unavailable" translatable="false">—</string>
+    <string name="battery_description">Harp battery: %1$s</string>
+    <string name="battery_level_percent">%1$d%%</string>
+    <string name="battery_level_unknown">level unknown</string>
+    <string name="battery_state_discharging">discharging</string>
+    <string name="battery_state_charging">charging</string>
+    <string name="battery_state_external_power">on external power</string>
+    <string name="battery_state_low">low level</string>
+    <string name="battery_low_warning">Harp battery is low. Connect the charger soon.</string>
 </resources>

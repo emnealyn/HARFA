@@ -172,6 +172,8 @@ Tryb nauki reaguje **wyłącznie** na `NoteEvent`. Stary format mocka (pojedyncz
 
 Źródłem `NoteEvent` jest klient BLE GATT (ADR 007). `HarpSession` dekoduje notyfikacje TX harfy i kontroluje numery sekwencyjne, a następnie `InstrumentEventStream` zamienia `STRING_EVENT` i `CONFIG_STATE` na `NoteEvent` i `InstrumentState`. Oba trafiają do `InstrumentRepository` jako osobne strumienie (`noteEvents`, `instrumentState`) oraz do wspólnego strumienia `events`. Mock harfy musi wysyłać ramki protokołu przez BLE, bo stary mock SPP nie jest obsługiwany.
 
+`InstrumentEventStream` zamienia też `BATTERY_STATE` na `BatteryStatus`. `InstrumentRepository.batteryStatus` udostępnia go tylko przy aktywnym połączeniu z harfą deklarującą `CAP_BATTERY`, a w pozostałych przypadkach ma wartość `null`.
+
 ---
 
 ## 5. Lekcja
@@ -249,6 +251,10 @@ Stan obecnego katalogu: utwór *Hallelujah* zawiera `D5`, `E5` i `F#5` (MIDI 74,
 | `CONFIG_STATE.octave_shift − 1` | `InstrumentState.octaveShift` |
 | `CONFIG_STATE.lever[i] − 1` | `InstrumentState.levers[NoteName o indeksie i]` (`Accidental`) |
 | `CONFIG_STATE.base_octave` | `InstrumentState.baseOctave` |
+| `BATTERY_STATE.percent` | `BatteryStatus.percent` (`0xFF` → `null`) |
+| `BATTERY_STATE.millivolts` | `BatteryStatus.millivolts` (`0` → `null`) |
+| `BATTERY_STATE.flags` bity 0–1 | `BatteryStatus.powerState` (priorytet: `CHARGING`, `EXTERNAL_POWER`, `DISCHARGING`) |
+| `BATTERY_STATE.flags` bit 2 | `BatteryStatus.isLow` |
 | `LESSON_START.total_steps` | `Lesson.steps.size` |
 | `LESSON_STEP.index` | `LessonProgress.currentIndex` |
 | `LESSON_STEP.mask` | bit `stringFor(currentStep.pitch)` (pusta maska, gdy brak struny) |

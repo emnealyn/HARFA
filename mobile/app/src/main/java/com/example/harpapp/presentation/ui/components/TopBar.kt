@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.harpapp.R
+import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.presentation.ui.theme.HARPAppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -24,7 +25,8 @@ fun TopBar(
     isBluetoothConnected: Boolean,
     onBluetoothClick: () -> Unit,
     modifier: Modifier = Modifier,
-    connectedDeviceName: String? = null
+    connectedDeviceName: String? = null,
+    batteryStatus: BatteryStatus? = null
 ) {
     CenterAlignedTopAppBar(
         title = {
@@ -44,6 +46,12 @@ fun TopBar(
             }
         },
         actions = {
+            val deviceStatusColor = if (isBluetoothConnected) {
+                Color.Green.copy(alpha = 0.8f)
+            } else {
+                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+            }
+
             Row(
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
             ) {
@@ -51,11 +59,7 @@ fun TopBar(
                     Text(
                         text = connectedDeviceName,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (isBluetoothConnected) {
-                            Color.Green.copy(alpha = 0.8f)
-                        } else {
-                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
-                        },
+                        color = deviceStatusColor,
                         modifier = Modifier
                     )
                 }
@@ -64,19 +68,23 @@ fun TopBar(
                     onClick = onBluetoothClick,
                     modifier = Modifier.size(36.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isBluetoothConnected) {
-                            Icons.Default.BluetoothConnected
-                        } else {
-                            Icons.Default.BluetoothDisabled
-                        },
-                        contentDescription = stringResource(R.string.bluetooth_status),
-                        tint = if (isBluetoothConnected) {
-                            Color.Green
-                        } else {
-                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
-                        }
-                    )
+                    if (batteryStatus != null) {
+                        BatteryIndicator(status = batteryStatus, tint = deviceStatusColor)
+                    } else {
+                        Icon(
+                            imageVector = if (isBluetoothConnected) {
+                                Icons.Default.BluetoothConnected
+                            } else {
+                                Icons.Default.BluetoothDisabled
+                            },
+                            contentDescription = stringResource(R.string.bluetooth_status),
+                            tint = if (isBluetoothConnected) {
+                                Color.Green
+                            } else {
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+                            }
+                        )
+                    }
                 }
             }
         },
