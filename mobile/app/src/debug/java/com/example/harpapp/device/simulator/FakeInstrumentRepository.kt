@@ -14,6 +14,7 @@ import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.protocol.Capabilities
 import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.LessonResultCode
+import com.example.harpapp.protocol.SessionIds
 import com.example.harpapp.protocol.StateRequestFlags
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -98,6 +99,9 @@ class FakeInstrumentRepository(
     private var presetDevices: List<InstrumentDevice>? = null
     private var lastDevice: InstrumentDevice? = null
     private var timestampMs = 0
+
+    private var lessonStepMask = 0
+    private var lessonPaused = false
 
     val sentCommands: List<InstrumentCommand>
         get() = recordedCommands.toList()
@@ -216,6 +220,7 @@ class FakeInstrumentRepository(
         val status = requireNotNull(
             HarpMessage.BatteryState(
                 seq = 0,
+                sid = SessionIds.MIN,
                 percent = percent,
                 millivolts = millivolts,
                 flags = flags
@@ -294,11 +299,21 @@ class FakeInstrumentRepository(
     private suspend fun react(command: InstrumentCommand) {
         when (command) {
             is InstrumentCommand.SetLeds -> _litStrings.value = command.mask
-            is InstrumentCommand.StartLesson -> _litStrings.value = 0
-            is InstrumentCommand.LessonStep -> _litStrings.value = command.mask
+            is InstrumentCommand.StartLesson -> clearLessonState()
+            is InstrumentCommand.LessonStep -> {
+                lessonStepMask = command.mask
+                if (!lessonPaused) _litStrings.value = command.mask
+            }
             is InstrumentCommand.LessonResult ->
-                if (command.result == LessonResultCode.COMPLETE) _litStrings.value = 0
-            InstrumentCommand.EndLesson -> _litStrings.value = 0
+                if (command.result == LessonResultCode.COMPLETE) {
+                    lessonStepMask = 0
+                    _litStrings.value = 0
+                }
+            InstrumentCommand.EndLesson -> clearLessonState()
+            is InstrumentCommand.PauseLesson -> {
+                lessonPaused = command.paused
+                _litStrings.value = if (command.paused) 0 else lessonStepMask
+            }
             is InstrumentCommand.RequestState -> {
                 if (command.flags and StateRequestFlags.CONFIG != 0) {
                     emitConfiguration(_instrumentState.value)
@@ -329,6 +344,7 @@ class FakeInstrumentRepository(
             is InstrumentCommand.StartLesson,
             is InstrumentCommand.LessonStep,
             is InstrumentCommand.LessonResult,
+            is InstrumentCommand.PauseLesson,
             InstrumentCommand.EndLesson ->
                 require(caps and Capabilities.LESSON != 0) {
                     "Instrument does not support lesson commands"
@@ -337,6 +353,8 @@ class FakeInstrumentRepository(
     }
 
     private fun clearLessonState() {
+        lessonStepMask = 0
+        lessonPaused = false
         _litStrings.value = 0
     }
 

@@ -75,4 +75,8 @@ sealed interface InstrumentCommand {
     }
 
     data object EndLesson : InstrumentCommand
+
+    data class PauseLesson(
+        val paused: Boolean
+    ) : InstrumentCommand
 }

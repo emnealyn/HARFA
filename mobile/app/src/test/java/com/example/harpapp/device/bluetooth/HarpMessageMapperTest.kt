@@ -82,18 +82,18 @@ class HarpMessageMapperTest {
 
     @Test
     fun niepoprawneWartosciDajaNullZamiastWyjatku() {
-        assertNull(HarpMessage.StringEvent(seq = 0, stringId = 15, midi = 60, tMs = 0).toNoteEvent())
-        assertNull(HarpMessage.ConfigState(seq = 0, octaveShift = 2, lever = List(7) { 0 }, baseOctave = 2).toInstrumentState())
-        assertNull(HarpMessage.ConfigState(seq = 0, octaveShift = 0, lever = List(6) { 0 }, baseOctave = 2).toInstrumentState())
-        assertNull(HarpMessage.ConfigState(seq = 0, octaveShift = 0, lever = List(7) { if (it == 3) 2 else 0 }, baseOctave = 2).toInstrumentState())
-        assertNull(HarpMessage.BatteryState(seq = 0, percent = 101, millivolts = 3900, flags = 0).toBatteryStatus())
+        assertNull(HarpMessage.StringEvent(seq = 0, sid = 1, stringId = 15, midi = 60, tMs = 0).toNoteEvent())
+        assertNull(HarpMessage.ConfigState(seq = 0, sid = 1, octaveShift = 2, lever = List(7) { 0 }, baseOctave = 2).toInstrumentState())
+        assertNull(HarpMessage.ConfigState(seq = 0, sid = 1, octaveShift = 0, lever = List(6) { 0 }, baseOctave = 2).toInstrumentState())
+        assertNull(HarpMessage.ConfigState(seq = 0, sid = 1, octaveShift = 0, lever = List(7) { if (it == 3) 2 else 0 }, baseOctave = 2).toInstrumentState())
+        assertNull(HarpMessage.BatteryState(seq = 0, sid = 1, percent = 101, millivolts = 3900, flags = 0).toBatteryStatus())
     }
 
     private fun batteryVector(name: String): BatteryStatus? =
         (decodeVector(name) as HarpMessage.BatteryState).toBatteryStatus()
 
     private fun batteryWithFlags(flags: Int): BatteryStatus =
-        HarpMessage.BatteryState(seq = 0, percent = 50, millivolts = 3800, flags = flags).toBatteryStatus()!!
+        HarpMessage.BatteryState(seq = 0, sid = 1, percent = 50, millivolts = 3800, flags = flags).toBatteryStatus()!!
 
     @Test
     fun batteryStateBezFlagOznaczaRozladowywanie() {

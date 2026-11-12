@@ -26,11 +26,13 @@ object TestVectors {
         val d = vector.getAsJsonObject("decoded")
         fun int(name: String) = d.get(name).asInt
         val seq = int("seq")
+        val sid = int("sid")
 
         return when (val type = d.get("type").asString) {
-            "HELLO" -> HarpMessage.Hello(seq, int("proto_major"), int("proto_minor"))
+            "HELLO" -> HarpMessage.Hello(seq, sid, int("proto_major"), int("proto_minor"))
             "DEVICE_INFO" -> HarpMessage.DeviceInfo(
                 seq = seq,
+                sid = sid,
                 protoMajor = int("proto_major"),
                 protoMinor = int("proto_minor"),
                 fwMajor = int("fw_major"),
@@ -41,22 +43,24 @@ object TestVectors {
                 caps = int("caps"),
                 deviceId = d.get("device_id").asLong
             )
-            "STATE_REQUEST" -> HarpMessage.StateRequest(seq, int("what"))
-            "ACK" -> HarpMessage.Ack(seq, int("ack_seq"), int("status"))
-            "ERROR" -> HarpMessage.Error(seq, int("code"), int("ref_seq"), int("ref_type"))
-            "BATTERY_STATE" -> HarpMessage.BatteryState(seq, int("percent"), int("millivolts"), int("flags"))
-            "STRING_EVENT" -> HarpMessage.StringEvent(seq, int("string_id"), int("midi"), int("t_ms"))
+            "STATE_REQUEST" -> HarpMessage.StateRequest(seq, sid, int("what"))
+            "ACK" -> HarpMessage.Ack(seq, sid, int("ack_seq"), int("status"))
+            "ERROR" -> HarpMessage.Error(seq, sid, int("code"), int("ref_seq"), int("ref_type"))
+            "BATTERY_STATE" -> HarpMessage.BatteryState(seq, sid, int("percent"), int("millivolts"), int("flags"))
+            "STRING_EVENT" -> HarpMessage.StringEvent(seq, sid, int("string_id"), int("midi"), int("t_ms"))
             "CONFIG_STATE" -> HarpMessage.ConfigState(
                 seq = seq,
+                sid = sid,
                 octaveShift = int("octave_shift"),
                 lever = d.getAsJsonArray("lever").map { it.asInt },
                 baseOctave = int("base_octave")
             )
-            "LED_SET" -> HarpMessage.LedSet(seq, int("mask"), int("mode"))
-            "LESSON_START" -> HarpMessage.LessonStart(seq, int("total_steps"))
-            "LESSON_STEP" -> HarpMessage.LessonStep(seq, int("index"), int("mask"))
-            "LESSON_RESULT" -> HarpMessage.LessonResult(seq, int("result"))
-            "LESSON_END" -> HarpMessage.LessonEnd(seq)
+            "LED_SET" -> HarpMessage.LedSet(seq, sid, int("mask"), int("mode"))
+            "LESSON_START" -> HarpMessage.LessonStart(seq, sid, int("total_steps"))
+            "LESSON_STEP" -> HarpMessage.LessonStep(seq, sid, int("index"), int("mask"))
+            "LESSON_RESULT" -> HarpMessage.LessonResult(seq, sid, int("result"))
+            "LESSON_END" -> HarpMessage.LessonEnd(seq, sid)
+            "LESSON_PAUSE" -> HarpMessage.LessonPause(seq, sid, int("paused"))
             else -> throw IllegalArgumentException("Unknown message type in test vector: $type")
         }
     }

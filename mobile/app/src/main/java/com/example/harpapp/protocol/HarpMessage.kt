@@ -3,15 +3,18 @@ package com.example.harpapp.protocol
 // Wiadomości protokołu BLE. Pola u8/u16 są przechowywane jako Int, pole u32 jako Long.
 sealed class HarpMessage(val type: MessageType) {
     abstract val seq: Int
+    abstract val sid: Int
 
     data class Hello(
         override val seq: Int,
+        override val sid: Int,
         val protoMajor: Int,
         val protoMinor: Int
     ) : HarpMessage(MessageType.HELLO)
 
     data class DeviceInfo(
         override val seq: Int,
+        override val sid: Int,
         val protoMajor: Int,
         val protoMinor: Int,
         val fwMajor: Int,
@@ -25,18 +28,21 @@ sealed class HarpMessage(val type: MessageType) {
 
     data class StateRequest(
         override val seq: Int,
+        override val sid: Int,
         val what: Int
     ) : HarpMessage(MessageType.STATE_REQUEST)
 
     // status jako Int, bo nowe kody mogą pojawić się w kolejnych wersjach minor
     data class Ack(
         override val seq: Int,
+        override val sid: Int,
         val ackSeq: Int,
         val status: Int
     ) : HarpMessage(MessageType.ACK)
 
     data class Error(
         override val seq: Int,
+        override val sid: Int,
         val code: Int,
         val refSeq: Int,
         val refType: Int
@@ -44,6 +50,7 @@ sealed class HarpMessage(val type: MessageType) {
 
     data class BatteryState(
         override val seq: Int,
+        override val sid: Int,
         val percent: Int,
         val millivolts: Int,
         val flags: Int
@@ -51,6 +58,7 @@ sealed class HarpMessage(val type: MessageType) {
 
     data class StringEvent(
         override val seq: Int,
+        override val sid: Int,
         val stringId: Int,
         val midi: Int,
         val tMs: Int
@@ -59,6 +67,7 @@ sealed class HarpMessage(val type: MessageType) {
     // Wartości logiczne -1, 0, +1 (bez offsetu +1 stosowanego w ramce)
     data class ConfigState(
         override val seq: Int,
+        override val sid: Int,
         val octaveShift: Int,
         val lever: List<Int>,
         val baseOctave: Int
@@ -66,27 +75,38 @@ sealed class HarpMessage(val type: MessageType) {
 
     data class LedSet(
         override val seq: Int,
+        override val sid: Int,
         val mask: Int,
         val mode: Int
     ) : HarpMessage(MessageType.LED_SET)
 
     data class LessonStart(
         override val seq: Int,
+        override val sid: Int,
         val totalSteps: Int
     ) : HarpMessage(MessageType.LESSON_START)
 
     data class LessonStep(
         override val seq: Int,
+        override val sid: Int,
         val index: Int,
         val mask: Int
     ) : HarpMessage(MessageType.LESSON_STEP)
 
     data class LessonResult(
         override val seq: Int,
+        override val sid: Int,
         val result: Int
     ) : HarpMessage(MessageType.LESSON_RESULT)
 
     data class LessonEnd(
-        override val seq: Int
+        override val seq: Int,
+        override val sid: Int
     ) : HarpMessage(MessageType.LESSON_END)
+
+    data class LessonPause(
+        override val seq: Int,
+        override val sid: Int,
+        val paused: Int
+    ) : HarpMessage(MessageType.LESSON_PAUSE)
 }

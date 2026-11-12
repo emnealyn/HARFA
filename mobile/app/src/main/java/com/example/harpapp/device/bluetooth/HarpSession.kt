@@ -4,6 +4,7 @@ import com.example.harpapp.protocol.DecodeResult
 import com.example.harpapp.protocol.HarpCodec
 import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.HarpProtocol
+import com.example.harpapp.protocol.SessionIds
 import com.example.harpapp.protocol.StatusCode
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
@@ -12,6 +13,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import java.io.IOException
+import kotlin.random.Random
 
 internal sealed interface HarpSessionEvent {
     data class Message(
@@ -20,6 +22,7 @@ internal sealed interface HarpSessionEvent {
     ) : HarpSessionEvent
 
     data class InvalidFrame(val status: StatusCode) : HarpSessionEvent
+    data class StaleFrame(val message: HarpMessage, val currentSid: Int) : HarpSessionEvent
 }
 
 internal data class SequenceGap(
@@ -28,6 +31,7 @@ internal data class SequenceGap(
 )
 
 internal class HarpSession(
+    initialSid: Int = Random.nextInt(SessionIds.MIN, SessionIds.MAX + 1),
     private val sendFrame: suspend (ByteArray) -> Unit
 ) {
 
@@ -38,9 +42,17 @@ internal class HarpSession(
     private var lastIncomingSequence: Int? = null
     private val commandMutex = Mutex()
 
+    private var nextSid = initialSid.also {
+        require(it in SessionIds.MIN..SessionIds.MAX) { "Invalid initial sid $it" }
+    }
+
+    var currentSid: Int = SessionIds.NONE
+        private set
+
     suspend fun start(): HarpMessage.DeviceInfo {
         reset()
         state = State.HANDSHAKING
+        currentSid = allocateSid()
 
         repeat(MAX_HELLO_ATTEMPTS) { attempt ->
             val waiter = CompletableDeferred<HarpMessage.DeviceInfo>()
@@ -51,6 +63,7 @@ internal class HarpSession(
                     HarpCodec.encode(
                         HarpMessage.Hello(
                             seq = HELLO_SEQUENCE,
+                            sid = currentSid,
                             protoMajor = HarpProtocol.VERSION_MAJOR,
                             protoMinor = HarpProtocol.VERSION_MINOR
                         )
@@ -67,22 +80,22 @@ internal class HarpSession(
             } catch (exception: TimeoutCancellationException) {
                 deviceInfoWaiter = null
                 if (attempt == MAX_HELLO_ATTEMPTS - 1) {
-                    state = State.IDLE
+                    endSession()
                     throw HarpHandshakeException(
                         "No DEVICE_INFO received after $MAX_HELLO_ATTEMPTS HELLO attempts"
                     )
                 }
             } catch (exception: HarpHandshakeException) {
                 deviceInfoWaiter = null
-                state = State.IDLE
+                endSession()
                 throw exception
             } catch (exception: CancellationException) {
                 deviceInfoWaiter = null
-                state = State.IDLE
+                endSession()
                 throw exception
             } catch (exception: IOException) {
                 deviceInfoWaiter = null
-                state = State.IDLE
+                endSession()
                 throw exception
             }
         }
@@ -90,13 +103,18 @@ internal class HarpSession(
         error("Handshake did not complete")
     }
 
-    suspend fun sendCommand(messageFactory: (Int) -> HarpMessage) {
+    suspend fun sendCommand(expectedSid: Int, messageFactory: (seq: Int, sid: Int) -> HarpMessage) {
         commandMutex.withLock {
             check(state == State.READY) { "HARFA session is not ready" }
+            if (expectedSid != currentSid) {
+                throw HarpStaleSessionException(
+                    "Command prepared for session $expectedSid, current session is $currentSid"
+                )
+            }
 
             val sequence = nextOutgoingSequence
             nextOutgoingSequence = (nextOutgoingSequence + 1) and 0xFF
-            val message = messageFactory(sequence)
+            val message = messageFactory(sequence, currentSid)
             val frame = HarpCodec.encode(message)
 
             repeat(MAX_COMMAND_ATTEMPTS) { attempt ->
@@ -112,12 +130,15 @@ internal class HarpSession(
                     val status = withTimeout(COMMAND_ACK_TIMEOUT_MS) {
                         waiter.await()
                     }
-                    if (status != StatusCode.OK.code) {
-                        throw HarpCommandException(
+                    when (status) {
+                        StatusCode.OK.code -> return@withLock
+                        StatusCode.STALE_SESSION.code -> throw HarpStaleSessionException(
+                            "Instrument rejected ${message.type} from session ${message.sid}"
+                        )
+                        else -> throw HarpCommandException(
                             "Instrument rejected ${message.type} with status=$status"
                         )
                     }
-                    return@withLock
                 } catch (exception: TimeoutCancellationException) {
                     if (attempt == MAX_COMMAND_ATTEMPTS - 1) {
                         throw HarpCommandTimeoutException(
@@ -135,7 +156,14 @@ internal class HarpSession(
 
     fun handleIncoming(frame: ByteArray): HarpSessionEvent {
         return when (val result = HarpCodec.decode(frame)) {
-            is DecodeResult.Failure -> HarpSessionEvent.InvalidFrame(result.error)
+            is DecodeResult.Failure -> {
+                if (state == State.HANDSHAKING && result.error == StatusCode.UNSUPPORTED_VERSION) {
+                    deviceInfoWaiter?.completeExceptionally(
+                        HarpHandshakeException("Instrument uses an unsupported protocol version")
+                    )
+                }
+                HarpSessionEvent.InvalidFrame(result.error)
+            }
             is DecodeResult.Success -> handleMessage(result.message)
         }
     }
@@ -145,21 +173,36 @@ internal class HarpSession(
         deviceInfoWaiter = null
         pendingAck?.waiter?.cancel(CancellationException("HARFA session reset"))
         pendingAck = null
+        endSession()
+    }
+
+    private fun endSession() {
         nextOutgoingSequence = 0
         lastIncomingSequence = null
+        currentSid = SessionIds.NONE
         state = State.IDLE
+    }
+
+    private fun allocateSid(): Int {
+        val sid = nextSid
+        nextSid = if (sid == SessionIds.MAX) SessionIds.MIN else sid + 1
+        return sid
     }
 
     private fun handleMessage(message: HarpMessage): HarpSessionEvent {
         if (state == State.HANDSHAKING) {
             when (message) {
                 is HarpMessage.DeviceInfo -> {
+                    if (message.sid != currentSid) return HarpSessionEvent.StaleFrame(message, currentSid)
                     lastIncomingSequence = message.seq
                     deviceInfoWaiter?.complete(message)
                     return HarpSessionEvent.Message(message)
                 }
 
                 is HarpMessage.Error -> {
+                    if (message.sid != currentSid && message.sid != SessionIds.NONE) {
+                        return HarpSessionEvent.StaleFrame(message, currentSid)
+                    }
                     deviceInfoWaiter?.completeExceptionally(
                         HarpHandshakeException(
                             "Instrument rejected HELLO with error ${message.code}"
@@ -170,6 +213,10 @@ internal class HarpSession(
 
                 else -> Unit
             }
+        }
+
+        if (state == State.READY && message.sid != currentSid) {
+            return HarpSessionEvent.StaleFrame(message, currentSid)
         }
 
         val sequenceGap = if (state == State.READY) {
@@ -255,5 +302,9 @@ internal open class HarpCommandException(
 ) : IOException(message)
 
 internal class HarpCommandTimeoutException(
+    message: String
+) : HarpCommandException(message)
+
+internal class HarpStaleSessionException(
     message: String
 ) : HarpCommandException(message)

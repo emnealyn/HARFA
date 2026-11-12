@@ -13,6 +13,7 @@ import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.HarpProtocol
+import com.example.harpapp.protocol.LessonPauseCode
 import com.example.harpapp.protocol.StateRequestFlags
 import com.example.harpapp.protocol.Capabilities
 import kotlinx.coroutines.flow.combine
@@ -160,7 +161,7 @@ class BluetoothInstrumentRepository internal constructor(
                 val capabilities = deviceCapabilities.value
                     ?: throw IllegalStateException("HARFA instrument is not connected")
                 validateCommandCapability(command, capabilities)
-                session.sendCommand { sequence -> command.toHarpMessage(sequence) }
+                session.sendCommand(session.currentSid) { sequence, sid -> command.toHarpMessage(sequence, sid) }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: HarpCommandTimeoutException) {
@@ -188,6 +189,14 @@ class BluetoothInstrumentRepository internal constructor(
         when (val event = session.handleIncoming(frame)) {
             is HarpSessionEvent.InvalidFrame -> {
                 Log.e(TAG, "Ignoring invalid HARFA frame: ${event.status}")
+            }
+
+            is HarpSessionEvent.StaleFrame -> {
+                Log.w(
+                    TAG,
+                    "Ignoring HARFA ${event.message.type} from session ${event.message.sid}, " +
+                        "current session is ${event.currentSid}"
+                )
             }
 
             is HarpSessionEvent.Message -> {
@@ -253,6 +262,7 @@ class BluetoothInstrumentRepository internal constructor(
             is InstrumentCommand.StartLesson,
             is InstrumentCommand.LessonStep,
             is InstrumentCommand.LessonResult,
+            is InstrumentCommand.PauseLesson,
             InstrumentCommand.EndLesson -> {
                 require(capabilities and Capabilities.LESSON != 0) {
                     "Instrument does not support lesson commands"
@@ -261,20 +271,26 @@ class BluetoothInstrumentRepository internal constructor(
         }
     }
 
-    private fun InstrumentCommand.toHarpMessage(sequence: Int): HarpMessage {
+    private fun InstrumentCommand.toHarpMessage(sequence: Int, sid: Int): HarpMessage {
         return when (this) {
             is InstrumentCommand.RequestState ->
-                HarpMessage.StateRequest(sequence, flags)
+                HarpMessage.StateRequest(sequence, sid, flags)
             is InstrumentCommand.SetLeds ->
-                HarpMessage.LedSet(sequence, mask, mode)
+                HarpMessage.LedSet(sequence, sid, mask, mode)
             is InstrumentCommand.StartLesson ->
-                HarpMessage.LessonStart(sequence, totalSteps)
+                HarpMessage.LessonStart(sequence, sid, totalSteps)
             is InstrumentCommand.LessonStep ->
-                HarpMessage.LessonStep(sequence, index, mask)
+                HarpMessage.LessonStep(sequence, sid, index, mask)
             is InstrumentCommand.LessonResult ->
-                HarpMessage.LessonResult(sequence, result)
+                HarpMessage.LessonResult(sequence, sid, result)
             InstrumentCommand.EndLesson ->
-                HarpMessage.LessonEnd(sequence)
+                HarpMessage.LessonEnd(sequence, sid)
+            is InstrumentCommand.PauseLesson ->
+                HarpMessage.LessonPause(
+                    sequence,
+                    sid,
+                    if (paused) LessonPauseCode.PAUSE else LessonPauseCode.RESUME
+                )
         }
     }
 
