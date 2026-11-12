@@ -13,6 +13,7 @@ import com.example.harpapp.domain.model.LessonStep
 import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.protocol.Capabilities
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -244,5 +245,36 @@ class InstrumentLessonControllerTest {
 
         assertEquals(1, errors.size)
         assertEquals(listOf(InstrumentCommand.EndLesson), repository.sentCommands)
+    }
+
+    @Test
+    fun sendCancelledByClosedConnectionDoesNotStopControllerNorReportError() = runBlocking {
+        repository.reconnect()
+        repository.failNextCommand(CancellationException("BLE GATT connection was cancelled"))
+        val progress = LessonProgress.start(lessonOnStrings(11, 3))
+
+        controller.start(progress)
+        controller.resume(progress)
+
+        assertTrue(errors.isEmpty())
+        assertEquals(
+            listOf(
+                InstrumentCommand.StartLesson(totalSteps = 2),
+                InstrumentCommand.LessonStep(index = 0, mask = 1 shl 11)
+            ),
+            repository.sentCommands
+        )
+    }
+
+    @Test
+    fun tuningChangeAfterCancelledSendSendsNothing() = runBlocking {
+        repository.reconnect()
+        repository.failNextCommand(CancellationException("BLE GATT connection was cancelled"))
+        controller.start(LessonProgress.start(lessonOnStrings(11, 3)))
+
+        repository.emitConfiguration(sharpenedString(11))
+
+        assertTrue(repository.sentCommands.isEmpty())
+        assertTrue(errors.isEmpty())
     }
 }
