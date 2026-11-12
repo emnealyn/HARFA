@@ -1,6 +1,7 @@
 package com.example.harpapp.device.bluetooth
 
 import com.example.harpapp.domain.model.Accidental
+import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.BatteryPowerState
 import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.InstrumentState
@@ -8,6 +9,7 @@ import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.model.NoteName
 import com.example.harpapp.domain.model.OctaveShift
 import com.example.harpapp.domain.model.StringId
+import com.example.harpapp.protocol.Capabilities
 import com.example.harpapp.protocol.DecodeResult
 import com.example.harpapp.protocol.HarpCodec
 import com.example.harpapp.protocol.HarpMessage
@@ -77,6 +79,19 @@ class HarpMessageMapperTest {
                 Accidental.FLAT, Accidental.SHARP, Accidental.FLAT
             ),
             NoteName.entries.map { state.lever(it) }
+        )
+    }
+
+    @Test
+    fun maskaCapsZDeviceInfoDajeMozliwosciInstrumentu() {
+        assertEquals(InstrumentCapabilities.NONE, instrumentCapabilitiesOf(0))
+        assertEquals(
+            InstrumentCapabilities(leds = true, battery = false, lesson = false),
+            instrumentCapabilitiesOf(Capabilities.LEDS)
+        )
+        assertEquals(
+            InstrumentCapabilities(leds = true, battery = true, lesson = true),
+            instrumentCapabilitiesOf(Capabilities.LEDS or Capabilities.BATTERY or Capabilities.LESSON or Capabilities.DISPLAY)
         )
     }
 

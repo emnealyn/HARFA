@@ -5,6 +5,7 @@ import android.content.Context
 import android.util.Log
 import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
@@ -26,7 +27,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -45,6 +46,8 @@ class BluetoothInstrumentRepository internal constructor(
     private val session = HarpSession { frame -> transport.send(frame) }
     private val eventStream = InstrumentEventStream()
     private val deviceCapabilities = MutableStateFlow<Int?>(null)
+    override val capabilities: Flow<InstrumentCapabilities> =
+        deviceCapabilities.map { it?.let(::instrumentCapabilitiesOf) ?: InstrumentCapabilities.NONE }
     private var stateRecoveryRequested = false
     private var stateRecoveryJob: Job? = null
 

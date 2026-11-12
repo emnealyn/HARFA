@@ -11,6 +11,16 @@ enum class ConnectionState {
     CONNECTED
 }
 
+data class InstrumentCapabilities(
+    val leds: Boolean = false,
+    val battery: Boolean = false,
+    val lesson: Boolean = false
+) {
+    companion object {
+        val NONE = InstrumentCapabilities()
+    }
+}
+
 enum class BatteryPowerState {
     DISCHARGING,
     CHARGING,
@@ -53,7 +63,12 @@ sealed interface InstrumentCommand {
     data class SetLeds(
         val mask: Int,
         val mode: Int
-    ) : InstrumentCommand
+    ) : InstrumentCommand {
+        companion object {
+            const val STEADY = 0
+            const val BLINK = 1
+        }
+    }
 
     data class StartLesson(
         val totalSteps: Int

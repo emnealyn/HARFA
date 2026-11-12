@@ -1,14 +1,19 @@
 package com.example.harpapp.domain.usecase
 
 import com.example.harpapp.device.simulator.FakeInstrumentRepository
+import com.example.harpapp.device.simulator.SimulatorConfig
+import com.example.harpapp.domain.model.Accidental
 import com.example.harpapp.domain.model.HarpLayout
 import com.example.harpapp.domain.model.InstrumentCommand
+import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.InstrumentCommand.LessonResult
 import com.example.harpapp.domain.model.Lesson
 import com.example.harpapp.domain.model.LessonProgress
 import com.example.harpapp.domain.model.LessonStep
 import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.model.StringId
+import com.example.harpapp.protocol.Capabilities
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -104,6 +109,132 @@ class InstrumentLessonControllerTest {
         )
     }
 
+    private fun sharpenedString(string: Int) =
+        InstrumentState.DEFAULT.withLever(HarpLayout.noteNameOf(StringId.of(string)!!), Accidental.SHARP)
+
+    private fun expectedMask(state: InstrumentState, string: Int) =
+        state.stringFor(HarpLayout.basePitch(StringId.of(string)!!))?.let { 1 shl it.index } ?: 0
+
+    @Test
+    fun tuningChangeDuringStepResendsSameStepWithNewMask() = runBlocking {
+        repository.reconnect()
+        controller.start(LessonProgress.start(lessonOnStrings(11, 3)))
+        repository.clearRecordedCommands()
+
+        val retuned = sharpenedString(11)
+        repository.emitConfiguration(retuned)
+
+        val newMask = expectedMask(retuned, 11)
+        assertTrue(newMask != 1 shl 11)
+        assertEquals(
+            listOf(InstrumentCommand.LessonStep(index = 0, mask = newMask)),
+            repository.sentCommands
+        )
+        assertEquals(newMask, repository.litStrings.value)
+    }
+
+    @Test
+    fun tuningChangeAfterCompleteSendsNothing() = runBlocking {
+        repository.reconnect()
+        val progress = LessonProgress.start(lessonOnStrings(2))
+        controller.start(progress)
+        controller.onUpdate(progress.onNoteEvent(noteOn(2)))
+        repository.clearRecordedCommands()
+
+        repository.emitConfiguration(sharpenedString(2))
+
+        assertTrue(repository.sentCommands.isEmpty())
+    }
+
+    @Test
+    fun tuningChangeAfterConnectionLossSendsNothingUntilResumed() = runBlocking {
+        repository.reconnect()
+        val progress = LessonProgress.start(lessonOnStrings(11, 3))
+        controller.start(progress)
+
+        repository.simulateConnectionLoss()
+        repository.reconnect()
+        repository.clearRecordedCommands()
+        repository.emitConfiguration(sharpenedString(11))
+
+        assertTrue(repository.sentCommands.isEmpty())
+    }
+
+    @Test
+    fun resumeAfterReconnectUsesTuningReportedByHarp() = runBlocking {
+        repository.reconnect()
+        val progress = LessonProgress.start(lessonOnStrings(11, 3))
+        controller.start(progress)
+        repository.simulateConnectionLoss()
+
+        repository.reconnect()
+        controller.resume(progress)
+        repository.clearRecordedCommands()
+        val retuned = sharpenedString(11)
+        repository.emitConfiguration(retuned)
+
+        assertEquals(
+            listOf(InstrumentCommand.LessonStep(index = 0, mask = expectedMask(retuned, 11))),
+            repository.sentCommands
+        )
+    }
+
+    private fun runLessonOn(harp: FakeInstrumentRepository) = runBlocking {
+        val harpController = InstrumentLessonController.Factory(harp).create(scope) { errors += it }
+        harp.reconnect()
+        var progress = LessonProgress.start(lessonOnStrings(2, 4))
+        harpController.start(progress)
+        progress.onNoteEvent(noteOn(9)).also { harpController.onUpdate(it); progress = it.progress }
+        progress.onNoteEvent(noteOn(2)).also { harpController.onUpdate(it); progress = it.progress }
+        progress.onNoteEvent(noteOn(4)).also { harpController.onUpdate(it); progress = it.progress }
+        harpController.end()
+    }
+
+    @Test
+    fun ledsOnlyHarpGetsLedSetInsteadOfLessonCommands() {
+        val harp = FakeInstrumentRepository(SimulatorConfig(capabilities = Capabilities.LEDS))
+
+        runLessonOn(harp)
+
+        assertEquals(
+            listOf(
+                InstrumentCommand.SetLeds(1 shl 2, InstrumentCommand.SetLeds.STEADY),
+                InstrumentCommand.SetLeds(1 shl 4, InstrumentCommand.SetLeds.STEADY),
+                InstrumentCommand.SetLeds(0, InstrumentCommand.SetLeds.STEADY),
+                InstrumentCommand.SetLeds(0, InstrumentCommand.SetLeds.STEADY)
+            ),
+            harp.sentCommands
+        )
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun ledsOnlyHarpGetsLedSetAfterTuningChange() = runBlocking {
+        val harp = FakeInstrumentRepository(SimulatorConfig(capabilities = Capabilities.LEDS))
+        val harpController = InstrumentLessonController.Factory(harp).create(scope) { errors += it }
+        harp.reconnect()
+        harpController.start(LessonProgress.start(lessonOnStrings(11, 3)))
+        harp.clearRecordedCommands()
+
+        val retuned = sharpenedString(11)
+        harp.emitConfiguration(retuned)
+
+        assertEquals(
+            listOf(InstrumentCommand.SetLeds(expectedMask(retuned, 11), InstrumentCommand.SetLeds.STEADY)),
+            harp.sentCommands
+        )
+    }
+
+    @Test
+    fun harpWithoutLedsAndLessonReceivesNoLessonCommands() {
+        val harp = FakeInstrumentRepository(SimulatorConfig(capabilities = Capabilities.BATTERY))
+
+        runLessonOn(harp)
+
+        assertTrue(harp.sentCommands.isEmpty())
+        assertTrue(errors.isEmpty())
+    }
+
     @Test
     fun sendFailureIsReportedAndDoesNotStopQueue() = runBlocking {
         repository.reconnect()
@@ -114,5 +245,36 @@ class InstrumentLessonControllerTest {
 
         assertEquals(1, errors.size)
         assertEquals(listOf(InstrumentCommand.EndLesson), repository.sentCommands)
+    }
+
+    @Test
+    fun sendCancelledByClosedConnectionDoesNotStopControllerNorReportError() = runBlocking {
+        repository.reconnect()
+        repository.failNextCommand(CancellationException("BLE GATT connection was cancelled"))
+        val progress = LessonProgress.start(lessonOnStrings(11, 3))
+
+        controller.start(progress)
+        controller.resume(progress)
+
+        assertTrue(errors.isEmpty())
+        assertEquals(
+            listOf(
+                InstrumentCommand.StartLesson(totalSteps = 2),
+                InstrumentCommand.LessonStep(index = 0, mask = 1 shl 11)
+            ),
+            repository.sentCommands
+        )
+    }
+
+    @Test
+    fun tuningChangeAfterCancelledSendSendsNothing() = runBlocking {
+        repository.reconnect()
+        repository.failNextCommand(CancellationException("BLE GATT connection was cancelled"))
+        controller.start(LessonProgress.start(lessonOnStrings(11, 3)))
+
+        repository.emitConfiguration(sharpenedString(11))
+
+        assertTrue(repository.sentCommands.isEmpty())
+        assertTrue(errors.isEmpty())
     }
 }

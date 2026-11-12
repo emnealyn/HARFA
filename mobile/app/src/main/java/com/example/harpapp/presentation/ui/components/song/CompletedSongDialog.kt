@@ -3,13 +3,14 @@ package com.example.harpapp.presentation.ui.components.song
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.harpapp.R
 
 @Composable
-fun CompletedSongDialog(onDismiss: () -> Unit) {
+fun CompletedSongDialog(onDismiss: () -> Unit, onPlayAgain: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -24,6 +25,11 @@ fun CompletedSongDialog(onDismiss: () -> Unit) {
             ) {
                 Text(stringResource(R.string.ok))
             }
+        },
+        dismissButton = {
+            TextButton(onClick = onPlayAgain) {
+                Text(stringResource(R.string.play_again))
+            }
         }
     )
 }
@@ -31,5 +37,5 @@ fun CompletedSongDialog(onDismiss: () -> Unit) {
 @Preview
 @Composable
 fun CompletedSongDialogPreview() {
-    CompletedSongDialog(onDismiss = {})
+    CompletedSongDialog(onDismiss = {}, onPlayAgain = {})
 }

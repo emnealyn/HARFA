@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -55,6 +56,9 @@ fun SongScreen(
     val currentNoteIndex by viewModel.currentNoteIndex
     val learningComplete by viewModel.learningComplete
     val lessonIssues by viewModel.lessonIssues
+    val isLessonPaused by viewModel.isLessonPaused
+    val canToggleLessonPause by viewModel.canToggleLessonPause
+    val isPausedByConnection by viewModel.isPausedByConnection
 
     SongContent(
         song = song,
@@ -67,8 +71,66 @@ fun SongScreen(
         onDismissDialog = { viewModel.dismissLearningCompleteDialog() },
         lessonIssues = lessonIssues,
         onDismissLessonIssues = { viewModel.dismissLessonIssues() },
+        isLessonPaused = isLessonPaused,
+        canToggleLessonPause = canToggleLessonPause,
+        onLessonPauseClick = { viewModel.toggleLessonPause() },
+        onPlayAgainClick = { viewModel.restartLearning() },
+        isPausedByConnection = isPausedByConnection,
         modifier = modifier
     )
+}
+
+@Composable
+private fun ConnectionLostBanner(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.BluetoothDisabled,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = stringResource(R.string.lesson_paused_no_connection),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+/** Przycisk wstrzymania/wznowienia lekcji, widoczny tylko w trakcie nauki. */
+@Composable
+private fun LessonPauseButton(
+    isPaused: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Icon(
+            imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = if (isPaused) stringResource(R.string.resume_learning)
+            else stringResource(R.string.pause_learning)
+        )
+    }
 }
 
 @Composable
@@ -84,9 +146,15 @@ fun SongContent(
     onDismissDialog: () -> Unit = {},
     lessonIssues: List<CatalogIssue> = emptyList(),
     onDismissLessonIssues: () -> Unit = {},
+    isLessonPaused: Boolean = false,
+    canToggleLessonPause: Boolean = false,
+    onLessonPauseClick: () -> Unit = {},
+    onPlayAgainClick: () -> Unit = {},
+    isPausedByConnection: Boolean = false,
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val showLessonPause = isLearningMode && !learningComplete
 
     if (song != null) {
         val imageResId = song.getCoverResourceId()
@@ -193,6 +261,20 @@ fun SongContent(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
+                    }
+
+                    if (showLessonPause) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LessonPauseButton(
+                            isPaused = isLessonPaused,
+                            enabled = canToggleLessonPause,
+                            onClick = onLessonPauseClick
+                        )
+                    }
+
+                    if (isPausedByConnection) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ConnectionLostBanner()
                     }
                 }
 
@@ -343,6 +425,19 @@ fun SongContent(
                     }
                 }
 
+                if (showLessonPause) {
+                    LessonPauseButton(
+                        isPaused = isLessonPaused,
+                        enabled = canToggleLessonPause,
+                        onClick = onLessonPauseClick,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+
+                if (isPausedByConnection) {
+                    ConnectionLostBanner(modifier = Modifier.padding(bottom = 16.dp))
+                }
+
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.Start
@@ -376,7 +471,7 @@ fun SongContent(
         }
 
         if (learningComplete) {
-            CompletedSongDialog(onDismiss = onDismissDialog)
+            CompletedSongDialog(onDismiss = onDismissDialog, onPlayAgain = onPlayAgainClick)
         }
 
         if (lessonIssues.isNotEmpty()) {
