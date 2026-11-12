@@ -46,6 +46,32 @@
     <string name="lesson_issue_empty">Step %1$d: empty note</string>
     <string name="lesson_issue_malformed">Step %1$d: invalid note \"%2$s\"</string>
     <string name="lesson_issue_out_of_range">Step %1$d: %2$s is outside the harp\'s range (B0–C#5)</string>
+    <string name="nav_harp">Harp</string>
+    <string name="title_harp">Harp</string>
+    <string name="harp_disconnected_title">Harp not connected</string>
+    <string name="harp_disconnected_message">Connect the harp to see its current tuning.</string>
+    <string name="harp_connect_button">Connect to harp</string>
+    <string name="harp_connecting">Connecting to harp…</string>
+    <string name="harp_tuning_hint">Tuning is changed on the harp itself, using its levers and octave switch. Tapping a note here only highlights its strings.</string>
+    <string name="harp_octave_shift_title">Octave shift</string>
+    <string name="harp_range">%1$s – %2$s</string>
+    <string name="harp_device_title">Device</string>
+    <string name="harp_tab_tuning">Tuning</string>
+    <string name="harp_tab_device">Device</string>
+    <string name="harp_device_id" translatable="false">ID: %1$s</string>
+    <string name="harp_battery_title">Battery</string>
+    <string name="harp_battery_level">Charge level</string>
+    <string name="harp_battery_voltage">Voltage</string>
+    <string name="harp_battery_charging">Charging</string>
+    <string name="harp_battery_external_power">External power</string>
+    <string name="harp_battery_low">Low battery</string>
+    <string name="harp_battery_low_hint">Connect the harp to a charger so it does not switch off while you play.</string>
+    <string name="harp_battery_power">Power source</string>
+    <string name="harp_battery_power_battery">Battery</string>
+    <string name="harp_battery_voltage_value" translatable="false">%1$.2f V</string>
+    <string name="harp_yes">Yes</string>
+    <string name="harp_no">No</string>
+    <string name="harp_value_unavailable" translatable="false">—</string>
     <string name="battery_description">Harp battery: %1$s</string>
     <string name="battery_level_percent">%1$d%%</string>
     <string name="battery_level_unknown">level unknown</string>

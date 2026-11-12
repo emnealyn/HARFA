@@ -136,6 +136,18 @@ Przykłady:
 | domyślny | `stringFor(G4)` | brak (wymaga transpozycji) |
 | `octaveShift = +1` | `stringFor(G4)` | `StringId(11)` |
 
+
+### 3.3 Strojenie na ekranie „Harfa”
+
+Ekran pokazuje `InstrumentRepository.instrumentState` tylko przy aktywnym połączeniu, a bez niego wyświetla stan pusty z przejściem do łączenia. Między połączeniem a pierwszą ramką `CONFIG_STATE` (zwykle krócej niż sekundę) ekran może pokazać stan domyślny z §3.1. To świadome uproszczenie.
+
+Strojenie i stan instrumentu pokazuje osobna, czwarta zakładka „Harfa” w dolnej nawigacji. Ekran Bluetooth służy tylko do wyszukiwania harfy i łączenia z nią, więc stan instrumentu nie trafia do niego. Ikona połączenia na górnym pasku prowadzi do ekranu „Harfa”, a z niego można przejść do ekranu Bluetooth. Ekran nie ma kontrolek zmiany strojenia, bo jego źródłem prawdy jest harfa (ADR 001).
+
+Po połączeniu ekran ma dwie zakładki:
+
+- **Strojenie** pokazuje 7 przełączników (C–B, ♭/♮/♯) i transpozycję oktawową jako suwak z trzema pozycjami. Pod każdą pozycją jest stały zakres strun dla przełączników naturalnych (np. C2–C4), niezależny od ustawienia przełączników. Kliknięcie nuty zaznacza wszystkie jej struny (`HarpLayout.stringsOf`) na potrzeby przyszłej animacji. Zaznaczenie jest tylko stanem interfejsu w `HarpViewModel` i nie zmienia strojenia.
+- **Urządzenie** pokazuje nazwę i identyfikator podłączonej harfy oraz sekcję baterii z `InstrumentRepository.batteryStatus`: poziom naładowania, napięcie, źródło zasilania (`BatteryPowerState`) i niski poziom (`isLow`). Gdy `batteryStatus` albo któreś z jego pól ma wartość `null` (harfa bez `CAP_BATTERY`, brak ramki `BATTERY_STATE` albo nieznana wartość), sekcja pokazuje „—”.
+
 ---
 
 ## 4. Zdarzenia instrumentu
