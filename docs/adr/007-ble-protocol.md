@@ -1,6 +1,6 @@
 # ADR 007: Wersjonowany dwukierunkowy protokół komunikacji BLE
 
-* **Stan:** Przyjęty
+* **Stan:** Przyjęty, uzupełniony przez [ADR 010](010-ble-session-id-and-pause.md) (protokół 2.0: identyfikator sesji w nagłówku, `LESSON_PAUSE`)
 * **Data:** 2026-11-03
 * **Osoby decyzyjne:** Emilia Bonk
 
