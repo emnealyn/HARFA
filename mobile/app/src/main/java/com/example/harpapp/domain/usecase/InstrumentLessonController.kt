@@ -134,7 +134,11 @@ class InstrumentLessonController private constructor(
                 try {
                     repository.send(wireCommand)
                 } catch (e: CancellationException) {
-                    throw e
+                    if (!currentCoroutineContext().isActive) throw e
+                    
+                    litStep = null
+                    litMask = 0
+                    return
                 } catch (e: Exception) {
                     onError(e)
                     return // pozostałe komendy tego sygnału nie mają sensu
