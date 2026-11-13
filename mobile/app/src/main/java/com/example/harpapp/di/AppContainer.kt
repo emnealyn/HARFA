@@ -22,19 +22,15 @@ import com.example.harpapp.presentation.viewmodel.HarpViewModelFactory
 import com.example.harpapp.presentation.viewmodel.HomeViewModelFactory
 import com.example.harpapp.presentation.viewmodel.SettingsViewModelFactory
 import com.example.harpapp.presentation.viewmodel.SongViewModelFactory
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 
 class AppContainer(
     context: Context,
     instrumentRepositoryOverride: InstrumentRepository? = null
 ) {
     private val appContext = context.applicationContext
-    private val databaseScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val database = AppDatabase.getDatabase(appContext, databaseScope)
+    private val database = AppDatabase.getDatabase(appContext)
 
-    private val songRepository: SongRepository = RoomSongRepository(database.songDao())
+    private val songRepository: SongRepository = RoomSongRepository(appContext, database.favoriteDao())
     val settingsRepository: SettingsRepository =
         DataStoreSettingsRepository(appContext.dataStore)
     val audioPlayer: AudioPlayer = AndroidAssetAudioPlayer(appContext)
