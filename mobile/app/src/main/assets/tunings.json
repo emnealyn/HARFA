@@ -1,0 +1,146 @@
+[
+  {
+    "id": "a-major",
+    "name": "A-dur",
+    "type": "MAJOR",
+    "levers": { "C": "SHARP", "D": "NATURAL", "E": "NATURAL", "F": "SHARP", "G": "SHARP", "A": "NATURAL", "B": "NATURAL" }
+  },
+  {
+    "id": "b-major",
+    "name": "B-dur",
+    "type": "MAJOR",
+    "levers": { "C": "SHARP", "D": "SHARP", "E": "NATURAL", "F": "SHARP", "G": "SHARP", "A": "SHARP", "B": "NATURAL" }
+  },
+  {
+    "id": "c-major",
+    "name": "C-dur",
+    "type": "MAJOR",
+    "levers": { "C": "NATURAL", "D": "NATURAL", "E": "NATURAL", "F": "NATURAL", "G": "NATURAL", "A": "NATURAL", "B": "NATURAL" }
+  },
+  {
+    "id": "d-major",
+    "name": "D-dur",
+    "type": "MAJOR",
+    "levers": { "C": "SHARP", "D": "NATURAL", "E": "NATURAL", "F": "SHARP", "G": "NATURAL", "A": "NATURAL", "B": "NATURAL" }
+  },
+  {
+    "id": "e-major",
+    "name": "E-dur",
+    "type": "MAJOR",
+    "levers": { "C": "SHARP", "D": "SHARP", "E": "NATURAL", "F": "SHARP", "G": "SHARP", "A": "NATURAL", "B": "NATURAL" }
+  },
+  {
+    "id": "f-major",
+    "name": "F-dur",
+    "type": "MAJOR",
+    "levers": { "C": "NATURAL", "D": "NATURAL", "E": "NATURAL", "F": "NATURAL", "G": "NATURAL", "A": "NATURAL", "B": "FLAT" }
+  },
+  {
+    "id": "g-major",
+    "name": "G-dur",
+    "type": "MAJOR",
+    "levers": { "C": "NATURAL", "D": "NATURAL", "E": "NATURAL", "F": "SHARP", "G": "NATURAL", "A": "NATURAL", "B": "NATURAL" }
+  },
+  {
+    "id": "bb-major",
+    "name": "Bb-dur",
+    "type": "MAJOR",
+    "levers": { "C": "NATURAL", "D": "NATURAL", "E": "FLAT", "F": "NATURAL", "G": "NATURAL", "A": "NATURAL", "B": "FLAT" }
+  },
+  {
+    "id": "db-major",
+    "name": "Db-dur",
+    "type": "MAJOR",
+    "levers": { "C": "NATURAL", "D": "FLAT", "E": "FLAT", "F": "NATURAL", "G": "FLAT", "A": "FLAT", "B": "FLAT" }
+  },
+  {
+    "id": "eb-major",
+    "name": "Eb-dur",
+    "type": "MAJOR",
+    "levers": { "C": "NATURAL", "D": "NATURAL", "E": "FLAT", "F": "NATURAL", "G": "NATURAL", "A": "FLAT", "B": "FLAT" }
+  },
+  {
+    "id": "fs-major",
+    "name": "F#-dur",
+    "type": "MAJOR",
+    "levers": { "C": "SHARP", "D": "SHARP", "E": "SHARP", "F": "SHARP", "G": "SHARP", "A": "SHARP", "B": "NATURAL" }
+  },
+  {
+    "id": "ab-major",
+    "name": "Ab-dur",
+    "type": "MAJOR",
+    "levers": { "C": "NATURAL", "D": "FLAT", "E": "FLAT", "F": "NATURAL", "G": "NATURAL", "A": "FLAT", "B": "FLAT" }
+  },
+  {
+    "id": "a-minor",
+    "name": "A-moll",
+    "type": "MINOR",
+    "levers": { "C": "NATURAL", "D": "NATURAL", "E": "NATURAL", "F": "NATURAL", "G": "NATURAL", "A": "NATURAL", "B": "NATURAL" }
+  },
+  {
+    "id": "b-minor",
+    "name": "B-moll",
+    "type": "MINOR",
+    "levers": { "C": "SHARP", "D": "NATURAL", "E": "NATURAL", "F": "SHARP", "G": "NATURAL", "A": "NATURAL", "B": "NATURAL" }
+  },
+  {
+    "id": "c-minor",
+    "name": "C-moll",
+    "type": "MINOR",
+    "levers": { "C": "NATURAL", "D": "NATURAL", "E": "FLAT", "F": "NATURAL", "G": "NATURAL", "A": "FLAT", "B": "FLAT" }
+  },
+  {
+    "id": "d-minor",
+    "name": "D-moll",
+    "type": "MINOR",
+    "levers": { "C": "NATURAL", "D": "NATURAL", "E": "NATURAL", "F": "NATURAL", "G": "NATURAL", "A": "NATURAL", "B": "FLAT" }
+  },
+  {
+    "id": "e-minor",
+    "name": "E-moll",
+    "type": "MINOR",
+    "levers": { "C": "NATURAL", "D": "NATURAL", "E": "NATURAL", "F": "SHARP", "G": "NATURAL", "A": "NATURAL", "B": "NATURAL" }
+  },
+  {
+    "id": "f-minor",
+    "name": "F-moll",
+    "type": "MINOR",
+    "levers": { "C": "NATURAL", "D": "FLAT", "E": "FLAT", "F": "NATURAL", "G": "NATURAL", "A": "FLAT", "B": "FLAT" }
+  },
+  {
+    "id": "g-minor",
+    "name": "G-moll",
+    "type": "MINOR",
+    "levers": { "C": "NATURAL", "D": "NATURAL", "E": "FLAT", "F": "NATURAL", "G": "NATURAL", "A": "NATURAL", "B": "FLAT" }
+  },
+  {
+    "id": "fs-minor",
+    "name": "F#-moll",
+    "type": "MINOR",
+    "levers": { "C": "SHARP", "D": "NATURAL", "E": "NATURAL", "F": "SHARP", "G": "SHARP", "A": "NATURAL", "B": "NATURAL" }
+  },
+  {
+    "id": "cs-minor",
+    "name": "C#-moll",
+    "type": "MINOR",
+    "levers": { "C": "SHARP", "D": "SHARP", "E": "NATURAL", "F": "SHARP", "G": "SHARP", "A": "NATURAL", "B": "NATURAL" }
+  },
+  {
+    "id": "bb-minor",
+    "name": "Bb-moll",
+    "type": "MINOR",
+    "levers": { "C": "NATURAL", "D": "FLAT", "E": "FLAT", "F": "NATURAL", "G": "FLAT", "A": "FLAT", "B": "FLAT" }
+  },
+  {
+    "id": "gs-minor",
+    "name": "G#-moll",
+    "type": "MINOR",
+    "levers": { "C": "SHARP", "D": "SHARP", "E": "NATURAL", "F": "SHARP", "G": "SHARP", "A": "SHARP", "B": "NATURAL" }
+  },
+  {
+    "id": "ds-minor",
+    "name": "D#-moll",
+    "type": "MINOR",
+    "levers": { "C": "SHARP", "D": "SHARP", "E": "SHARP", "F": "SHARP", "G": "SHARP", "A": "SHARP", "B": "NATURAL" }
+  }
+]

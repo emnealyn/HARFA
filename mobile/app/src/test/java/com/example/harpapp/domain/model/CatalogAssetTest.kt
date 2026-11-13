@@ -28,14 +28,8 @@ class CatalogAssetTest {
     }
 
     @Test
-    fun `Hallelujah ma nuty poza zakresem harfy, pozostale utwory sa poprawne`() {
-        val results = validateAll()
-
-        val hallelujah = results.getValue("Hallelujah") as LessonValidation.Invalid
-        assertTrue(hallelujah.issues.all { it.reason == CatalogIssueReason.OUT_OF_RANGE })
-        assertEquals(setOf("D5", "E5", "F#5"), hallelujah.issues.map { it.raw }.toSet())
-
-        results.filterKeys { it != "Hallelujah" }.forEach { (title, result) ->
+    fun `wszystkie utwory w katalogu sa poprawne`() {
+        validateAll().forEach { (title, result) ->
             assertTrue("$title: $result", result is LessonValidation.Valid)
         }
     }
