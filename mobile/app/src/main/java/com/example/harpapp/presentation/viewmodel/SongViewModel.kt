@@ -8,14 +8,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.harpapp.domain.model.CatalogIssue
 import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.Lesson
 import com.example.harpapp.domain.model.LessonProgress
 import com.example.harpapp.domain.model.LessonStatus
 import com.example.harpapp.domain.model.LessonValidation
 import com.example.harpapp.domain.model.NoteEvent
+import com.example.harpapp.domain.model.Pitch
 import com.example.harpapp.domain.model.Song
+import com.example.harpapp.domain.model.Tuning
+import com.example.harpapp.domain.model.TuningAnalysis
 import com.example.harpapp.domain.repository.AudioPlayer
+import com.example.harpapp.domain.usecase.AnalyzeTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongProgressUseCase
+import com.example.harpapp.domain.usecase.GetSongTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.usecase.InstrumentLessonController
 import com.example.harpapp.domain.usecase.PrepareLessonUseCase
@@ -23,6 +29,11 @@ import com.example.harpapp.domain.usecase.SaveSongProgressUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+
+data class StepTuningHint(
+    val pitch: Pitch,
+    val analysis: TuningAnalysis
+)
 
 class SongViewModel(
     private val getSongUseCase: GetSongUseCase,
@@ -32,7 +43,11 @@ class SongViewModel(
     private val audioPlayer: AudioPlayer,
     noteEvents: Flow<NoteEvent>,
     connectionState: Flow<ConnectionState>,
-    lessonControllerFactory: InstrumentLessonController.Factory
+    lessonControllerFactory: InstrumentLessonController.Factory,
+    instrumentState: Flow<InstrumentState>,
+    configurationKnown: Flow<Boolean>,
+    private val getSongTuningUseCase: GetSongTuningUseCase,
+    private val analyzeTuningUseCase: AnalyzeTuningUseCase
 ) : ViewModel() {
 
     private val lessonController =
@@ -74,6 +89,50 @@ class SongViewModel(
         }
     }
 
+    private data class PendingStart(val lesson: Lesson, val analysis: TuningAnalysis)
+
+    private val _isConnected = mutableStateOf(false)
+    private val _instrumentState = mutableStateOf(InstrumentState.DEFAULT)
+    private val _configurationKnown = mutableStateOf(false)
+    private val _suggestedTuning = mutableStateOf<Tuning?>(null)
+    val songTuning: State<Tuning?> = _suggestedTuning
+    private val _pendingStart = mutableStateOf<PendingStart?>(null)
+
+    private val tuningIsKnown: Boolean
+        get() = _isConnected.value && _configurationKnown.value
+
+    val tuningWarning: State<TuningAnalysis?> = derivedStateOf {
+        val song = _song.value
+        if (song == null || !tuningIsKnown) {
+            null
+        } else {
+            analyzeTuningUseCase(song, _instrumentState.value, _suggestedTuning.value)
+                .takeUnless { it == TuningAnalysis.Compatible }
+        }
+    }
+
+    val tuningStartWarning: State<TuningAnalysis?> = derivedStateOf { _pendingStart.value?.analysis }
+
+    val currentStepHint: State<StepTuningHint?> = derivedStateOf {
+        val step = _progress.value?.takeUnless { it.isCompleted }?.currentStep
+        val state = _instrumentState.value
+        if (step == null || !tuningIsKnown || state.stringFor(step.pitch) != null) {
+            null
+        } else {
+            analyzeTuningUseCase(listOf(step.pitch), state, _suggestedTuning.value)
+                .takeUnless { it == TuningAnalysis.Compatible }
+                ?.let { StepTuningHint(step.pitch, it) }
+        }
+    }
+
+    private val instrumentStateJob: Job = viewModelScope.launch {
+        instrumentState.collect { _instrumentState.value = it }
+    }
+
+    private val configurationKnownJob: Job = viewModelScope.launch {
+        configurationKnown.collect { _configurationKnown.value = it }
+    }
+
     private val noteListenerJob: Job = viewModelScope.launch {
         noteEvents.collect { event ->
             val current = _progress.value ?: return@collect
@@ -86,6 +145,7 @@ class SongViewModel(
     private val connectionListenerJob: Job = viewModelScope.launch {
         connectionState.collect { state ->
             lastConnectionState = state
+            _isConnected.value = state == ConnectionState.CONNECTED
             val current = _progress.value ?: return@collect
             val newProgress = when (state) {
                 ConnectionState.DISCONNECTED -> current.pause()
@@ -111,7 +171,9 @@ class SongViewModel(
         if (_song.value?.id == songId) return
 
         viewModelScope.launch {
-            _song.value = getSongUseCase(songId)
+            val song = getSongUseCase(songId)
+            _suggestedTuning.value = song?.let { getSongTuningUseCase(it) }
+            _song.value = song
             audioPlayer.release()
             _isPlaying.value = false
             stopLearning()
@@ -144,7 +206,12 @@ class SongViewModel(
         when (val validation = prepareLessonUseCase(song)) {
             is LessonValidation.Valid -> {
                 _lessonIssues.value = emptyList()
-                beginLesson(validation.lesson)
+                val warning = tuningWarning.value
+                if (warning != null) {
+                    _pendingStart.value = PendingStart(validation.lesson, warning)
+                } else {
+                    beginLesson(validation.lesson)
+                }
             }
             is LessonValidation.Invalid -> {
                 _lessonIssues.value = validation.issues
@@ -162,6 +229,16 @@ class SongViewModel(
         } else {
             updateProgress(progress.pause())
         }
+    }
+
+    fun confirmStartDespiteTuning() {
+        val pending = _pendingStart.value ?: return
+        _pendingStart.value = null
+        beginLesson(pending.lesson)
+    }
+
+    fun cancelTuningStart() {
+        _pendingStart.value = null
     }
 
     fun restartLearning() {
@@ -195,6 +272,7 @@ class SongViewModel(
         _progress.value = null
         _pausedByUser.value = false
         _lessonIssues.value = emptyList()
+        _pendingStart.value = null
     }
 
     fun dismissLearningCompleteDialog() {
@@ -215,6 +293,8 @@ class SongViewModel(
     override fun onCleared() {
         noteListenerJob.cancel()
         connectionListenerJob.cancel()
+        instrumentStateJob.cancel()
+        configurationKnownJob.cancel()
         audioPlayer.release()
         super.onCleared()
     }
