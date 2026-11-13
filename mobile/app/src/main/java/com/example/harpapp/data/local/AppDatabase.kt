@@ -37,7 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_14_17 = object : Migration(14, 17) {
+        internal val MIGRATION_14_17 = object : Migration(14, 17) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 createUserStateTables(db)
 
@@ -54,7 +54,7 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_15_17 = object : Migration(15, 17) {
+        internal val MIGRATION_15_17 = object : Migration(15, 17) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 createUserStateTables(db)
                 db.execSQL(
@@ -69,7 +69,7 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_16_17 = object : Migration(16, 17) {
+        internal val MIGRATION_16_17 = object : Migration(16, 17) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     """

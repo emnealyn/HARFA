@@ -2,6 +2,8 @@
 agp = "9.4.1"
 datastorePreferences = "1.2.1"
 junit = "4.13.2"
+androidxTestJunit = "1.2.1"
+androidxTestRunner = "1.6.2"
 kotlinxCoroutines = "1.9.0"
 lifecycleRuntimeKtx = "2.10.0"
 lifecycleViewModelCompose = "2.10.0"
@@ -39,6 +41,8 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtxVersion" }
 androidx-benchmark-traceprocessor = { group = "androidx.benchmark", name = "benchmark-traceprocessor", version.ref = "benchmarkTraceprocessor" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
