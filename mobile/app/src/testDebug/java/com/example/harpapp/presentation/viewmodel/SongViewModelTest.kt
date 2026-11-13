@@ -35,7 +35,7 @@ class SongViewModelTest {
 
     private val dispatcher = UnconfinedTestDispatcher()
     private val harp = FakeInstrumentRepository()
-    private lateinit var songs: Map<Int, Song>
+    private lateinit var songs: Map<String, Song>
     private lateinit var viewModel: SongViewModel
 
     @Before
@@ -65,7 +65,7 @@ class SongViewModelTest {
         return "${pitch.name}${pitch.accidental.symbol}${pitch.octave}"
     }
 
-    private fun song(id: Int, vararg notes: String) = Song(
+    private fun song(id: String, vararg notes: String) = Song(
         id = id,
         title = "Test $id",
         artist = "Test",
@@ -255,10 +255,10 @@ class SongViewModelTest {
         assertTrue(viewModel.lessonIssues.value.isEmpty())
     }
 
-    private class InMemorySongRepository(private val songs: Map<Int, Song>) : SongRepository {
+    private class InMemorySongRepository(private val songs: Map<String, Song>) : SongRepository {
         override fun observeSongs(): Flow<List<Song>> = flowOf(songs.values.toList())
-        override suspend fun getSong(songId: Int): Song? = songs[songId]
-        override suspend fun setFavorite(songId: Int, isFavorite: Boolean) = Unit
+        override suspend fun getSong(songId: String): Song? = songs[songId]
+        override suspend fun setFavorite(songId: String, isFavorite: Boolean) = Unit
     }
 
     private object SilentAudioPlayer : AudioPlayer {
@@ -267,7 +267,7 @@ class SongViewModelTest {
     }
 
     private companion object {
-        const val LESSON_SONG_ID = 1
-        const val INVALID_SONG_ID = 2
+        const val LESSON_SONG_ID = "1"
+        const val INVALID_SONG_ID = "2"
     }
 }

@@ -1,5 +1,6 @@
 [
   {
+    "id": "another-love",
     "title": "Another Love",
     "artist": "Tom Odell",
     "difficulty": "MEDIUM",
@@ -52,6 +53,7 @@
     ]
   },
   {
+    "id": "wildest-dreams",
     "title": "Wildest Dreams",
     "artist": "Taylor Swift",
     "difficulty": "EASY",
@@ -89,6 +91,7 @@
     ]
   },
   {
+    "id": "lovely",
     "title": "Lovely",
     "artist": "Billie Eilish & Khalid",
     "difficulty": "HARD",
@@ -189,6 +192,7 @@
     ]
   },
   {
+    "id": "hallelujah",
     "title": "Hallelujah",
     "artist": "Leonard Cohen",
     "difficulty": "MEDIUM",
@@ -270,6 +274,7 @@
     ]
   },
   {
+    "id": "viva-la-test",
     "title": "Viva la Test",
     "artist": "Test Artist",
     "difficulty": "EASY",

@@ -14,13 +14,13 @@ class ObserveSongsUseCase(
 class GetSongUseCase(
     private val repository: SongRepository
 ) {
-    suspend operator fun invoke(songId: Int): Song? = repository.getSong(songId)
+    suspend operator fun invoke(songId: String): Song? = repository.getSong(songId)
 }
 
 class SetFavoriteUseCase(
     private val repository: SongRepository
 ) {
-    suspend operator fun invoke(songId: Int, isFavorite: Boolean) {
+    suspend operator fun invoke(songId: String, isFavorite: Boolean) {
         repository.setFavorite(songId, isFavorite)
     }
 }

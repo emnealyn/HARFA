@@ -15,7 +15,7 @@ data class LessonStep(
  * a konstruktor pilnuje niezmienników: co najmniej jeden krok, kolejne indeksy, nuty w zakresie harfy.
  */
 data class Lesson(
-    val songId: Int,
+    val songId: String,
     val title: String,
     val steps: List<LessonStep>
 ) {

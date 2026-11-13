@@ -8,7 +8,7 @@ import org.junit.Test
 class LessonProgressTest {
 
     private val lesson: Lesson = (LessonValidator.validate(
-        songId = 1,
+        songId = "1",
         title = "Test",
         steps = listOf(CatalogStep("a", "G4"), CatalogStep("b", "A4"))
     ) as LessonValidation.Valid).lesson

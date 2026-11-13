@@ -12,11 +12,11 @@ interface SongDao {
     fun getAllSongEntities(): Flow<List<SongEntity>>
 
     @Query("SELECT * FROM songs WHERE id = :songId LIMIT 1")
-    suspend fun getSongEntityById(songId: Int): SongEntity?
+    suspend fun getSongEntityById(songId: String): SongEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllSongs(songs: List<SongEntity>)
 
     @Query("UPDATE songs SET isFavorite = :isFavorite WHERE id = :songId")
-    suspend fun updateFavoriteStatus(songId: Int, isFavorite: Boolean)
+    suspend fun updateFavoriteStatus(songId: String, isFavorite: Boolean)
 }

@@ -14,11 +14,11 @@ class RoomSongRepository(
         }
     }
 
-    override suspend fun getSong(songId: Int): Song? {
+    override suspend fun getSong(songId: String): Song? {
         return songDao.getSongEntityById(songId)?.toDomain()
     }
 
-    override suspend fun setFavorite(songId: Int, isFavorite: Boolean) {
+    override suspend fun setFavorite(songId: String, isFavorite: Boolean) {
         songDao.updateFavoriteStatus(songId, isFavorite)
     }
 }

@@ -6,7 +6,7 @@ object Routes {
     const val SPLASH = "splash"
     const val SONG = "song"
     const val SONG_PATTERN = "song/{songId}"
-    fun createSongRoute(songId: Int): String = "song/$songId"
+    fun createSongRoute(songId: String): String = "song/$songId"
     const val BLUETOOTH = "bluetooth"
     const val HARP = "harp"
 

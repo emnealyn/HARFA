@@ -94,7 +94,7 @@ class SongViewModel(
         }
     }
 
-    fun loadSong(songId: Int) {
+    fun loadSong(songId: String) {
         if (_song.value?.id == songId) return
 
         viewModelScope.launch {
