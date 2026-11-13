@@ -82,4 +82,26 @@
     <string name="battery_state_external_power">zasilacz</string>
     <string name="battery_state_low">niski poziom</string>
     <string name="battery_low_warning">Niski poziom baterii harfy. Wkrótce podłącz ładowarkę.</string>
+    <string name="tuning_warning_title">Harfa nie jest nastrojona do tego utworu</string>
+    <string name="tuning_conflict_title">Tego utworu nie da się zagrać w jednym ustawieniu harfy</string>
+    <string name="tuning_out_of_range_title">Część nut jest poza zakresem harfy</string>
+    <string name="tuning_change_levers">Ustaw przełączniki: %1$s</string>
+    <string name="tuning_change_octave">Przesunięcie oktawy: %1$s</string>
+    <string name="tuning_conflict_item">Struny %1$s potrzebne dla: %2$s</string>
+    <string name="tuning_out_of_range_notes">Nuty: %1$s</string>
+    <string name="tuning_incompatible">Zmień przełączniki lub przesunięcie oktawy na harfie.</string>
+    <string name="tuning_go_to_harp">Pomoc w strojeniu</string>
+    <string name="tuning_dialog_intro">Obecne ustawienie harfy nie pasuje do tego utworu, więc część nut się nie podświetli.</string>
+    <string name="tuning_dialog_go_to_harp">Otwórz pomoc w strojeniu</string>
+    <string name="tuning_dialog_start_anyway">Zacznij mimo to</string>
+    <string name="tuning_dialog_cancel">Anuluj</string>
+    <string name="tuning_step_hint">Ta nuta (%1$s) wymaga innego ustawienia:</string>
+    <string name="harp_target_title">Strojenie dla: %1$s</string>
+    <string name="harp_target_ready">Harfa jest gotowa do tego utworu.</string>
+    <string name="harp_target_unknown">Czekam na ustawienia harfy…</string>
+    <string name="song_key">Tonacja: %1$s</string>
+    <string name="harp_detected_key">Wykryta tonacja: %1$s</string>
+    <string name="tuning_change_key">Zmień tonację na: %1$s</string>
+    <string name="tuning_change_octave_to">Zmień oktawę na: %1$s</string>
+    <string name="harp_back_to_song">Wróć do utworu</string>
 </resources>

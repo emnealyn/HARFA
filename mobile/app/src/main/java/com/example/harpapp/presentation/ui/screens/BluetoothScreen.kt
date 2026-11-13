@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.harpapp.R
+import com.example.harpapp.presentation.ui.theme.ConnectedGreen
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
 
 @Composable
@@ -59,7 +60,7 @@ fun BluetoothScreen(
     }
 
     val statusColor = if (isConnected)
-        Color(0xFF3B8A40)
+        ConnectedGreen
     else
         MaterialTheme.colorScheme.error
 

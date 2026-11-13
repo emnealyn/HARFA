@@ -25,7 +25,8 @@ import com.example.harpapp.domain.model.NoteName
 fun LeverButtons(
     tuning: InstrumentState,
     selectedNote: NoteName?,
-    onNoteClick: (NoteName) -> Unit
+    onNoteClick: (NoteName) -> Unit,
+    highlight: Map<NoteName, Accidental> = emptyMap()
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -36,6 +37,7 @@ fun LeverButtons(
                 name = name,
                 position = tuning.lever(name),
                 selected = name == selectedNote,
+                target = highlight[name],
                 onClick = { onNoteClick(name) },
                 modifier = Modifier.weight(1f)
             )
@@ -48,6 +50,7 @@ private fun LeverButton(
     name: NoteName,
     position: Accidental,
     selected: Boolean,
+    target: Accidental?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -64,7 +67,7 @@ private fun LeverButton(
         shape = RoundedCornerShape(12.dp),
         color = if (selected) colors.primary else tuningBackground,
         contentColor = if (selected) colors.onPrimary else colors.primary,
-        border = BorderStroke(1.dp, colors.primary)
+        border = if (target != null) BorderStroke(3.dp, colors.error) else BorderStroke(1.dp, colors.primary)
     ) {
         Column(
             modifier = Modifier.padding(vertical = 10.dp),
@@ -81,11 +84,20 @@ private fun LeverButton(
                 style = MaterialTheme.typography.headlineSmall,
                 maxLines = 1
             )
+            if (target != null) {
+                Text(
+                    text = "→ ${accidentalSymbol(target)}",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (selected) colors.onPrimary else colors.error,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
 
-private fun accidentalSymbol(accidental: Accidental): String = when (accidental) {
+internal fun accidentalSymbol(accidental: Accidental): String = when (accidental) {
     Accidental.FLAT -> "♭"
     Accidental.NATURAL -> "♮"
     Accidental.SHARP -> "♯"

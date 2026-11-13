@@ -84,4 +84,26 @@
     <string name="battery_state_external_power">on external power</string>
     <string name="battery_state_low">low level</string>
     <string name="battery_low_warning">Harp battery is low. Connect the charger soon.</string>
+    <string name="tuning_warning_title">The harp isn\'t tuned for this song</string>
+    <string name="tuning_conflict_title">This song can\'t be played in a single harp setting</string>
+    <string name="tuning_out_of_range_title">Some notes are outside the harp\'s range</string>
+    <string name="tuning_change_levers">Set levers: %1$s</string>
+    <string name="tuning_change_octave">Octave shift: %1$s</string>
+    <string name="tuning_conflict_item">%1$s strings needed for: %2$s</string>
+    <string name="tuning_out_of_range_notes">Notes: %1$s</string>
+    <string name="tuning_incompatible">Change the levers or the octave shift on the harp.</string>
+    <string name="tuning_go_to_harp">Tuning help</string>
+    <string name="tuning_dialog_intro">The current harp setting doesn\'t match this song, so some notes won\'t light up.</string>
+    <string name="tuning_dialog_go_to_harp">Open tuning help</string>
+    <string name="tuning_dialog_start_anyway">Start anyway</string>
+    <string name="tuning_dialog_cancel">Cancel</string>
+    <string name="tuning_step_hint">This note (%1$s) needs a different setting:</string>
+    <string name="harp_target_title">Tuning for: %1$s</string>
+    <string name="harp_target_ready">The harp is ready for this song.</string>
+    <string name="harp_target_unknown">Waiting for the harp\'s settings…</string>
+    <string name="song_key">Key: %1$s</string>
+    <string name="harp_detected_key">Detected key: %1$s</string>
+    <string name="tuning_change_key">Change the key to: %1$s</string>
+    <string name="tuning_change_octave_to">Change the octave to: %1$s</string>
+    <string name="harp_back_to_song">Back to the song</string>
 </resources>
