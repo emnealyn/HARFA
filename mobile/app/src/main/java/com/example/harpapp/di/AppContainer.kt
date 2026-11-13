@@ -13,10 +13,12 @@ import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.domain.repository.SettingsRepository
 import com.example.harpapp.domain.repository.SongRepository
 import com.example.harpapp.domain.usecase.FilterSongsUseCase
+import com.example.harpapp.domain.usecase.GetSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.usecase.InstrumentLessonController
 import com.example.harpapp.domain.usecase.ObserveSongsUseCase
 import com.example.harpapp.domain.usecase.PrepareLessonUseCase
+import com.example.harpapp.domain.usecase.SaveSongProgressUseCase
 import com.example.harpapp.domain.usecase.SetFavoriteUseCase
 import com.example.harpapp.presentation.dev.DevTools
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModelFactory
@@ -53,6 +55,8 @@ class AppContainer(
     private val observeSongsUseCase = ObserveSongsUseCase(songRepository)
     private val getSongUseCase = GetSongUseCase(songRepository)
     private val setFavoriteUseCase = SetFavoriteUseCase(songRepository)
+    private val getSongProgressUseCase = GetSongProgressUseCase(songRepository)
+    private val saveSongProgressUseCase = SaveSongProgressUseCase(songRepository)
     private val filterSongsUseCase = FilterSongsUseCase()
     private val prepareLessonUseCase = PrepareLessonUseCase()
 
@@ -65,6 +69,8 @@ class AppContainer(
     val songViewModelFactory = SongViewModelFactory(
         getSongUseCase = getSongUseCase,
         prepareLessonUseCase = prepareLessonUseCase,
+        getSongProgressUseCase = getSongProgressUseCase,
+        saveSongProgressUseCase = saveSongProgressUseCase,
         audioPlayer = audioPlayer,
         noteEvents = instrumentRepository.noteEvents,
         connectionState = instrumentRepository.connectionState,

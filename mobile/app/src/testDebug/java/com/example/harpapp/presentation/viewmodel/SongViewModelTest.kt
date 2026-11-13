@@ -256,13 +256,18 @@ class SongViewModelTest {
     }
 
     private class InMemorySongRepository(private val songs: Map<String, Song>) : SongRepository {
+        private val progressMap = mutableMapOf<String, com.example.harpapp.domain.model.LessonProgress>()
         override fun observeSongs(): Flow<List<Song>> = flowOf(songs.values.toList())
         override suspend fun getSong(songId: String): Song? = songs[songId]
         override suspend fun setFavorite(songId: String, isFavorite: Boolean) = Unit
-        override fun observeProgress(songId: String): Flow<com.example.harpapp.domain.model.LessonProgress?> = flowOf(null)
-        override suspend fun getProgress(songId: String): com.example.harpapp.domain.model.LessonProgress? = null
-        override suspend fun saveProgress(progress: com.example.harpapp.domain.model.LessonProgress) = Unit
-        override suspend fun deleteProgress(songId: String) = Unit
+        override fun observeProgress(songId: String): Flow<com.example.harpapp.domain.model.LessonProgress?> = flowOf(progressMap[songId])
+        override suspend fun getProgress(songId: String): com.example.harpapp.domain.model.LessonProgress? = progressMap[songId]
+        override suspend fun saveProgress(progress: com.example.harpapp.domain.model.LessonProgress) {
+            progressMap[progress.lesson.songId] = progress
+        }
+        override suspend fun deleteProgress(songId: String) {
+            progressMap.remove(songId)
+        }
     }
 
     private object SilentAudioPlayer : AudioPlayer {
