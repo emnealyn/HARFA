@@ -1,11 +1,13 @@
 package com.example.harpapp.di
 
 import android.content.Context
+import com.example.harpapp.data.catalog.AssetSongCatalogDataSource
+import com.example.harpapp.data.catalog.SongCatalogDataSource
 import com.example.harpapp.data.local.AppDatabase
-import com.example.harpapp.data.local.RoomSongRepository
 import com.example.harpapp.data.media.AndroidAssetAudioPlayer
 import com.example.harpapp.data.preferences.DataStoreSettingsRepository
 import com.example.harpapp.data.preferences.dataStore
+import com.example.harpapp.data.repository.SongRepositoryImpl
 import com.example.harpapp.domain.repository.AudioPlayer
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.domain.repository.SettingsRepository
@@ -30,7 +32,13 @@ class AppContainer(
     private val appContext = context.applicationContext
     private val database = AppDatabase.getDatabase(appContext)
 
-    private val songRepository: SongRepository = RoomSongRepository(appContext, database.favoriteDao())
+    val catalogDataSource: SongCatalogDataSource = AssetSongCatalogDataSource(appContext)
+    private val songRepository: SongRepository = SongRepositoryImpl(
+        catalogDataSource = catalogDataSource,
+        favoriteDao = database.favoriteDao(),
+        progressDao = database.progressDao()
+    )
+
     val settingsRepository: SettingsRepository =
         DataStoreSettingsRepository(appContext.dataStore)
     val audioPlayer: AudioPlayer = AndroidAssetAudioPlayer(appContext)
