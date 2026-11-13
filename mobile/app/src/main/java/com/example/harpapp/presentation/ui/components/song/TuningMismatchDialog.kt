@@ -14,7 +14,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.harpapp.R
 import com.example.harpapp.domain.model.Accidental
-import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.LeverChange
 import com.example.harpapp.domain.model.NoteName
 import com.example.harpapp.domain.model.OctaveShift
@@ -63,8 +62,7 @@ fun TuningMismatchDialogPreview() {
     TuningMismatchDialog(
         analysis = TuningAnalysis.NeedsChanges(
             levers = listOf(LeverChange(NoteName.F, Accidental.NATURAL, Accidental.SHARP)),
-            octave = OctaveShift.UP,
-            target = InstrumentState.DEFAULT
+            octave = OctaveShift.UP
         ),
         keyName = "G-dur",
         onGoToHarp = {},

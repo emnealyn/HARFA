@@ -18,8 +18,7 @@ sealed interface TuningAnalysis {
 
     data class NeedsChanges(
         val levers: List<LeverChange>,
-        val octave: OctaveShift?,
-        val target: InstrumentState
+        val octave: OctaveShift?
     ) : TuningAnalysis
 
     data class Conflict(val conflicts: List<NoteConflict>) : TuningAnalysis

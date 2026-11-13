@@ -43,7 +43,7 @@ class AnalyzeTuningUseCaseTest {
 
     private val gMajor = tuning(NoteName.F to Accidental.SHARP)
 
-    private val wildestDreams =pitches("D#4", "F4", "G4", "G#4", "A#4", "C5")
+    private val wildestDreams = pitches("D#4", "F4", "G4", "G#4", "A#4", "C5")
 
     private fun assertPlayable(state: InstrumentState, notes: List<Pitch>) {
         notes.forEach { assertNotNull("$it", state.stringFor(it)) }
@@ -63,8 +63,7 @@ class AnalyzeTuningUseCaseTest {
         assertEquals(
             TuningAnalysis.NeedsChanges(
                 levers = listOf(LeverChange(NoteName.F, Accidental.NATURAL, Accidental.SHARP)),
-                octave = null,
-                target = InstrumentState.DEFAULT.withLever(NoteName.F, Accidental.SHARP)
+                octave = null
             ),
             result
         )
@@ -120,8 +119,10 @@ class AnalyzeTuningUseCaseTest {
             result.levers
         )
         assertEquals(OctaveShift.UP, result.octave)
-        assertEquals(Accidental.NATURAL, result.target.lever(NoteName.D))
-        assertPlayable(result.target, wildestDreams)
+        val retuned = result.levers.fold(InstrumentState.DEFAULT.copy(octaveShift = OctaveShift.UP)) { state, change ->
+            state.withLever(change.name, change.to)
+        }
+        assertPlayable(retuned, wildestDreams)
     }
 
     @Test
@@ -133,10 +134,7 @@ class AnalyzeTuningUseCaseTest {
         assertEquals(
             TuningAnalysis.NeedsChanges(
                 levers = listOf(LeverChange(NoteName.F, Accidental.NATURAL, Accidental.SHARP)),
-                octave = OctaveShift.UP,
-                target = InstrumentState.DEFAULT
-                    .withLever(NoteName.F, Accidental.SHARP)
-                    .copy(octaveShift = OctaveShift.UP)
+                octave = OctaveShift.UP
             ),
             result
         )

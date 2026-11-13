@@ -70,28 +70,22 @@ class AnalyzeTuningUseCase {
 
     private fun InstrumentState.leverList(): List<Accidental> = NoteName.entries.map { lever(it) }
 
-    private fun InstrumentState.withSetup(levers: List<Accidental>, shift: OctaveShift): InstrumentState =
-        copy(levers = NoteName.entries.associateWith { levers[it.ordinal] }, octaveShift = shift)
-
     private fun suggestedTarget(
         suggested: Tuning?,
         current: InstrumentState,
         shifts: List<OctaveShift>,
         optionsByShift: Map<OctaveShift, Map<Pitch, List<Option>>>
     ): InstrumentState? {
-        val levers = suggested?.toInstrumentState(current)?.leverList() ?: return null
+        val retuned = suggested?.toInstrumentState(current) ?: return null
+        val levers = retuned.leverList()
         val shift = shifts.firstOrNull { levers.isPlayable(optionsByShift.getValue(it)) } ?: return null
-        return current.withSetup(levers, shift)
+        return retuned.copy(octaveShift = shift)
     }
 
     private fun conflictOrIncompatible(
         shifts: List<OctaveShift>,
         optionsByShift: Map<OctaveShift, Map<Pitch, List<Option>>>
     ): TuningAnalysis {
-        if (shifts.any { shift -> ALL_LEVERS.any { it.isPlayable(optionsByShift.getValue(shift)) } }) {
-            return TuningAnalysis.Incompatible
-        }
-
         var bestOptions = optionsByShift.getValue(shifts.first())
         var bestLevers = ALL_LEVERS.first()
         var bestSatisfied = -1
@@ -113,6 +107,7 @@ class AnalyzeTuningUseCase {
         val unsatisfied = bestOptions.filterKeys { it !in occupied }.map { (pitch, options) ->
             pitch to (options.firstOrNull { it.name == pitch.name } ?: options.first()).name
         }
+        if (unsatisfied.isEmpty()) return TuningAnalysis.Incompatible
 
         val conflicts = unsatisfied.groupBy({ it.second }, { it.first }).map { (name, blocked) ->
             val holders = occupied.filterValues { it == name }.keys
@@ -133,10 +128,7 @@ class AnalyzeTuningUseCase {
         val octave = target.octaveShift.takeIf { it != current.octaveShift }
         if (leverChanges.isEmpty() && octave == null) return TuningAnalysis.Compatible
 
-        val reducedTarget = leverChanges.fold(current.copy(octaveShift = target.octaveShift)) { state, change ->
-            state.withLever(change.name, change.to)
-        }
-        return TuningAnalysis.NeedsChanges(leverChanges, octave, reducedTarget)
+        return TuningAnalysis.NeedsChanges(leverChanges, octave)
     }
 
     private companion object {
