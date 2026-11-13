@@ -1,12 +1,12 @@
 [
   {
+    "id": "another-love",
     "title": "Another Love",
     "artist": "Tom Odell",
     "difficulty": "MEDIUM",
     "duration": "0:53",
     "midiFilePath": "midi/ANOTHERLOVE.MID",
     "coverImage": "cover_another_love",
-    "is_favorite": false,
     "lyricsWithNotes": [
       { "syllable": "I", "note": "G4" },
       { "syllable": "wan-", "note": "G4" },
@@ -52,13 +52,13 @@
     ]
   },
   {
+    "id": "wildest-dreams",
     "title": "Wildest Dreams",
     "artist": "Taylor Swift",
     "difficulty": "EASY",
     "duration": "0:53",
     "midiFilePath": "midi/WILDESTDREAMS.MID",
     "coverImage": "cover_wildest_dreams",
-    "is_favorite": false,
     "lyricsWithNotes": [
       { "syllable": "  ", "note": "F4" },
       { "syllable": "  ", "note": "G#4" },
@@ -89,13 +89,13 @@
     ]
   },
   {
+    "id": "lovely",
     "title": "Lovely",
     "artist": "Billie Eilish & Khalid",
     "difficulty": "HARD",
     "duration": "0:53",
     "midiFilePath": "midi/LOVELY.MID",
     "coverImage": "cover_lovely",
-    "is_favorite": false,
     "lyricsWithNotes": [
       { "syllable": "Thought", "note": "A4" },
       { "syllable": "I", "note": "B4" },
@@ -189,13 +189,13 @@
     ]
   },
   {
+    "id": "hallelujah",
     "title": "Hallelujah",
     "artist": "Leonard Cohen",
     "difficulty": "MEDIUM",
     "duration": "0:53",
     "midiFilePath": "midi/HALLELUJAH.MID",
     "coverImage": "cover_hallelujah",
-    "is_favorite": false,
     "lyricsWithNotes": [
       { "syllable": "I've", "note": "F#4" },
       { "syllable": "heard", "note": "A4" },
@@ -270,13 +270,13 @@
     ]
   },
   {
+    "id": "viva-la-test",
     "title": "Viva la Test",
     "artist": "Test Artist",
     "difficulty": "EASY",
     "duration": "0:53",
     "midiFilePath": "midi/TESTSONG.MID",
     "coverImage": null,
-    "is_favorite": false,
     "lyricsWithNotes": [
       { "syllable": "Its", "note": "G4" },
       { "syllable": "only", "note": "G4" },

@@ -121,7 +121,7 @@ fun SongItem(
 fun SongItemPreview() {
     HARPAppTheme {
         val testSong = Song(
-            id = 1,
+            id = "1",
             title = "Wildest Dreams",
             artist = "Taylor Swift",
             difficulty = Difficulty.MEDIUM,

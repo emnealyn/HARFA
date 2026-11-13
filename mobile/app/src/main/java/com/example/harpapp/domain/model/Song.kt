@@ -5,7 +5,7 @@ enum class Difficulty {
 }
 
 data class Song(
-    val id: Int = 0,
+    val id: String = "",
     val title: String,
     val artist: String,
     val difficulty: Difficulty,

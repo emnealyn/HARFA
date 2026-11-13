@@ -42,7 +42,7 @@ import com.example.harpapp.presentation.viewmodel.SongViewModel
 
 @Composable
 fun SongScreen(
-    songId: Int,
+    songId: String,
     viewModel: SongViewModel,
     modifier: Modifier = Modifier
 ) {
@@ -492,7 +492,7 @@ fun SongContent(
 fun SongScreenPreview() {
     HARPAppTheme {
         val mockSong = Song(
-            id = 1,
+            id = "1",
             title = "Wildest Dreams",
             artist = "Taylor Swift",
             difficulty = Difficulty.MEDIUM,
@@ -525,7 +525,7 @@ fun SongScreenPreview() {
 fun SongScreenLandscapePreview() {
     HARPAppTheme {
         val mockSong = Song(
-            id = 1,
+            id = "1",
             title = "Wildest Dreams",
             artist = "Taylor Swift",
             difficulty = Difficulty.MEDIUM,

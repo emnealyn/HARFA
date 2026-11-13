@@ -1,20 +1,24 @@
 package com.example.harpapp.di
 
 import android.content.Context
+import com.example.harpapp.data.catalog.AssetSongCatalogDataSource
+import com.example.harpapp.data.catalog.SongCatalogDataSource
 import com.example.harpapp.data.local.AppDatabase
-import com.example.harpapp.data.local.RoomSongRepository
 import com.example.harpapp.data.media.AndroidAssetAudioPlayer
 import com.example.harpapp.data.preferences.DataStoreSettingsRepository
 import com.example.harpapp.data.preferences.dataStore
+import com.example.harpapp.data.repository.SongRepositoryImpl
 import com.example.harpapp.domain.repository.AudioPlayer
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.domain.repository.SettingsRepository
 import com.example.harpapp.domain.repository.SongRepository
 import com.example.harpapp.domain.usecase.FilterSongsUseCase
+import com.example.harpapp.domain.usecase.GetSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.usecase.InstrumentLessonController
 import com.example.harpapp.domain.usecase.ObserveSongsUseCase
 import com.example.harpapp.domain.usecase.PrepareLessonUseCase
+import com.example.harpapp.domain.usecase.SaveSongProgressUseCase
 import com.example.harpapp.domain.usecase.SetFavoriteUseCase
 import com.example.harpapp.presentation.dev.DevTools
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModelFactory
@@ -22,19 +26,21 @@ import com.example.harpapp.presentation.viewmodel.HarpViewModelFactory
 import com.example.harpapp.presentation.viewmodel.HomeViewModelFactory
 import com.example.harpapp.presentation.viewmodel.SettingsViewModelFactory
 import com.example.harpapp.presentation.viewmodel.SongViewModelFactory
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 
 class AppContainer(
     context: Context,
     instrumentRepositoryOverride: InstrumentRepository? = null
 ) {
     private val appContext = context.applicationContext
-    private val databaseScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val database = AppDatabase.getDatabase(appContext, databaseScope)
+    private val database = AppDatabase.getDatabase(appContext)
 
-    private val songRepository: SongRepository = RoomSongRepository(database.songDao())
+    val catalogDataSource: SongCatalogDataSource = AssetSongCatalogDataSource(appContext)
+    private val songRepository: SongRepository = SongRepositoryImpl(
+        catalogDataSource = catalogDataSource,
+        favoriteDao = database.favoriteDao(),
+        progressDao = database.progressDao()
+    )
+
     val settingsRepository: SettingsRepository =
         DataStoreSettingsRepository(appContext.dataStore)
     val audioPlayer: AudioPlayer = AndroidAssetAudioPlayer(appContext)
@@ -49,6 +55,8 @@ class AppContainer(
     private val observeSongsUseCase = ObserveSongsUseCase(songRepository)
     private val getSongUseCase = GetSongUseCase(songRepository)
     private val setFavoriteUseCase = SetFavoriteUseCase(songRepository)
+    private val getSongProgressUseCase = GetSongProgressUseCase(songRepository)
+    private val saveSongProgressUseCase = SaveSongProgressUseCase(songRepository)
     private val filterSongsUseCase = FilterSongsUseCase()
     private val prepareLessonUseCase = PrepareLessonUseCase()
 
@@ -61,6 +69,8 @@ class AppContainer(
     val songViewModelFactory = SongViewModelFactory(
         getSongUseCase = getSongUseCase,
         prepareLessonUseCase = prepareLessonUseCase,
+        getSongProgressUseCase = getSongProgressUseCase,
+        saveSongProgressUseCase = saveSongProgressUseCase,
         audioPlayer = audioPlayer,
         noteEvents = instrumentRepository.noteEvents,
         connectionState = instrumentRepository.connectionState,

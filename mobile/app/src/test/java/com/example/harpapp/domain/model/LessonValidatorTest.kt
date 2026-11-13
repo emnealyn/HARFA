@@ -9,7 +9,7 @@ class LessonValidatorTest {
     @Test
     fun `poprawny utwor daje lekcje`() {
         val result = LessonValidator.validate(
-            songId = 1,
+            songId = "1",
             title = "Test",
             steps = listOf(CatalogStep("I", "G4"), CatalogStep("wan-", "G#4"), CatalogStep("na", "C5"))
         )
@@ -24,7 +24,7 @@ class LessonValidatorTest {
     @Test
     fun `zbiera wszystkie problemy z indeksami krokow`() {
         val result = LessonValidator.validate(
-            songId = 1,
+            songId = "1",
             title = "Test",
             steps = listOf(
                 CatalogStep("a", "G4"),
@@ -54,13 +54,13 @@ class LessonValidatorTest {
     fun `utwor bez nut daje NO_STEPS`() {
         val expected = LessonValidation.Invalid(listOf(CatalogIssue(null, null, CatalogIssueReason.NO_STEPS)))
 
-        assertEquals(expected, LessonValidator.validate(1, "Pusty", emptyList()))
-        assertEquals(expected, LessonValidator.validate(1, "Pusty", null))
+        assertEquals(expected, LessonValidator.validate("1", "Pusty", emptyList()))
+        assertEquals(expected, LessonValidator.validate("1", "Pusty", null))
     }
 
     @Test
     fun `granice zakresu harfy`() {
-        assertTrue(LessonValidator.validate(1, "t", listOf(CatalogStep("", "B0"), CatalogStep("", "C#5"))) is LessonValidation.Valid)
+        assertTrue(LessonValidator.validate("1", "t", listOf(CatalogStep("", "B0"), CatalogStep("", "C#5"))) is LessonValidation.Valid)
         assertEquals(
             LessonValidation.Invalid(
                 listOf(
@@ -68,7 +68,7 @@ class LessonValidatorTest {
                     CatalogIssue(1, "D5", CatalogIssueReason.OUT_OF_RANGE)
                 )
             ),
-            LessonValidator.validate(1, "t", listOf(CatalogStep("", "Bb0"), CatalogStep("", "D5")))
+            LessonValidator.validate("1", "t", listOf(CatalogStep("", "Bb0"), CatalogStep("", "D5")))
         )
     }
 }

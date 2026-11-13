@@ -29,7 +29,7 @@ sealed interface LessonValidation {
 /** Walidacja katalogu przed rozpoczęciem lekcji (docs/domain-model.md §6). Nigdy nie zgłasza wyjątku. */
 object LessonValidator {
 
-    fun validate(songId: Int, title: String?, steps: List<CatalogStep?>?): LessonValidation {
+    fun validate(songId: String, title: String?, steps: List<CatalogStep?>?): LessonValidation {
         if (steps.isNullOrEmpty()) {
             return LessonValidation.Invalid(listOf(CatalogIssue(null, null, CatalogIssueReason.NO_STEPS)))
         }

@@ -1,123 +1,124 @@
 package com.example.harpapp.data.local
 
 import android.content.Context
-import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.example.harpapp.data.media.MidiDurationHelper
-import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
-import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import java.io.InputStreamReader
 
-@Database(entities = [SongEntity::class], version = 14, exportSchema = false)
-@TypeConverters(Converters::class)
+@Database(
+    entities = [FavoriteSongEntity::class, SongProgressEntity::class],
+    version = 17,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun songDao(): SongDao
+    abstract fun favoriteDao(): FavoriteDao
+    abstract fun progressDao(): ProgressDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        fun getDatabase(context: Context, scope: CoroutineScope): AppDatabase {
+        fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "harp_database"
                 )
-                    .fallbackToDestructiveMigration(true)
-                    .addCallback(AppDatabaseCallback(scope, context.applicationContext))
+                    .addMigrations(
+                        MIGRATION_14_17,
+                        MIGRATION_15_17,
+                        MIGRATION_16_17
+                    )
                     .build()
                     .also { INSTANCE = it }
             }
         }
-    }
 
-    private class AppDatabaseCallback(
-        private val scope: CoroutineScope,
-        private val context: Context
-    ) : RoomDatabase.Callback() {
+        private val MIGRATION_14_17 = object : Migration(14, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                createUserStateTables(db)
 
-        override fun onCreate(db: SupportSQLiteDatabase) {
-            super.onCreate(db)
-            populateDatabase()
-        }
-
-        override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
-            super.onDestructiveMigration(db)
-            populateDatabase()
-        }
-
-        private fun populateDatabase() {
-            INSTANCE?.let { database ->
-                scope.launch(Dispatchers.IO) {
-                    seedDatabase(database.songDao())
-                }
-            }
-        }
-
-        private suspend fun seedDatabase(songDao: SongDao) {
-            try {
-                context.assets.open("songs.json").use { inputStream ->
-                    InputStreamReader(inputStream).use { reader ->
-                        val songListType = object : TypeToken<List<SongAsset>>() {}.type
-                        val songs = Gson().fromJson<List<SongAsset>>(reader, songListType)
-                            .map { it.toEntity(context) }
-                        songDao.insertAllSongs(songs)
+                db.query("SELECT id FROM songs WHERE isFavorite = 1").use { cursor ->
+                    val idColumn = cursor.getColumnIndexOrThrow("id")
+                    while (cursor.moveToNext()) {
+                        val legacyId = cursor.getInt(idColumn)
+                        val songId = LEGACY_SONG_IDS.getOrNull(legacyId - 1) ?: continue
+                        insertFavorite(db, songId)
                     }
                 }
-            } catch (exception: Exception) {
-                Log.e("AppDatabase", "Failed to seed songs database", exception)
+
+                db.execSQL("DROP TABLE IF EXISTS songs")
+            }
+        }
+
+        private val MIGRATION_15_17 = object : Migration(15, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                createUserStateTables(db)
+                db.execSQL(
+                    """
+                    INSERT OR IGNORE INTO favorite_songs(songId, addedAt)
+                    SELECT id, CAST(strftime('%s', 'now') AS INTEGER) * 1000
+                    FROM songs
+                    WHERE isFavorite = 1
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE IF EXISTS songs")
+            }
+        }
+
+        private val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    ALTER TABLE song_progress
+                    ADD COLUMN lessonFingerprint TEXT NOT NULL DEFAULT ''
+                    """.trimIndent()
+                )
             }
         }
     }
 }
 
-private data class SongAsset(
-    val title: String = "",
-    val artist: String = "",
-    val difficulty: String = "EASY",
-    val duration: String = "",
-    val midiFilePath: String? = null,
-    val coverImage: String? = null,
-    @SerializedName("is_favorite")
-    val isFavorite: Boolean = false,
-    val lyricsWithNotes: List<LyricNoteAsset> = emptyList()
-) {
-    fun toEntity(context: Context): SongEntity {
-        val calculatedDuration = midiFilePath?.let { path ->
-            try {
-                val durationMs = MidiDurationHelper.getDurationMs(context, path)
-                MidiDurationHelper.formatDuration(durationMs)
-            } catch (exception: Exception) {
-                Log.w("AppDatabase", "Could not read MIDI duration for $path", exception)
-                null
-            }
-        } ?: duration
+private val LEGACY_SONG_IDS = listOf(
+    "another-love",
+    "wildest-dreams",
+    "lovely",
+    "hallelujah",
+    "viva-la-test"
+)
 
-        return SongEntity(
-            title = title,
-            artist = artist,
-            difficulty = difficulty,
-            duration = calculatedDuration,
-            lyricsWithNotes = lyricsWithNotes.map {
-                LyricNoteEntity(it.syllable, it.note)
-            },
-            midiFilePath = midiFilePath,
-            coverImage = coverImage,
-            isFavorite = isFavorite
+private fun createUserStateTables(db: SupportSQLiteDatabase) {
+    db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS favorite_songs (
+            songId TEXT NOT NULL,
+            addedAt INTEGER NOT NULL,
+            PRIMARY KEY(songId)
         )
-    }
+        """.trimIndent()
+    )
+    db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS song_progress (
+            songId TEXT NOT NULL,
+            currentIndex INTEGER NOT NULL,
+            hits INTEGER NOT NULL,
+            misses INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            updatedAt INTEGER NOT NULL,
+            lessonFingerprint TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY(songId)
+        )
+        """.trimIndent()
+    )
 }
 
-private data class LyricNoteAsset(
-    val syllable: String = "",
-    val note: String = ""
-)
+private fun insertFavorite(db: SupportSQLiteDatabase, songId: String) {
+    db.execSQL(
+        "INSERT OR IGNORE INTO favorite_songs(songId, addedAt) VALUES (?, ?)",
+        arrayOf<Any>(songId, System.currentTimeMillis())
+    )
+}
