@@ -2,6 +2,9 @@ package com.example.harpapp.presentation.ui.components.harp
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -125,7 +128,19 @@ private fun OctaveShiftSlider(
                         else -> colors.secondary
                     },
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp)
+                        .then(
+                            if (isTarget) {
+                                Modifier
+                                    .background(colors.error.copy(alpha = 0.12f), TargetShape)
+                                    .border(1.dp, colors.error.copy(alpha = 0.5f), TargetShape)
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .padding(vertical = 2.dp)
                 )
             }
         }
@@ -151,6 +166,8 @@ private fun AlignedToStop(
         }
     }
 }
+
+private val TargetShape = RoundedCornerShape(10.dp)
 
 internal fun octaveShiftLabel(shift: OctaveShift): String = when (shift) {
     OctaveShift.DOWN -> "−1"
