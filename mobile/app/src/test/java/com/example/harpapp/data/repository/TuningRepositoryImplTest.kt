@@ -63,6 +63,18 @@ class TuningRepositoryImplTest {
     }
 
     @Test
+    fun `lista strojen pomija bledne wpisy i loguje ostrzezenie`() = runTest {
+        val repo = repository(
+            TuningCatalogDto("c-major", "C-dur", "MAJOR", levers()),
+            TuningCatalogDto("x", "X", "LYDIAN", levers()),
+            TuningCatalogDto("a-minor", "A-moll", "MINOR", levers())
+        )
+
+        assertEquals(listOf("c-major", "a-minor"), repo.getTunings().map { it.id })
+        assertEquals(1, warnings.size)
+    }
+
+    @Test
     fun `niepelna mapa dzwigni zwraca null`() = runTest {
         val repo = repository(TuningCatalogDto("x", "X", "MAJOR", levers() - "B"))
 

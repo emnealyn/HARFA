@@ -41,3 +41,7 @@ Wybrano **Opcję B**. Katalog utworów jest odczytywany jako niezmienne dane tyl
 * Zmiany treści utworu są wykrywane przez fingerprint lekcji, aby nie odtwarzać niekompatybilnego postępu. Postęp przeniesiony z wersji 16 nie ma jeszcze fingerprintu i zostanie opatrzony nim przy pierwszym zapisie.
 * UI oraz ViewModele operują wyłącznie na modelach domenowych (`Song`, `LessonProgress`) i stabilnym identyfikatorze `songId`.
 * Źródła danych, repozytorium i przywracanie postępu są weryfikowalne testami jednostkowymi; testy integracyjne samych migracji Room pozostają osobnym zakresem.
+
+## Aktualizacja (HARFA-39)
+
+Katalog strojeń (`assets/tunings.json`, `TuningCatalogDataSource`, `TuningRepository`) podlega tym samym zasadom co katalog utworów: jest wersjonowanymi danymi tylko do odczytu, nie trafia do Room i nie wymaga migracji. Utwór wskazuje strojenie stabilnym kluczem `tuningId: String`.
