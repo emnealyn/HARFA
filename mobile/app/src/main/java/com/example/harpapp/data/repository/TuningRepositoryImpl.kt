@@ -18,6 +18,13 @@ class TuningRepositoryImpl(
         }
     }
 
+    override suspend fun getTunings(): List<Tuning> =
+        catalogDataSource.getTunings().mapNotNull { dto ->
+            dto.toDomain().also {
+                if (it == null) logWarning("Ignoring invalid tuning in catalog: tuningId=${dto.id}")
+            }
+        }
+
     private companion object {
         const val TAG = "TuningRepository"
     }

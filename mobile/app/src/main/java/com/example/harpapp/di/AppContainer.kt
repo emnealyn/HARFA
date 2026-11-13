@@ -16,9 +16,11 @@ import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.domain.repository.SettingsRepository
 import com.example.harpapp.domain.repository.SongRepository
 import com.example.harpapp.domain.repository.TuningRepository
+import com.example.harpapp.domain.usecase.AnalyzeTuningUseCase
 import com.example.harpapp.domain.usecase.FilterSongsUseCase
 import com.example.harpapp.domain.usecase.GetSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongTuningUseCase
+import com.example.harpapp.domain.usecase.GetTuningsUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.usecase.InstrumentLessonController
 import com.example.harpapp.domain.usecase.ObserveSongsUseCase
@@ -67,6 +69,8 @@ class AppContainer(
     private val filterSongsUseCase = FilterSongsUseCase()
     private val prepareLessonUseCase = PrepareLessonUseCase()
     private val getSongTuningUseCase = GetSongTuningUseCase(tuningRepository)
+    private val analyzeTuningUseCase = AnalyzeTuningUseCase()
+    private val getTuningsUseCase = GetTuningsUseCase(tuningRepository)
 
     val homeViewModelFactory = HomeViewModelFactory(
         observeSongsUseCase = observeSongsUseCase,
@@ -82,10 +86,20 @@ class AppContainer(
         audioPlayer = audioPlayer,
         noteEvents = instrumentRepository.noteEvents,
         connectionState = instrumentRepository.connectionState,
-        lessonControllerFactory = InstrumentLessonController.Factory(instrumentRepository)
+        lessonControllerFactory = InstrumentLessonController.Factory(instrumentRepository),
+        instrumentState = instrumentRepository.instrumentState,
+        configurationKnown = instrumentRepository.configurationKnown,
+        getSongTuningUseCase = getSongTuningUseCase,
+        analyzeTuningUseCase = analyzeTuningUseCase
     )
 
     val settingsViewModelFactory = SettingsViewModelFactory(settingsRepository)
     val bluetoothViewModelFactory = BluetoothViewModelFactory(instrumentRepository)
-    val harpViewModelFactory = HarpViewModelFactory(instrumentRepository)
+    val harpViewModelFactory = HarpViewModelFactory(
+        instrumentRepository = instrumentRepository,
+        getSongUseCase = getSongUseCase,
+        getSongTuningUseCase = getSongTuningUseCase,
+        analyzeTuningUseCase = analyzeTuningUseCase,
+        getTuningsUseCase = getTuningsUseCase
+    )
 }

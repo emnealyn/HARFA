@@ -10,3 +10,9 @@ class GetSongTuningUseCase(
     suspend operator fun invoke(song: Song): Tuning? =
         song.tuningId?.let { repository.getTuning(it) }
 }
+
+class GetTuningsUseCase(
+    private val repository: TuningRepository
+) {
+    suspend operator fun invoke(): List<Tuning> = repository.getTunings()
+}
