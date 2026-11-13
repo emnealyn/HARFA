@@ -73,8 +73,6 @@ internal class HarpSession(
                 val deviceInfo = withTimeout(HANDSHAKE_TIMEOUT_MS) {
                     waiter.await()
                 }
-                state = State.READY
-                nextOutgoingSequence = 1
                 deviceInfoWaiter = null
                 return deviceInfo
             } catch (exception: TimeoutCancellationException) {
@@ -190,40 +188,49 @@ internal class HarpSession(
     }
 
     private fun handleMessage(message: HarpMessage): HarpSessionEvent {
-        if (state == State.HANDSHAKING) {
-            when (message) {
-                is HarpMessage.DeviceInfo -> {
-                    if (message.sid != currentSid) return HarpSessionEvent.StaleFrame(message, currentSid)
-                    lastIncomingSequence = message.seq
-                    deviceInfoWaiter?.complete(message)
-                    return HarpSessionEvent.Message(message)
-                }
-
-                is HarpMessage.Error -> {
-                    if (message.sid != currentSid && message.sid != SessionIds.NONE) {
-                        return HarpSessionEvent.StaleFrame(message, currentSid)
-                    }
-                    deviceInfoWaiter?.completeExceptionally(
-                        HarpHandshakeException(
-                            "Instrument rejected HELLO with error ${message.code}"
-                        )
-                    )
-                    return HarpSessionEvent.Message(message)
-                }
-
-                else -> Unit
-            }
+        return when (state) {
+            State.IDLE -> HarpSessionEvent.StaleFrame(message, currentSid)
+            State.HANDSHAKING -> handleHandshakeMessage(message)
+            State.READY -> handleReadyMessage(message)
         }
+    }
 
-        if (state == State.READY && message.sid != currentSid) {
+    private fun handleHandshakeMessage(message: HarpMessage): HarpSessionEvent {
+        return when (message) {
+            is HarpMessage.DeviceInfo -> {
+                if (message.sid != currentSid) {
+                    return HarpSessionEvent.StaleFrame(message, currentSid)
+                }
+                val waiter = deviceInfoWaiter ?: return HarpSessionEvent.StaleFrame(message, currentSid)
+                lastIncomingSequence = message.seq
+                state = State.READY
+                nextOutgoingSequence = 1
+                waiter.complete(message)
+                HarpSessionEvent.Message(message)
+            }
+
+            is HarpMessage.Error -> {
+                if (message.sid != currentSid && message.sid != SessionIds.NONE) {
+                    return HarpSessionEvent.StaleFrame(message, currentSid)
+                }
+                deviceInfoWaiter?.completeExceptionally(
+                    HarpHandshakeException(
+                        "Instrument rejected HELLO with error ${message.code}"
+                    )
+                )
+                HarpSessionEvent.Message(message)
+            }
+
+            else -> HarpSessionEvent.StaleFrame(message, currentSid)
+        }
+    }
+
+    private fun handleReadyMessage(message: HarpMessage): HarpSessionEvent {
+        if (message.sid != currentSid) {
             return HarpSessionEvent.StaleFrame(message, currentSid)
         }
 
-        val sequenceGap = if (state == State.READY) {
-            detectIncomingSequenceGap(message.seq)
-        } else {
-            null
-        }
+        val sequenceGap = detectIncomingSequenceGap(message.seq)
 
         when (message) {
             is HarpMessage.Ack -> {

@@ -16,6 +16,7 @@ import org.junit.Test
 import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 
 class HarpSessionTest {
 
@@ -79,9 +80,9 @@ class HarpSessionTest {
     }
 
     @Test
-    fun exposesStringEvents() {
-        val session = HarpSession { }
-        val message = HarpMessage.StringEvent(seq = 4, sid = 1, stringId = 5, midi = 45, tMs = 1000)
+    fun exposesStringEvents() = runBlocking {
+        val session = connectedSession(mutableListOf(), sid = 7)
+        val message = HarpMessage.StringEvent(seq = 2, sid = 7, stringId = 5, midi = 45, tMs = 1000)
 
         val event = session.handleIncoming(HarpCodec.encode(message))
 
@@ -199,6 +200,46 @@ class HarpSessionTest {
         session.reset()
 
         assertEquals(SessionIds.NONE, session.currentSid)
+    }
+
+    @Test
+    fun idleSessionRejectsAllMessages() {
+        val session = HarpSession { }
+        val message = HarpMessage.StringEvent(seq = 4, sid = 1, stringId = 5, midi = 45, tMs = 1000)
+
+        val event = session.handleIncoming(HarpCodec.encode(message))
+
+        assertEquals(HarpSessionEvent.StaleFrame(message, SessionIds.NONE), event)
+    }
+
+    @Test
+    fun handshakeIgnoresNonHandshakeFramesEvenWithCurrentSid() = runBlocking<Unit> {
+        val session = HarpSession(initialSid = 7) { }
+        val handshake = async(start = CoroutineStart.UNDISPATCHED) { session.start() }
+        val message = HarpMessage.StringEvent(seq = 1, sid = 7, stringId = 5, midi = 45, tMs = 1000)
+
+        val event = session.handleIncoming(HarpCodec.encode(message))
+
+        assertEquals(HarpSessionEvent.StaleFrame(message, currentSid = 7), event)
+        assertFalse(handshake.isCompleted)
+
+        session.handleIncoming(HarpCodec.encode(deviceInfoMessage(sid = 7)))
+        handshake.await()
+    }
+
+    @Test
+    fun frameRightAfterDeviceInfoIsAccepted() = runBlocking<Unit> {
+        val session = HarpSession(initialSid = 7) { }
+        val handshake = async { session.start() }
+        yield()
+
+        session.handleIncoming(HarpCodec.encode(deviceInfoMessage(sid = 7)))
+        val event = session.handleIncoming(
+            HarpCodec.encode(HarpMessage.StringEvent(seq = 1, sid = 7, stringId = 5, midi = 45, tMs = 1000))
+        )
+
+        assertTrue(event is HarpSessionEvent.Message)
+        handshake.await()
     }
 
     private suspend fun connectedSession(sentFrames: MutableList<ByteArray>, sid: Int): HarpSession =
