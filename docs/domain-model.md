@@ -221,25 +221,28 @@ Gdy użytkownik wznowi lekcję bez połączenia, pozostaje ona wstrzymana jak po
 
 Przebieg lekcji na komendy protokołu przekłada `InstrumentLessonController` (warstwa `domain`). Komendy wysyła tylko przy aktywnym połączeniu, a komendy z poprzedniej sesji nie są ponawiane (spec §8 pkt 9).
 
+Każdy sygnał kontrolera (start, wynik, pauza, wznowienie, koniec, zmiana strojenia) dostaje identyfikator sesji (`SessionId` z `InstrumentRepository.currentSession`) w chwili, w której powstał. Sygnał z sesji, która już się skończyła, jest pomijany, a repozytorium odrzuca komendę z nieaktualną sesją (`StaleSessionException`). Dzięki temu sygnał zakolejkowany przed zerwaniem połączenia nie trafia do harfy po ponownym połączeniu ([ADR 010](adr/010-ble-session-id-and-pause.md)).
+
 | Zdarzenie w aplikacji | Komendy |
 | :--- | :--- |
 | Start lub powtórzenie lekcji | `LESSON_START`, `LESSON_STEP` dla kroku 0 |
 | `HIT` | `LESSON_RESULT(HIT)`, `LESSON_STEP` dla kolejnego kroku |
 | `MISS` | `LESSON_RESULT(MISS)` |
 | `COMPLETE` | `LESSON_RESULT(COMPLETE)` |
-| Pauza użytkownika | `LESSON_END`, bo protokół nie ma komendy pauzy |
-| Wznowienie (ręczne albo po ponownym połączeniu) | `LESSON_START`, `LESSON_STEP` dla bieżącego kroku |
+| Pauza użytkownika | `LESSON_PAUSE(1)`: harfa zachowuje lekcję i krok, gasi diody |
+| Wznowienie w tej samej sesji | `LESSON_PAUSE(0)`, a `LESSON_STEP` tylko wtedy, gdy krok lub maska zmieniły się w czasie pauzy |
+| Wznowienie w nowej sesji (po ponownym połączeniu) | `LESSON_START`, `LESSON_STEP` dla bieżącego kroku |
 | Zmiana `InstrumentState` w trakcie kroku | ponowny `LESSON_STEP` z tym samym indeksem, gdy zmieniła się maska |
 | Zakończenie nauki | `LESSON_END` |
 
-Ponowny `LESSON_STEP` po zmianie strojenia obsługuje zarówno przestawienie przełącznika, jak i `CONFIG_STATE`, które po handshake dociera już po wznowieniu lekcji. Komenda jest idempotentna (spec §4.9). Po `COMPLETE`, `LESSON_END` i utracie połączenia harfa nie ma aktywnego kroku, więc zmiana strojenia niczego nie wysyła.
+Ponowny `LESSON_STEP` po zmianie strojenia obsługuje zarówno przestawienie przełącznika, jak i `CONFIG_STATE`, które po handshake dociera już po wznowieniu lekcji. Komenda jest idempotentna (spec §4.9). Po `COMPLETE`, `LESSON_END` i utracie połączenia harfa nie ma aktywnego kroku, więc zmiana strojenia niczego nie wysyła. W pauzie zmiana strojenia też niczego nie wysyła: nowa maska jest sprawdzana przy wznowieniu.
 
 Zestaw komend zależy od możliwości z `DEVICE_INFO` (`InstrumentCapabilities`):
 
 | Możliwości | Zachowanie |
 | :--- | :--- |
 | `CAP_LESSON` | Komendy `LESSON_*` jak w tabeli powyżej. |
-| tylko `CAP_LEDS` | `LESSON_STEP` → `LED_SET(mask, świecenie ciągłe)`, `COMPLETE` i `LESSON_END` → `LED_SET(0)`. `LESSON_START` oraz `HIT`/`MISS` są pomijane. |
+| tylko `CAP_LEDS` | `LESSON_STEP` → `LED_SET(mask, świecenie ciągłe)`, `COMPLETE`, `LESSON_END` i `LESSON_PAUSE(1)` → `LED_SET(0)`, `LESSON_PAUSE(0)` → `LED_SET` z maską bieżącego kroku. `LESSON_START` oraz `HIT`/`MISS` są pomijane. |
 | brak obu | Nic nie jest wysyłane. Lekcja działa wyłącznie na ekranie aplikacji. |
 
 ---
@@ -311,4 +314,4 @@ Model **MUSI** przechodzić testy jednostkowe, które obejmują co najmniej:
 6. Postęp lekcji: `HIT` przesuwa krok, `MISS` nie przesuwa. Ostatni `HIT` daje `COMPLETE`, a potem wszystkie zdarzenia są `IGNORED`. Zagranie `G#4` przy oczekiwanym `G4` to `MISS`. W stanie `PAUSED` zdarzenia są `IGNORED`.
 7. Walidacja całego `songs.json` kończy się bez wyjątku: *Hallelujah* jest `Invalid`, a pozostałe utwory `Valid`.
 8. Ramki `STRING_EVENT` i `CONFIG_STATE` z [`test-vectors.json`](protocol/test-vectors.json) poprawnie przekładają się na `NoteEvent` i `InstrumentState`.
-9. Sterowanie lekcją z `FakeInstrumentRepository` (`InstrumentLessonControllerTest`, `SongViewModelTest`) wysyła komendy z tabel w §5.3. Obejmuje to: pełną lekcję, pauzę i wznowienie, powtórzenie, utratę i odzyskanie połączenia, start bez połączenia, zmianę strojenia w trakcie kroku oraz harfę bez `CAP_LESSON`.
+9. Sterowanie lekcją z `FakeInstrumentRepository` (`InstrumentLessonControllerTest`, `SongViewModelTest`) wysyła komendy z tabel w §5.3. Obejmuje to: pełną lekcję, pauzę i wznowienie (w tej samej i w nowej sesji), powtórzenie, utratę i odzyskanie połączenia, pominięcie sygnału zakolejkowanego w poprzedniej sesji, start bez połączenia, zmianę strojenia w trakcie kroku oraz harfę bez `CAP_LESSON`.

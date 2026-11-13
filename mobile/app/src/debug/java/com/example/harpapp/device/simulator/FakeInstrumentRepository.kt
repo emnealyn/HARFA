@@ -11,6 +11,8 @@ import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
+import com.example.harpapp.domain.model.SessionId
+import com.example.harpapp.domain.model.StaleSessionException
 import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.protocol.Capabilities
@@ -104,6 +106,10 @@ class FakeInstrumentRepository(
     private var presetDevices: List<InstrumentDevice>? = null
     private var lastDevice: InstrumentDevice? = null
     private var timestampMs = 0
+    
+    private val _currentSession = MutableStateFlow<SessionId?>(null)
+    override val currentSession: StateFlow<SessionId?> = _currentSession.asStateFlow()
+    private var sessionCounter = 0
 
     private var lessonStepMask = 0
     private var lessonPaused = false
@@ -140,12 +146,11 @@ class FakeInstrumentRepository(
             clearLessonState()
             _capabilities.value = InstrumentCapabilities.NONE
         }
-        _connectionState.value = state
+        updateConnectionState(state)
     }
 
-    /** Nagłe zerwanie połączenia: harfa kończy lekcję i gasi diody (spec §6 pkt 8). */
     fun simulateConnectionLoss() {
-        _connectionState.value = ConnectionState.DISCONNECTED
+        updateConnectionState(ConnectionState.DISCONNECTED)
         _capabilities.value = InstrumentCapabilities.NONE
         clearLessonState()
     }
@@ -263,9 +268,9 @@ class FakeInstrumentRepository(
     }
 
     override suspend fun connect(device: InstrumentDevice) {
-        _connectionState.value = ConnectionState.CONNECTING
+        updateConnectionState(ConnectionState.CONNECTING)
         if (connectFailures.isNotEmpty()) {
-            _connectionState.value = ConnectionState.DISCONNECTED
+            updateConnectionState(ConnectionState.DISCONNECTED)
             throw connectFailures.removeFirst()
         }
         delay(config.connectDelayMs)
@@ -275,7 +280,7 @@ class FakeInstrumentRepository(
         _connectedDeviceId.value = config.deviceId
         clearLessonState()
         _capabilities.value = instrumentCapabilitiesOf(config.capabilities)
-        _connectionState.value = ConnectionState.CONNECTED
+        updateConnectionState(ConnectionState.CONNECTED)
 
         // Jak po handshake: CONFIG_STATE, potem BATTERY_STATE (spec §6).
         emitConfiguration(_instrumentState.value)
@@ -284,9 +289,14 @@ class FakeInstrumentRepository(
         }
     }
 
-    override suspend fun send(command: InstrumentCommand) {
+    override suspend fun send(command: InstrumentCommand, session: SessionId) {
         check(_connectionState.value == ConnectionState.CONNECTED) {
             "Fake instrument is not connected"
+        }
+        if (session != _currentSession.value) {
+            throw StaleSessionException(
+                "Command prepared for session ${session.value}, current session is ${_currentSession.value?.value}"
+            )
         }
         if (commandFailures.isNotEmpty()) {
             throw commandFailures.removeFirst()
@@ -299,7 +309,7 @@ class FakeInstrumentRepository(
     }
 
     override fun disconnect() {
-        _connectionState.value = ConnectionState.DISCONNECTED
+        updateConnectionState(ConnectionState.DISCONNECTED)
         _capabilities.value = InstrumentCapabilities.NONE
         clearLessonState()
     }
@@ -360,6 +370,15 @@ class FakeInstrumentRepository(
                     "Instrument does not support lesson commands"
                 }
         }
+    }
+
+    private fun updateConnectionState(state: ConnectionState) {
+        if (state != ConnectionState.CONNECTED) {
+            _currentSession.value = null
+        } else if (_connectionState.value != ConnectionState.CONNECTED || _currentSession.value == null) {
+            _currentSession.value = SessionId(++sessionCounter)
+        }
+        _connectionState.value = state
     }
 
     private fun clearLessonState() {
