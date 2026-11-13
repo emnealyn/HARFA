@@ -8,7 +8,6 @@ import com.google.gson.reflect.TypeToken
 import java.io.InputStreamReader
 
 interface SongCatalogDataSource {
-    fun getCatalogVersion(): Int
     fun getSongs(): List<SongCatalogDto>
     fun getSong(songId: String): SongCatalogDto?
 }
@@ -17,10 +16,6 @@ class AssetSongCatalogDataSource(
     private val context: Context,
     private val fileName: String = "songs.json"
 ) : SongCatalogDataSource {
-
-    override fun getCatalogVersion(): Int {
-        return 1
-    }
 
     override fun getSongs(): List<SongCatalogDto> {
         return try {

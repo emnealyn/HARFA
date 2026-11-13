@@ -1,14 +1,17 @@
 package com.example.harpapp.data.repository
 
+import android.util.Log
 import com.example.harpapp.data.catalog.SongCatalogDataSource
 import com.example.harpapp.data.local.FavoriteDao
 import com.example.harpapp.data.local.FavoriteSongEntity
 import com.example.harpapp.data.local.ProgressDao
 import com.example.harpapp.data.local.SongProgressEntity
+import com.example.harpapp.data.local.lessonFingerprint
 import com.example.harpapp.data.local.toDomain
 import com.example.harpapp.data.local.toEntity
 import com.example.harpapp.domain.model.CatalogStep
 import com.example.harpapp.domain.model.LessonProgress
+import com.example.harpapp.domain.model.LessonStatus
 import com.example.harpapp.domain.model.LessonValidation
 import com.example.harpapp.domain.model.LessonValidator
 import com.example.harpapp.domain.model.Song
@@ -19,7 +22,8 @@ import kotlinx.coroutines.flow.map
 class SongRepositoryImpl(
     private val catalogDataSource: SongCatalogDataSource,
     private val favoriteDao: FavoriteDao,
-    private val progressDao: ProgressDao
+    private val progressDao: ProgressDao,
+    private val logWarning: (String) -> Unit = { message -> Log.w(TAG, message) }
 ) : SongRepository {
 
     override fun observeSongs(): Flow<List<Song>> {
@@ -69,6 +73,31 @@ class SongRepositoryImpl(
         val steps = dto.lyricsWithNotes.map { CatalogStep(it.syllable, it.note) }
         val validation = LessonValidator.validate(dto.id, dto.title, steps)
         if (validation !is LessonValidation.Valid) return null
-        return entity.toDomain(validation.lesson)
+
+        val lesson = validation.lesson
+        val status = entity.status.toLessonStatusOrNull()
+        val indexIsValid = entity.currentIndex in 0..lesson.steps.size
+        val statusIsValid = status != null &&
+            (status == LessonStatus.COMPLETED) == (entity.currentIndex == lesson.steps.size)
+        val fingerprintIsValid = entity.lessonFingerprint.isEmpty() ||
+            entity.lessonFingerprint == lesson.lessonFingerprint()
+
+        if (!indexIsValid || !statusIsValid || !fingerprintIsValid) {
+            logWarning("Ignoring incompatible saved progress for songId=${entity.songId}")
+            return null
+        }
+
+        return entity.toDomain(lesson)
+    }
+
+    private fun String.toLessonStatusOrNull(): LessonStatus? =
+        try {
+            LessonStatus.valueOf(this)
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+
+    private companion object {
+        const val TAG = "SongRepository"
     }
 }

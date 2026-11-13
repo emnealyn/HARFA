@@ -27,8 +27,8 @@ import kotlinx.coroutines.launch
 class SongViewModel(
     private val getSongUseCase: GetSongUseCase,
     private val prepareLessonUseCase: PrepareLessonUseCase,
-    private val getSongProgressUseCase: GetSongProgressUseCase? = null,
-    private val saveSongProgressUseCase: SaveSongProgressUseCase? = null,
+    private val getSongProgressUseCase: GetSongProgressUseCase,
+    private val saveSongProgressUseCase: SaveSongProgressUseCase,
     private val audioPlayer: AudioPlayer,
     noteEvents: Flow<NoteEvent>,
     connectionState: Flow<ConnectionState>,
@@ -102,7 +102,7 @@ class SongViewModel(
         _progress.value = newProgress
         newProgress?.let { progress ->
             viewModelScope.launch {
-                saveSongProgressUseCase?.invoke(progress)
+                saveSongProgressUseCase.invoke(progress)
             }
         }
     }
@@ -116,9 +116,17 @@ class SongViewModel(
             _isPlaying.value = false
             stopLearning()
 
-            val savedProgress = getSongProgressUseCase?.invoke(songId)
+            val savedProgress = getSongProgressUseCase.invoke(songId)
             if (savedProgress != null && !savedProgress.isCompleted) {
-                _progress.value = savedProgress
+                val restoredProgress = if (lastConnectionState == ConnectionState.CONNECTED) {
+                    savedProgress.resume()
+                } else {
+                    savedProgress.pause()
+                }
+                updateProgress(restoredProgress)
+                if (lastConnectionState == ConnectionState.CONNECTED) {
+                    lessonController.resume(restoredProgress)
+                }
             }
         }
     }

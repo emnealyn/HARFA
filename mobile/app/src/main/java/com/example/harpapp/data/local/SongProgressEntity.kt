@@ -1,5 +1,6 @@
 package com.example.harpapp.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -11,5 +12,7 @@ data class SongProgressEntity(
     val hits: Int,
     val misses: Int,
     val status: String,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "''")
+    val lessonFingerprint: String = ""
 )

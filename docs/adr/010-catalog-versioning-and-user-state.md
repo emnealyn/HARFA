@@ -32,10 +32,12 @@ Pojawiły się następujące problemy:
 
 ## Decyzja
 
-Wybrano **Opcję B**. Katalog utworów jest odczytywany jako niezmienne, wersjonowane dane tylko do odczytu (`SongCatalogDataSource`), a baza danych Room odpowiada wyłącznie za trwałość danych użytkownika (ulubione i postęp nauki) powiązanych ze stabilnym `songId: String`.
+Wybrano **Opcję B**. Katalog utworów jest odczytywany jako niezmienne dane tylko do odczytu (`SongCatalogDataSource`), aktualizowane razem z wersją aplikacji, a baza danych Room odpowiada za trwałość danych użytkownika związanych z katalogiem (ulubione i postęp nauki) powiązanych ze stabilnym `songId: String`. Ustawienia aplikacji pozostają w DataStore, zgodnie z ADR-008.
 
 ## Konsekwencje
 
 * Aktualizacje katalogu utworów (np. dodanie nowych utworów lub korekta nut w `songs.json`) nie powodują utraty ulubionych ani postępów użytkownika.
+* Migracje z poprzedniej tabeli `songs` przenoszą istniejące ulubione do `favorite_songs`. Dla najstarszej wersji bazy stabilne `songId` są odtwarzane na podstawie historycznej kolejności katalogu, dlatego jej zmiana wymaga aktualizacji mapowania migracji.
+* Zmiany treści utworu są wykrywane przez fingerprint lekcji, aby nie odtwarzać niekompatybilnego postępu. Postęp przeniesiony z wersji 16 nie ma jeszcze fingerprintu i zostanie opatrzony nim przy pierwszym zapisie.
 * UI oraz ViewModele operują wyłącznie na modelach domenowych (`Song`, `LessonProgress`) i stabilnym identyfikatorze `songId`.
-* Zapewniona jest pełna testowalność źródeł danych i repozytorium za pomocą testów jednostkowych i integracyjnych.
+* Źródła danych, repozytorium i przywracanie postępu są weryfikowalne testami jednostkowymi; testy integracyjne samych migracji Room pozostają osobnym zakresem.

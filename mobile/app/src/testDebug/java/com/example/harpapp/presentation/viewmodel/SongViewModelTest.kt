@@ -11,9 +11,11 @@ import com.example.harpapp.domain.model.Song
 import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.domain.repository.AudioPlayer
 import com.example.harpapp.domain.repository.SongRepository
+import com.example.harpapp.domain.usecase.GetSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.usecase.InstrumentLessonController
 import com.example.harpapp.domain.usecase.PrepareLessonUseCase
+import com.example.harpapp.domain.usecase.SaveSongProgressUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -36,6 +38,7 @@ class SongViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
     private val harp = FakeInstrumentRepository()
     private lateinit var songs: Map<String, Song>
+    private lateinit var songRepository: InMemorySongRepository
     private lateinit var viewModel: SongViewModel
 
     @Before
@@ -45,9 +48,12 @@ class SongViewModelTest {
             song(LESSON_SONG_ID, noteOn(2), noteOn(4)),
             song(INVALID_SONG_ID, "G4", "H4")
         ).associateBy { it.id }
+        songRepository = InMemorySongRepository(songs)
         viewModel = SongViewModel(
-            getSongUseCase = GetSongUseCase(InMemorySongRepository(songs)),
+            getSongUseCase = GetSongUseCase(songRepository),
             prepareLessonUseCase = PrepareLessonUseCase(),
+            getSongProgressUseCase = GetSongProgressUseCase(songRepository),
+            saveSongProgressUseCase = SaveSongProgressUseCase(songRepository),
             audioPlayer = SilentAudioPlayer,
             noteEvents = harp.noteEvents,
             connectionState = harp.connectionState,
@@ -140,6 +146,27 @@ class SongViewModelTest {
             listOf(
                 InstrumentCommand.StartLesson(totalSteps = 2),
                 InstrumentCommand.LessonStep(index = 0, mask = 1 shl 2)
+            ),
+            harp.sentCommands
+        )
+    }
+
+    @Test
+    fun savedProgressIsRestoredOnConnectedHarp() = runTest(dispatcher) {
+        startLessonOnConnectedHarp()
+        harp.pluck(2)
+
+        viewModel.loadSong(INVALID_SONG_ID)
+        harp.clearRecordedCommands()
+
+        viewModel.loadSong(LESSON_SONG_ID)
+
+        assertEquals(LessonStatus.IN_PROGRESS, status)
+        assertEquals(1, viewModel.currentNoteIndex.value)
+        assertEquals(
+            listOf(
+                InstrumentCommand.StartLesson(totalSteps = 2),
+                InstrumentCommand.LessonStep(index = 1, mask = 1 shl 4)
             ),
             harp.sentCommands
         )
