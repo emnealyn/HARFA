@@ -48,7 +48,7 @@ import com.example.harpapp.R
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onNavigateToSong: (Int) -> Unit,
+    onNavigateToSong: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val songs by viewModel.filteredSongs.collectAsState()
@@ -80,7 +80,7 @@ fun HomeContent(
     onToggleFavoritesFilter: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     onFavoriteToggle: (Song) -> Unit,
-    onSongClick: (Int) -> Unit,
+    onSongClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }

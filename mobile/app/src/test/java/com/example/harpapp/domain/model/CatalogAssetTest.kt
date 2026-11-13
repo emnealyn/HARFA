@@ -10,15 +10,16 @@ import java.io.File
 /** Walidacja rzeczywistego katalogu `src/main/assets/songs.json`. */
 class CatalogAssetTest {
 
-    private class SongJson(val title: String?, val lyricsWithNotes: List<CatalogStep?>?)
+    private class SongJson(val id: String?, val title: String?, val lyricsWithNotes: List<CatalogStep?>?)
 
     private val songs: List<SongJson> = File("src/main/assets/songs.json").reader(Charsets.UTF_8).use {
         Gson().fromJson(it, object : TypeToken<List<SongJson>>() {}.type)
     }
 
     private fun validateAll(): Map<String?, LessonValidation> =
-        songs.mapIndexed { i, song -> song.title to LessonValidator.validate(i, song.title, song.lyricsWithNotes) }
-            .toMap()
+        songs.mapIndexed { i, song ->
+            song.title to LessonValidator.validate(song.id ?: i.toString(), song.title, song.lyricsWithNotes)
+        }.toMap()
 
     @Test
     fun `walidacja calego katalogu nie zglasza wyjatku`() {

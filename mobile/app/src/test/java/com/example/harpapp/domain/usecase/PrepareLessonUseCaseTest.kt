@@ -20,7 +20,7 @@ class PrepareLessonUseCaseTest {
 
         assertTrue(result is LessonValidation.Valid)
         val lesson = (result as LessonValidation.Valid).lesson
-        assertEquals(7, lesson.songId)
+        assertEquals("7", lesson.songId)
         assertEquals("Test", lesson.title)
         assertEquals(listOf("I", "wan-", "na"), lesson.steps.map { it.syllable })
         assertEquals(listOf(67, 68, 72), lesson.steps.map { it.pitch.midi })
@@ -60,7 +60,7 @@ class PrepareLessonUseCaseTest {
     }
 
     private fun song(vararg notes: LyricNote) = Song(
-        id = 7,
+        id = "7",
         title = "Test",
         artist = "Artysta",
         difficulty = Difficulty.EASY,

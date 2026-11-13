@@ -37,7 +37,7 @@ class InstrumentLessonControllerTest {
     fun tearDown() = scope.cancel()
 
     private fun lessonOnStrings(vararg strings: Int) = Lesson(
-        songId = 1,
+        songId = "1",
         title = "test",
         steps = strings.mapIndexed { index, s ->
             LessonStep(index, "la", HarpLayout.basePitch(StringId.of(s)!!))

@@ -60,7 +60,7 @@ class HomeViewModel(
         }
     }
 
-    fun toggleFavorite(songId: Int, currentFavoriteStatus: Boolean) {
+    fun toggleFavorite(songId: String, currentFavoriteStatus: Boolean) {
         viewModelScope.launch {
             setFavoriteUseCase(songId, !currentFavoriteStatus)
         }

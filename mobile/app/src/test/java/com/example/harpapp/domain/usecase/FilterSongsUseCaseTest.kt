@@ -12,19 +12,19 @@ class FilterSongsUseCaseTest {
     @Test
     fun filtersBySearchDifficultyAndFavoriteStatus() {
         val matchingSong = song(
-            id = 1,
+            id = "1",
             title = "Morning Song",
             difficulty = Difficulty.EASY,
             isFavorite = true
         )
         val differentDifficulty = song(
-            id = 2,
+            id = "2",
             title = "Morning Song",
             difficulty = Difficulty.HARD,
             isFavorite = true
         )
         val notFavorite = song(
-            id = 3,
+            id = "3",
             title = "Morning Song",
             difficulty = Difficulty.EASY,
             isFavorite = false
@@ -42,9 +42,9 @@ class FilterSongsUseCaseTest {
 
     @Test
     fun searchesTitlesAndArtistsCaseInsensitively() {
-        val titleMatch = song(id = 1, title = "Summer Rain", artist = "Band")
-        val artistMatch = song(id = 2, title = "Other Song", artist = "Summer Band")
-        val unrelated = song(id = 3, title = "Other Song", artist = "Other Band")
+        val titleMatch = song(id = "1", title = "Summer Rain", artist = "Band")
+        val artistMatch = song(id = "2", title = "Other Song", artist = "Summer Band")
+        val unrelated = song(id = "3", title = "Other Song", artist = "Other Band")
 
         val result = filterSongs(
             songs = listOf(titleMatch, artistMatch, unrelated),
@@ -57,7 +57,7 @@ class FilterSongsUseCaseTest {
     }
 
     private fun song(
-        id: Int,
+        id: String = "1",
         title: String = "Song",
         artist: String = "Artist",
         difficulty: Difficulty = Difficulty.MEDIUM,

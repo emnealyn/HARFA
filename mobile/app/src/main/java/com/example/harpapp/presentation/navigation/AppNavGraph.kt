@@ -120,10 +120,10 @@ fun AppNavGraph(
 
                         val finalRoute = if (targetRoute == Routes.SONG) {
                             val lastOpenedSongId = songViewModel.song.value?.id
-                            if (lastOpenedSongId != null && lastOpenedSongId != 0) {
+                            if (!lastOpenedSongId.isNullOrEmpty()) {
                                 Routes.createSongRoute(lastOpenedSongId)
                             } else {
-                                Routes.createSongRoute(1)
+                                Routes.createSongRoute("another-love")
                             }
                         } else {
                             targetRoute
@@ -172,10 +172,10 @@ fun AppNavGraph(
             composable(
                 route = Routes.SONG_PATTERN,
                 arguments = listOf(
-                    navArgument("songId") { type = NavType.IntType }
+                    navArgument("songId") { type = NavType.StringType }
                 )
             ) { backStackEntry ->
-                val songId = backStackEntry.arguments?.getInt("songId") ?: 0
+                val songId = backStackEntry.arguments?.getString("songId").orEmpty()
                 SongScreen(
                     songId = songId,
                     viewModel = songViewModel
