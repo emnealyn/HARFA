@@ -25,6 +25,8 @@ interface InstrumentRepository {
     /** Aktualne strojenie harfy (`CONFIG_STATE`). Przed pierwszą ramką: [InstrumentState.DEFAULT]. */
     val instrumentState: Flow<InstrumentState>
 
+    val configurationKnown: Flow<Boolean>
+
     val capabilities: Flow<InstrumentCapabilities>
 
     val batteryStatus: Flow<BatteryStatus?>

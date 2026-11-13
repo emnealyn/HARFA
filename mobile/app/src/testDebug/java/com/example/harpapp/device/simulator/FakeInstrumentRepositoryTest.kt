@@ -59,6 +59,24 @@ class FakeInstrumentRepositoryTest {
     }
 
     @Test
+    fun configurationKnownFollowsConnection() = runBlocking {
+        val repository = FakeInstrumentRepository()
+        assertFalse(repository.configurationKnown.first())
+
+        repository.connect(InstrumentDevice(name = "HARFA-1234", address = "00:11:22:33:44:55"))
+        assertTrue(repository.configurationKnown.first())
+
+        repository.simulateConnectionLoss()
+        assertFalse(repository.configurationKnown.first())
+
+        repository.reconnect()
+        assertTrue(repository.configurationKnown.first())
+
+        repository.disconnect()
+        assertFalse(repository.configurationKnown.first())
+    }
+
+    @Test
     fun simulatesConnectionFailureAndDisconnect() = runBlocking {
         val repository = FakeInstrumentRepository()
         val device = InstrumentDevice(name = "HARFA-1234", address = "00:11:22:33:44:55")

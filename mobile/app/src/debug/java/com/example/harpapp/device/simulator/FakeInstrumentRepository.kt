@@ -56,6 +56,9 @@ class FakeInstrumentRepository(
     private val _instrumentState = MutableStateFlow(InstrumentState.DEFAULT)
     override val instrumentState: Flow<InstrumentState> = _instrumentState.asStateFlow()
 
+    private val _configurationKnown = MutableStateFlow(false)
+    override val configurationKnown: Flow<Boolean> = _configurationKnown.asStateFlow()
+
     private val _capabilities = MutableStateFlow(InstrumentCapabilities.NONE)
     override val capabilities: Flow<InstrumentCapabilities> = _capabilities.asStateFlow()
 
@@ -133,6 +136,7 @@ class FakeInstrumentRepository(
             _connectedDeviceName.value = deviceName
             _capabilities.value = instrumentCapabilitiesOf(config.capabilities)
         } else if (state == ConnectionState.DISCONNECTED) {
+            _configurationKnown.value = false
             clearLessonState()
             _capabilities.value = InstrumentCapabilities.NONE
         }
@@ -142,6 +146,7 @@ class FakeInstrumentRepository(
     /** Nagłe zerwanie połączenia: harfa kończy lekcję i gasi diody (spec §6 pkt 8). */
     fun simulateConnectionLoss() {
         _connectionState.value = ConnectionState.DISCONNECTED
+        _configurationKnown.value = false
         _capabilities.value = InstrumentCapabilities.NONE
         clearLessonState()
     }
@@ -200,7 +205,10 @@ class FakeInstrumentRepository(
         _events.emit(event)
         when (event) {
             is NoteEvent -> _noteEvents.emit(event)
-            is InstrumentEvent.ConfigurationUpdated -> _instrumentState.value = event.state
+            is InstrumentEvent.ConfigurationUpdated -> {
+                _instrumentState.value = event.state
+                _configurationKnown.value = true
+            }
             is InstrumentEvent.BatteryUpdated -> _battery.value = event
             else -> Unit
         }
@@ -258,6 +266,7 @@ class FakeInstrumentRepository(
     }
 
     override suspend fun connect(device: InstrumentDevice) {
+        _configurationKnown.value = false
         _connectionState.value = ConnectionState.CONNECTING
         if (connectFailures.isNotEmpty()) {
             _connectionState.value = ConnectionState.DISCONNECTED
@@ -295,6 +304,7 @@ class FakeInstrumentRepository(
 
     override fun disconnect() {
         _connectionState.value = ConnectionState.DISCONNECTED
+        _configurationKnown.value = false
         _capabilities.value = InstrumentCapabilities.NONE
         clearLessonState()
     }
