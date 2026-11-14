@@ -11,6 +11,8 @@ import com.example.harpapp.domain.model.Lesson
 import com.example.harpapp.domain.model.LessonProgress
 import com.example.harpapp.domain.model.LessonStep
 import com.example.harpapp.domain.model.NoteEvent
+import com.example.harpapp.domain.model.NoteName
+import com.example.harpapp.domain.model.Pitch
 import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.protocol.Capabilities
 import kotlinx.coroutines.CancellationException
@@ -46,6 +48,20 @@ class InstrumentLessonControllerTest {
 
     private fun noteOn(string: Int) = StringId.of(string)!!.let { id ->
         NoteEvent(id, HarpLayout.basePitch(id).midi, timestampMs = 0)
+    }
+
+    @Test
+    fun stepWithoutStringIsResentWithMaskAfterRetuning() = runBlocking {
+        repository.reconnect()
+        val fSharp = Pitch(NoteName.F, Accidental.SHARP, 2)
+        controller.start(LessonProgress.start(Lesson("1", "test", listOf(LessonStep(0, "la", fSharp)))))
+
+        assertEquals(InstrumentCommand.LessonStep(index = 0, mask = 0), repository.sentCommands.last())
+
+        repository.clearRecordedCommands()
+        repository.emitConfiguration(InstrumentState.DEFAULT.withLever(NoteName.F, Accidental.SHARP))
+
+        assertEquals(listOf(InstrumentCommand.LessonStep(index = 0, mask = 1 shl 3)), repository.sentCommands)
     }
 
     @Test

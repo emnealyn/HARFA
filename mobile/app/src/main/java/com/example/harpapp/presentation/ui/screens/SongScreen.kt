@@ -32,18 +32,24 @@ import com.example.harpapp.domain.model.CatalogIssue
 import com.example.harpapp.domain.model.Difficulty
 import com.example.harpapp.domain.model.LyricNote
 import com.example.harpapp.domain.model.Song
+import com.example.harpapp.domain.model.TuningAnalysis
 import com.example.harpapp.presentation.ui.components.home.getCoverResourceId
 import com.example.harpapp.presentation.ui.components.home.DifficultyBadge
 import com.example.harpapp.presentation.ui.components.song.CompletedSongDialog
 import com.example.harpapp.presentation.ui.components.song.LessonIssuesDialog
 import com.example.harpapp.presentation.ui.components.song.LyricsDisplay
+import com.example.harpapp.presentation.ui.components.song.StepTuningHintBanner
+import com.example.harpapp.presentation.ui.components.song.TuningMismatchDialog
+import com.example.harpapp.presentation.ui.components.song.TuningWarningBanner
 import com.example.harpapp.presentation.ui.theme.HARPAppTheme
 import com.example.harpapp.presentation.viewmodel.SongViewModel
+import com.example.harpapp.presentation.viewmodel.StepTuningHint
 
 @Composable
 fun SongScreen(
     songId: String,
     viewModel: SongViewModel,
+    onNavigateToHarp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(songId) {
@@ -59,6 +65,10 @@ fun SongScreen(
     val isLessonPaused by viewModel.isLessonPaused
     val canToggleLessonPause by viewModel.canToggleLessonPause
     val isPausedByConnection by viewModel.isPausedByConnection
+    val tuningWarning by viewModel.tuningWarning
+    val tuningStartWarning by viewModel.tuningStartWarning
+    val stepHint by viewModel.currentStepHint
+    val songTuning by viewModel.songTuning
 
     SongContent(
         song = song,
@@ -76,6 +86,17 @@ fun SongScreen(
         onLessonPauseClick = { viewModel.toggleLessonPause() },
         onPlayAgainClick = { viewModel.restartLearning() },
         isPausedByConnection = isPausedByConnection,
+        songKey = songTuning?.name,
+        tuningWarning = tuningWarning,
+        stepHint = stepHint,
+        tuningStartWarning = tuningStartWarning,
+        onNavigateToHarp = onNavigateToHarp,
+        onStartDespiteTuning = { viewModel.confirmStartDespiteTuning() },
+        onCancelTuningStart = { viewModel.cancelTuningStart() },
+        onStartDialogGoToHarp = {
+            viewModel.cancelTuningStart()
+            onNavigateToHarp()
+        },
         modifier = modifier
     )
 }
@@ -103,6 +124,40 @@ private fun ConnectionLostBanner(modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodyMedium
             )
         }
+    }
+}
+
+@Composable
+private fun SongKeyText(key: String) {
+    Text(
+        text = stringResource(R.string.song_key, key),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+@Composable
+private fun TuningBanners(
+    tuningWarning: TuningAnalysis?,
+    stepHint: StepTuningHint?,
+    keyName: String?,
+    onNavigateToHarp: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    when {
+        stepHint != null -> StepTuningHintBanner(
+            pitch = stepHint.pitch,
+            keyName = keyName,
+            analysis = stepHint.analysis,
+            onNavigateToHarp = onNavigateToHarp,
+            modifier = modifier
+        )
+        tuningWarning != null -> TuningWarningBanner(
+            analysis = tuningWarning,
+            keyName = keyName,
+            onNavigateToHarp = onNavigateToHarp,
+            modifier = modifier
+        )
     }
 }
 
@@ -151,6 +206,14 @@ fun SongContent(
     onLessonPauseClick: () -> Unit = {},
     onPlayAgainClick: () -> Unit = {},
     isPausedByConnection: Boolean = false,
+    songKey: String? = null,
+    tuningWarning: TuningAnalysis? = null,
+    stepHint: StepTuningHint? = null,
+    tuningStartWarning: TuningAnalysis? = null,
+    onNavigateToHarp: () -> Unit = {},
+    onStartDespiteTuning: () -> Unit = {},
+    onCancelTuningStart: () -> Unit = {},
+    onStartDialogGoToHarp: () -> Unit = {},
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -276,6 +339,14 @@ fun SongContent(
                         Spacer(modifier = Modifier.height(8.dp))
                         ConnectionLostBanner()
                     }
+
+                    TuningBanners(
+                        tuningWarning = tuningWarning,
+                        stepHint = stepHint,
+                        keyName = songKey,
+                        onNavigateToHarp = onNavigateToHarp,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
 
                 Column(
@@ -287,6 +358,8 @@ fun SongContent(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
+
+                    songKey?.let { SongKeyText(it) }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -438,6 +511,14 @@ fun SongContent(
                     ConnectionLostBanner(modifier = Modifier.padding(bottom = 16.dp))
                 }
 
+                TuningBanners(
+                    tuningWarning = tuningWarning,
+                    stepHint = stepHint,
+                    keyName = songKey,
+                    onNavigateToHarp = onNavigateToHarp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.Start
@@ -447,6 +528,8 @@ fun SongContent(
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onBackground
                     )
+
+                    songKey?.let { SongKeyText(it) }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -476,6 +559,16 @@ fun SongContent(
 
         if (lessonIssues.isNotEmpty()) {
             LessonIssuesDialog(issues = lessonIssues, onDismiss = onDismissLessonIssues)
+        }
+
+        tuningStartWarning?.let { analysis ->
+            TuningMismatchDialog(
+                analysis = analysis,
+                keyName = songKey,
+                onGoToHarp = onStartDialogGoToHarp,
+                onStartAnyway = onStartDespiteTuning,
+                onDismiss = onCancelTuningStart
+            )
         }
     } else {
         Box(

@@ -72,7 +72,7 @@ fun AppNavGraph(
         currentRoute == Routes.HOME -> Routes.HOME
         currentRoute == Routes.SETTINGS -> Routes.SETTINGS
         currentRoute == Routes.BLUETOOTH -> Routes.BLUETOOTH
-        currentRoute == Routes.HARP -> Routes.HARP
+        currentRoute == Routes.HARP_PATTERN -> Routes.HARP
         currentRoute == Routes.DEV_SIMULATOR -> Routes.DEV_SIMULATOR
         currentRoute?.startsWith("song/") == true -> Routes.SONG
         else -> currentRoute
@@ -120,12 +120,8 @@ fun AppNavGraph(
                     },
                     isBluetoothConnected = isBluetoothConnected,
                     onBluetoothClick = {
-                        navController.navigate(Routes.HARP) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
+                        navController.navigate(Routes.BLUETOOTH) {
                             launchSingleTop = true
-                            restoreState = true
                         }
                     },
                     connectedDeviceName = connectedDeviceName,
@@ -199,7 +195,12 @@ fun AppNavGraph(
                 val songId = backStackEntry.arguments?.getString("songId").orEmpty()
                 SongScreen(
                     songId = songId,
-                    viewModel = songViewModel
+                    viewModel = songViewModel,
+                    onNavigateToHarp = {
+                        navController.navigate(Routes.createHarpRoute(songId)) {
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
 
@@ -216,11 +217,32 @@ fun AppNavGraph(
                 )
             }
 
-            composable(Routes.HARP) {
+            composable(
+                route = Routes.HARP_PATTERN,
+                arguments = listOf(
+                    navArgument("songId") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val targetSongId = backStackEntry.arguments?.getString("songId")
+                LaunchedEffect(targetSongId) {
+                    harpViewModel.setTargetSong(targetSongId)
+                }
                 HarpScreen(
                     viewModel = harpViewModel,
                     onNavigateToBluetooth = {
                         navController.navigate(Routes.BLUETOOTH)
+                    },
+                    onBackToSong = {
+                        targetSongId?.let { songId ->
+                            navController.navigate(Routes.createSongRoute(songId)) {
+                                popUpTo(Routes.HARP_PATTERN) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
                     }
                 )
             }

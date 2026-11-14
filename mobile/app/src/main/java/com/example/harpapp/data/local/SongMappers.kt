@@ -13,6 +13,7 @@ fun SongCatalogDto.toDomain(isFavorite: Boolean = false): Song {
         difficulty = Difficulty.valueOf(difficulty.uppercase()),
         duration = duration,
         lyricsWithNotes = lyricsWithNotes.map { LyricNote(it.syllable, it.note) },
+        tuningId = tuningId,
         midiFilePath = midiFilePath,
         coverImage = coverImage,
         isFavorite = isFavorite

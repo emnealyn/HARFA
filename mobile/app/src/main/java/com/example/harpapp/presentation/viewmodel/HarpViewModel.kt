@@ -8,13 +8,20 @@ import com.example.harpapp.domain.model.HarpLayout
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteName
 import com.example.harpapp.domain.model.StringId
+import com.example.harpapp.domain.model.Tuning
+import com.example.harpapp.domain.model.TuningAnalysis
 import com.example.harpapp.domain.repository.InstrumentRepository
+import com.example.harpapp.domain.usecase.AnalyzeTuningUseCase
+import com.example.harpapp.domain.usecase.GetSongTuningUseCase
+import com.example.harpapp.domain.usecase.GetSongUseCase
+import com.example.harpapp.domain.usecase.GetTuningsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -35,9 +42,65 @@ enum class HarpTab {
     DEVICE
 }
 
+data class HarpTarget(
+    val songTitle: String,
+    val tuningName: String?,
+    val analysis: TuningAnalysis?
+)
+
 class HarpViewModel(
-    instrumentRepository: InstrumentRepository
+    instrumentRepository: InstrumentRepository,
+    private val getSongUseCase: GetSongUseCase,
+    private val getSongTuningUseCase: GetSongTuningUseCase,
+    private val analyzeTuningUseCase: AnalyzeTuningUseCase,
+    private val getTuningsUseCase: GetTuningsUseCase
 ) : ViewModel() {
+
+    val detectedTunings: StateFlow<List<Tuning>> = combine(
+        flow { emit(getTuningsUseCase()) },
+        instrumentRepository.instrumentState,
+        instrumentRepository.configurationKnown
+    ) { tunings, state, known ->
+        if (known) tunings.filter { it.matches(state) } else emptyList()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
+
+    private val targetSongId = MutableStateFlow<String?>(null)
+
+    private val targetSong = targetSongId.map { songId ->
+        songId?.let { getSongUseCase(it) }?.let { song -> song to getSongTuningUseCase(song) }
+    }
+
+    val target: StateFlow<HarpTarget?> = combine(
+        targetSong,
+        instrumentRepository.instrumentState,
+        instrumentRepository.configurationKnown,
+        instrumentRepository.connectionState
+    ) { songWithTuning, state, configurationKnown, connection ->
+        songWithTuning?.let { (song, tuning) ->
+            val known = configurationKnown && connection == ConnectionState.CONNECTED
+            HarpTarget(
+                songTitle = song.title,
+                tuningName = tuning?.name,
+                analysis = if (known) analyzeTuningUseCase(song, state, tuning) else null
+            )
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = null
+    )
+
+    fun setTargetSong(songId: String?) {
+        val target = songId?.takeIf { it.isNotBlank() }
+        targetSongId.value = target
+        if (target != null) {
+            _selectedTab.value = HarpTab.TUNING
+        }
+    }
 
     val uiState: StateFlow<HarpUiState> = combine(
         instrumentRepository.connectionState,

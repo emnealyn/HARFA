@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -65,6 +66,23 @@ class InstrumentEventStreamTest {
         stream.reset()
 
         assertEquals(InstrumentState.DEFAULT, stream.instrumentState.value)
+    }
+
+    @Test
+    fun configStateUstawiaKonfiguracjeJakoZnana() {
+        assertFalse(stream.configurationKnown.value)
+
+        stream.accept(message("config_state_a_sharp"))
+
+        assertTrue(stream.configurationKnown.value)
+    }
+
+    @Test
+    fun resetUstawiaKonfiguracjeJakoNieznana() {
+        stream.accept(message("config_state_a_sharp"))
+        stream.reset()
+
+        assertFalse(stream.configurationKnown.value)
     }
 
     @Test

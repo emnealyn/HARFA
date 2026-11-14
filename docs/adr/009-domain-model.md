@@ -95,3 +95,9 @@ Pełna definicja modelu znajduje się w [docs/domain-model.md](../domain-model.m
 * *Hallelujah* nie będzie dostępne w trybie nauki, dopóki jego dane nie zostaną poprawione (osobne zadanie).
 * Tryb nauki nie reaguje na stary mock SPP. Zdarzenia dostarcza klient BLE GATT (ADR 007), a mock harfy musi wysyłać ramki protokołu przez BLE.
 * `LessonProgress` ze stanem `PAUSED` realizuje zachowanie po utracie BLE z [ADR 001](001-system-responsibilities.md). Wynik kroku odpowiada `LESSON_RESULT` z protokołu.
+
+## Aktualizacja (HARFA-39)
+
+* Odłożone pole `harpSetup` zrealizowano jako katalog strojeń `assets/tunings.json` (`Tuning`: nazwa, typ i pozycje przełączników) oraz pole `Song.tuningId`. Strojenie nie zawiera oktawy, bo transpozycję dobiera analiza na podstawie nut utworu. Zgodnie z [ADR 010](010-catalog-versioning-and-user-state.md) katalog jest tylko do odczytu, więc migracja bazy nie była potrzebna.
+* Bieżące strojenie harfy jest porównywane z utworem przez `AnalyzeTuningUseCase` ([domain-model §3.4](../domain-model.md)). Walidacja katalogu (§6) nadal nie sprawdza strojenia.
+* Dane *Hallelujah* poprawiono: utwór jest w tonacji pliku MIDI, obniżony o oktawę, i jest dostępny w trybie nauki.

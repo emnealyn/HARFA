@@ -83,6 +83,7 @@ class BluetoothInstrumentRepository internal constructor(
 
     override val noteEvents: Flow<NoteEvent> = eventStream.noteEvents
     override val instrumentState: Flow<InstrumentState> = eventStream.instrumentState
+    override val configurationKnown: Flow<Boolean> = eventStream.configurationKnown
 
     override val batteryStatus: Flow<BatteryStatus?> = combine(
         _connectionState,

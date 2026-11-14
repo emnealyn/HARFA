@@ -1,17 +1,27 @@
 package com.example.harpapp.presentation.viewmodel
 
 import com.example.harpapp.device.simulator.FakeInstrumentRepository
+import com.example.harpapp.domain.model.Accidental
+import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.Difficulty
 import com.example.harpapp.domain.model.HarpLayout
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentCommand.LessonResult
+import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.LessonStatus
 import com.example.harpapp.domain.model.LyricNote
+import com.example.harpapp.domain.model.NoteName
 import com.example.harpapp.domain.model.Song
 import com.example.harpapp.domain.model.StringId
+import com.example.harpapp.domain.model.Tuning
+import com.example.harpapp.domain.model.TuningAnalysis
+import com.example.harpapp.domain.model.TuningType
 import com.example.harpapp.domain.repository.AudioPlayer
 import com.example.harpapp.domain.repository.SongRepository
+import com.example.harpapp.domain.repository.TuningRepository
+import com.example.harpapp.domain.usecase.AnalyzeTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongProgressUseCase
+import com.example.harpapp.domain.usecase.GetSongTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.usecase.InstrumentLessonController
 import com.example.harpapp.domain.usecase.PrepareLessonUseCase
@@ -27,6 +37,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -46,7 +57,8 @@ class SongViewModelTest {
         Dispatchers.setMain(dispatcher)
         songs = listOf(
             song(LESSON_SONG_ID, noteOn(2), noteOn(4)),
-            song(INVALID_SONG_ID, "G4", "H4")
+            song(INVALID_SONG_ID, "G4", "H4"),
+            song(TUNING_SONG_ID, "F#2", "G2").copy(tuningId = G_MAJOR.id)
         ).associateBy { it.id }
         songRepository = InMemorySongRepository(songs)
         viewModel = SongViewModel(
@@ -57,7 +69,11 @@ class SongViewModelTest {
             audioPlayer = SilentAudioPlayer,
             noteEvents = harp.noteEvents,
             connectionState = harp.connectionState,
-            lessonControllerFactory = InstrumentLessonController.Factory(harp)
+            lessonControllerFactory = InstrumentLessonController.Factory(harp),
+            instrumentState = harp.instrumentState,
+            configurationKnown = harp.configurationKnown,
+            getSongTuningUseCase = GetSongTuningUseCase(InMemoryTuningRepository),
+            analyzeTuningUseCase = AnalyzeTuningUseCase()
         )
     }
 
@@ -305,6 +321,122 @@ class SongViewModelTest {
         assertTrue(viewModel.lessonIssues.value.isEmpty())
     }
 
+    @Test
+    fun tuningWarningIsHiddenWithoutConnection() = runTest(dispatcher) {
+        viewModel.loadSong(TUNING_SONG_ID)
+
+        assertNull(viewModel.tuningWarning.value)
+    }
+
+    @Test
+    fun songTuningIsExposedForKeyLabel() = runTest(dispatcher) {
+        viewModel.loadSong(TUNING_SONG_ID)
+        assertEquals(G_MAJOR, viewModel.songTuning.value)
+
+        viewModel.loadSong(LESSON_SONG_ID)
+        assertNull(viewModel.songTuning.value)
+    }
+
+    @Test
+    fun tuningWarningIsHiddenBeforeFirstConfigState() = runTest(dispatcher) {
+        harp.simulateConnectionState(ConnectionState.CONNECTED)
+        viewModel.loadSong(TUNING_SONG_ID)
+
+        assertNull(viewModel.tuningWarning.value)
+    }
+
+    @Test
+    fun tuningWarningListsChangesAndClearsAfterRetuning() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.loadSong(TUNING_SONG_ID)
+
+        val warning = viewModel.tuningWarning.value as TuningAnalysis.NeedsChanges
+        assertEquals(listOf(NoteName.F), warning.levers.map { it.name })
+        assertNull(warning.octave)
+
+        harp.emitConfiguration(F_SHARP)
+
+        assertNull(viewModel.tuningWarning.value)
+    }
+
+    @Test
+    fun manualStartWithWrongTuningAsksBeforeStarting() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.loadSong(TUNING_SONG_ID)
+        viewModel.toggleLearningMode()
+
+        assertNotNull(viewModel.tuningStartWarning.value)
+        assertNull(viewModel.progress.value)
+        assertTrue(harp.sentCommands.none { it is InstrumentCommand.StartLesson })
+
+        viewModel.confirmStartDespiteTuning()
+
+        assertNull(viewModel.tuningStartWarning.value)
+        assertEquals(LessonStatus.IN_PROGRESS, status)
+        assertEquals(
+            listOf(
+                InstrumentCommand.StartLesson(totalSteps = 2),
+                InstrumentCommand.LessonStep(index = 0, mask = 0)
+            ),
+            harp.sentCommands
+        )
+    }
+
+    @Test
+    fun cancellingTuningDialogDoesNotStartLesson() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.loadSong(TUNING_SONG_ID)
+        viewModel.toggleLearningMode()
+
+        viewModel.cancelTuningStart()
+
+        assertNull(viewModel.tuningStartWarning.value)
+        assertNull(viewModel.progress.value)
+        assertTrue(harp.sentCommands.isEmpty())
+    }
+
+    @Test
+    fun stepWithoutStringShowsHintAndRetuningResendsStep() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.loadSong(TUNING_SONG_ID)
+        viewModel.toggleLearningMode()
+        viewModel.confirmStartDespiteTuning()
+
+        val hint = viewModel.currentStepHint.value
+        assertNotNull(hint)
+        assertEquals("F#2", hint!!.pitch.toString())
+        assertEquals(
+            listOf(NoteName.F),
+            (hint.analysis as TuningAnalysis.NeedsChanges).levers.map { it.name }
+        )
+
+        harp.clearRecordedCommands()
+        harp.emitConfiguration(F_SHARP)
+
+        assertNull(viewModel.currentStepHint.value)
+        assertEquals(listOf(InstrumentCommand.LessonStep(index = 0, mask = 1 shl 3)), harp.sentCommands)
+    }
+
+    @Test
+    fun restoredLessonShowsBannerWithoutDialog() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.loadSong(TUNING_SONG_ID)
+        viewModel.toggleLearningMode()
+        viewModel.confirmStartDespiteTuning()
+
+        viewModel.loadSong(INVALID_SONG_ID)
+        viewModel.loadSong(TUNING_SONG_ID)
+
+        assertEquals(LessonStatus.IN_PROGRESS, status)
+        assertNull(viewModel.tuningStartWarning.value)
+        assertNotNull(viewModel.tuningWarning.value)
+    }
+
+    private object InMemoryTuningRepository : TuningRepository {
+        override suspend fun getTuning(tuningId: String): Tuning? = G_MAJOR.takeIf { it.id == tuningId }
+        override suspend fun getTunings(): List<Tuning> = listOf(G_MAJOR)
+    }
+
     private class InMemorySongRepository(private val songs: Map<String, Song>) : SongRepository {
         private val progressMap = mutableMapOf<String, com.example.harpapp.domain.model.LessonProgress>()
         override fun observeSongs(): Flow<List<Song>> = flowOf(songs.values.toList())
@@ -328,5 +460,13 @@ class SongViewModelTest {
     private companion object {
         const val LESSON_SONG_ID = "1"
         const val INVALID_SONG_ID = "2"
+        const val TUNING_SONG_ID = "3"
+        val G_MAJOR = Tuning(
+            id = "g-major",
+            name = "G-dur",
+            type = TuningType.MAJOR,
+            levers = NoteName.entries.associateWith { Accidental.NATURAL } + (NoteName.F to Accidental.SHARP)
+        )
+        val F_SHARP: InstrumentState = InstrumentState.DEFAULT.withLever(NoteName.F, Accidental.SHARP)
     }
 }

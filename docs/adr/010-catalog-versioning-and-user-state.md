@@ -42,3 +42,7 @@ Wybrano **Opcję B**. Katalog utworów jest odczytywany jako niezmienne dane tyl
 * UI oraz ViewModele operują wyłącznie na modelach domenowych (`Song`, `LessonProgress`) i stabilnym identyfikatorze `songId`.
 * Katalog jest ładowany i walidowany w zakresie życia `Application`. Brak pliku, pusty katalog, niepoprawny wpis lub zduplikowany `songId` prowadzą do jawnego stanu błędu z możliwością ponowienia inicjalizacji, zamiast do cichego zwrócenia pustej listy.
 * Źródła danych, repozytorium i przywracanie postępu są weryfikowalne testami jednostkowymi. Migracje Room są pokryte testami instrumentacyjnymi sprawdzającymi zachowanie ulubionych, postępu i fingerprintu.
+
+## Aktualizacja (HARFA-39)
+
+Katalog strojeń (`assets/tunings.json`, `TuningCatalogDataSource`, `TuningRepository`) podlega tym samym zasadom co katalog utworów: jest wersjonowanymi danymi tylko do odczytu, nie trafia do Room i nie wymaga migracji. Utwór wskazuje strojenie stabilnym kluczem `tuningId: String`.
