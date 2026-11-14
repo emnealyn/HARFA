@@ -9,6 +9,7 @@ import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteName
 import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.domain.repository.InstrumentRepository
+import com.example.harpapp.domain.model.isOperationInProgress
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -46,10 +47,11 @@ class HarpViewModel(
         instrumentRepository.connectedDeviceId,
         instrumentRepository.batteryStatus
     ) { connection, tuning, deviceName, deviceId, battery ->
-        when (connection) {
-            ConnectionState.DISCONNECTED -> HarpUiState.Disconnected
-            ConnectionState.CONNECTING -> HarpUiState.Connecting
-            ConnectionState.CONNECTED -> HarpUiState.Connected(deviceName, deviceId, tuning, battery)
+        when {
+            connection == ConnectionState.CONNECTED ->
+                HarpUiState.Connected(deviceName, deviceId, tuning, battery)
+            connection.isOperationInProgress -> HarpUiState.Connecting
+            else -> HarpUiState.Disconnected
         }
     }.stateIn(
         scope = viewModelScope,

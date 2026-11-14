@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.harpapp.domain.model.BatteryStatus
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentDevice
+import com.example.harpapp.domain.model.isConnected
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.domain.usecase.lowBatteryWarnings
 import kotlinx.coroutines.CancellationException
@@ -25,7 +26,7 @@ class BluetoothViewModel(
 
     val connectionState: Flow<ConnectionState> = instrumentRepository.connectionState
     val isConnected: StateFlow<Boolean> = instrumentRepository.connectionState
-        .map { state -> state == ConnectionState.CONNECTED }
+        .map { state -> state.isConnected }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

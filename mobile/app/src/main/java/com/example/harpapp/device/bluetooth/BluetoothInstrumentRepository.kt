@@ -57,7 +57,7 @@ class BluetoothInstrumentRepository internal constructor(
     private var stateRecoveryRequested = false
     private var stateRecoveryJob: Job? = null
 
-    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.DISCONNECTED)
     override val connectionState: Flow<ConnectionState> = _connectionState.asStateFlow()
 
     private val _connectedDeviceName = MutableStateFlow(

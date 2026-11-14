@@ -7,12 +7,6 @@ data class InstrumentDevice(
     val address: String
 )
 
-enum class ConnectionState {
-    DISCONNECTED,
-    CONNECTING,
-    CONNECTED
-}
-
 @JvmInline
 value class SessionId(val value: Int)
 

@@ -37,7 +37,7 @@ class FakeInstrumentRepository(
     private val config: SimulatorConfig = SimulatorConfig()
 ) : InstrumentRepository {
 
-    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.DISCONNECTED)
     override val connectionState: Flow<ConnectionState> = _connectionState.asStateFlow()
 
     private val _connectedDeviceName = MutableStateFlow<String?>(null)
