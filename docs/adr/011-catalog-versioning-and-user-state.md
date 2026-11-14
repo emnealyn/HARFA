@@ -40,4 +40,5 @@ Wybrano **Opcję B**. Katalog utworów jest odczytywany jako niezmienne dane tyl
 * Migracje z poprzedniej tabeli `songs` przenoszą istniejące ulubione do `favorite_songs`. Dla najstarszej wersji bazy stabilne `songId` są odtwarzane na podstawie historycznej kolejności katalogu, dlatego jej zmiana wymaga aktualizacji mapowania migracji.
 * Zmiany treści utworu są wykrywane przez fingerprint lekcji, aby nie odtwarzać niekompatybilnego postępu. Postęp przeniesiony z wersji 16 nie ma jeszcze fingerprintu i zostanie opatrzony nim przy pierwszym zapisie.
 * UI oraz ViewModele operują wyłącznie na modelach domenowych (`Song`, `LessonProgress`) i stabilnym identyfikatorze `songId`.
-* Źródła danych, repozytorium i przywracanie postępu są weryfikowalne testami jednostkowymi; testy integracyjne samych migracji Room pozostają osobnym zakresem.
+* Katalog jest ładowany i walidowany w zakresie życia `Application`. Brak pliku, pusty katalog, niepoprawny wpis lub zduplikowany `songId` prowadzą do jawnego stanu błędu z możliwością ponowienia inicjalizacji, zamiast do cichego zwrócenia pustej listy.
+* Źródła danych, repozytorium i przywracanie postępu są weryfikowalne testami jednostkowymi. Migracje Room są pokryte testami instrumentacyjnymi sprawdzającymi zachowanie ulubionych, postępu i fingerprintu.
