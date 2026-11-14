@@ -1,10 +1,12 @@
 package com.example.harpapp.device.bluetooth
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import com.example.harpapp.domain.model.BatteryStatus
+import com.example.harpapp.domain.model.ConnectionError
+import com.example.harpapp.domain.model.ConnectionErrorCode
 import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.ConnectionStateMachine
 import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentDevice
@@ -14,6 +16,7 @@ import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.model.SessionId
 import com.example.harpapp.domain.model.StaleSessionException
 import com.example.harpapp.domain.repository.InstrumentRepository
+import com.example.harpapp.domain.model.isOperationInProgress
 import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.HarpProtocol
 import com.example.harpapp.protocol.LessonPauseCode
@@ -36,8 +39,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicReference
 
-@SuppressLint("MissingPermission")
 class BluetoothInstrumentRepository internal constructor(
     context: Context,
     private val transport: InstrumentTransport = BleGattInstrumentTransport(context),
@@ -48,6 +51,8 @@ class BluetoothInstrumentRepository internal constructor(
     private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val session = HarpSession { frame -> transport.send(frame) }
+    private val stateMachine = ConnectionStateMachine()
+    private val activeOperation = AtomicReference<Job?>(null)
     private val eventStream = InstrumentEventStream()
     private val deviceCapabilities = MutableStateFlow<Int?>(null)
     override val capabilities: Flow<InstrumentCapabilities> =
@@ -57,7 +62,7 @@ class BluetoothInstrumentRepository internal constructor(
     private var stateRecoveryRequested = false
     private var stateRecoveryJob: Job? = null
 
-    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+    private val _connectionState = MutableStateFlow(stateMachine.state)
     override val connectionState: Flow<ConnectionState> = _connectionState.asStateFlow()
 
     private val _connectedDeviceName = MutableStateFlow(
@@ -101,45 +106,64 @@ class BluetoothInstrumentRepository internal constructor(
             transport.events.collect { event ->
                 when (event) {
                     is TransportEvent.Data -> handleFrame(event.bytes)
-                    TransportEvent.Disconnected -> {
-                        stateRecoveryRequested = false
-                        session.reset()
-                        _currentSession.value = null
-                        eventStream.reset()
-                        deviceCapabilities.value = null
-                        _connectionState.value = ConnectionState.DISCONNECTED
-                    }
+                    TransportEvent.Disconnected -> handleTransportDisconnected()
                 }
             }
         }
     }
 
     override suspend fun scanForDevices() {
-        withContext(Dispatchers.IO) {
+        awaitPreviousOperation("scanning")
+        runExclusive("scanning") {
+            stateMachine.startScanning()
+            publishState()
+
             try {
                 _discoveredDevices.value = scanner.scan()
+                transitionTo(ConnectionState.DISCONNECTED)
             } catch (exception: CancellationException) {
+                transitionTo(ConnectionState.DISCONNECTED)
+                throw exception
+            } catch (exception: SecurityException) {
+                transitionTo(ConnectionState.PERMISSION_REQUIRED)
+                throw exception
+            } catch (exception: BluetoothUnavailableException) {
+                transitionTo(ConnectionState.BLUETOOTH_DISABLED)
                 throw exception
             } catch (exception: Exception) {
                 Log.e(TAG, "BLE instrument scan failed", exception)
+                fail(
+                    ConnectionError(
+                        code = ConnectionErrorCode.SCAN_FAILED,
+                        detail = exception.message
+                    ),
+                    exception
+                )
                 throw exception
             }
         }
     }
 
     override suspend fun connect(device: InstrumentDevice) {
-        withContext(Dispatchers.IO) {
+        if (stateMachine.state == ConnectionState.CONNECTED) {
             disconnect()
-            _connectionState.value = ConnectionState.CONNECTING
+        }
+
+        awaitPreviousOperation("connecting", cancelScanning = true)
+        runExclusive("connecting") {
+            stateMachine.startConnecting()
+            publishState()
 
             try {
-                transport.connect(device)
+                transport.connect(device, ::handleTransportStage)
+                transitionTo(ConnectionState.HANDSHAKING)
+
                 val deviceInfo = session.start()
                 validateDeviceInfo(deviceInfo)
                 deviceCapabilities.value = deviceInfo.caps
-                _currentSession.value = SessionId(session.currentSid)
+                _currentSession.value = SessionId(session.currentGeneration)
 
-                _connectionState.value = ConnectionState.CONNECTED
+                transitionTo(ConnectionState.CONNECTED)
                 val nameToSave = device.name ?: device.address
                 _connectedDeviceName.value = nameToSave
                 _connectedDeviceId.value = deviceInfo.deviceId
@@ -149,18 +173,57 @@ class BluetoothInstrumentRepository internal constructor(
                     .apply()
                 requestStateRecoveryIfNeeded()
             } catch (exception: CancellationException) {
-                if (!currentCoroutineContext().isActive) {
-                    throw exception
-                }
-                handleConnectionFailure("BLE handshake was cancelled", exception)
-            } catch (exception: IllegalArgumentException) {
-                handleConnectionFailure("Invalid BLE instrument address: ${device.address}", exception)
-            } catch (exception: IllegalStateException) {
-                handleConnectionFailure("BLE adapter or GATT is unavailable", exception)
-            } catch (exception: IOException) {
-                handleConnectionFailure("BLE instrument connection failed", exception)
+                clearConnectionData()
+                transitionTo(ConnectionState.DISCONNECTED)
+                throw exception
             } catch (exception: SecurityException) {
-                handleConnectionFailure("Bluetooth permissions are missing", exception)
+                fail(
+                    ConnectionState.PERMISSION_REQUIRED,
+                    "Bluetooth permissions are missing",
+                    exception
+                )
+            } catch (exception: BluetoothUnavailableException) {
+                fail(
+                    ConnectionState.BLUETOOTH_DISABLED,
+                    "Bluetooth adapter or GATT is unavailable",
+                    exception
+                )
+            } catch (exception: BleConnectionTimeoutException) {
+                fail(
+                    ConnectionErrorCode.TIMEOUT,
+                    "BLE GATT connection timed out",
+                    exception
+                )
+            } catch (exception: BleServiceDiscoveryException) {
+                fail(
+                    ConnectionErrorCode.SERVICE_DISCOVERY_FAILED,
+                    "BLE GATT service discovery failed",
+                    exception
+                )
+            } catch (exception: HarpHandshakeException) {
+                fail(
+                    ConnectionErrorCode.HANDSHAKE_FAILED,
+                    "BLE handshake failed",
+                    exception
+                )
+            } catch (exception: IllegalArgumentException) {
+                fail(
+                    ConnectionErrorCode.CONNECTION_FAILED,
+                    "Invalid BLE instrument address: ${device.address}",
+                    exception
+                )
+            } catch (exception: IOException) {
+                fail(
+                    ConnectionErrorCode.CONNECTION_FAILED,
+                    "BLE instrument connection failed",
+                    exception
+                )
+            } catch (exception: Exception) {
+                fail(
+                    ConnectionErrorCode.UNKNOWN,
+                    "Unexpected BLE connection failure",
+                    exception
+                )
             }
         }
     }
@@ -170,34 +233,64 @@ class BluetoothInstrumentRepository internal constructor(
             try {
                 val capabilities = deviceCapabilities.value
                     ?: throw IllegalStateException("HARFA instrument is not connected")
-                validateCommandCapability(command, capabilities)
-                this@BluetoothInstrumentRepository.session.sendCommand(session.value) { sequence, sid ->
-                    command.toHarpMessage(sequence, sid)
+                val currentSession = _currentSession.value
+                if (currentSession != session) {
+                    throw StaleSessionException(
+                        "Command prepared for session ${session.value}, " +
+                            "current session is ${currentSession?.value}"
+                    )
                 }
+                validateCommandCapability(command, capabilities)
+                val wireSid = this@BluetoothInstrumentRepository.session.currentSid
+                val generation = this@BluetoothInstrumentRepository.session.currentGeneration
+                this@BluetoothInstrumentRepository.session.sendCommand(
+                    expectedSid = wireSid,
+                    expectedGeneration = generation
+                ) { sequence, sid -> command.toHarpMessage(sequence, sid) }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: HarpStaleSessionException) {
                 throw StaleSessionException(exception.message ?: "Command from a finished session", exception)
             } catch (exception: HarpCommandTimeoutException) {
-                handleConnectionFailure("No ACK received from the BLE instrument", exception)
+                fail(
+                    ConnectionErrorCode.TIMEOUT,
+                    "No ACK received from the BLE instrument",
+                    exception
+                )
+                throw exception
+            } catch (exception: SecurityException) {
+                fail(
+                    ConnectionState.PERMISSION_REQUIRED,
+                    "Bluetooth permissions are missing",
+                    exception
+                )
                 throw exception
             } catch (exception: HarpCommandException) {
                 throw exception
             } catch (exception: IOException) {
-                handleConnectionFailure("Could not send command to the BLE instrument", exception)
+                fail(
+                    ConnectionErrorCode.CONNECTION_FAILED,
+                    "Could not send command to the BLE instrument",
+                    exception
+                )
                 throw exception
             }
         }
     }
 
     override fun disconnect() {
-        stateRecoveryRequested = false
-        session.reset()
-        _currentSession.value = null
-        eventStream.reset()
-        deviceCapabilities.value = null
+        val currentState = stateMachine.state
+        if (
+            currentState == ConnectionState.CONNECTED ||
+            (currentState.isOperationInProgress && currentState != ConnectionState.DISCONNECTING)
+        ) {
+            transitionTo(ConnectionState.DISCONNECTING)
+        }
+
+        activeOperation.get()?.cancel()
+        clearConnectionData()
         transport.disconnect()
-        _connectionState.value = ConnectionState.DISCONNECTED
+        transitionTo(ConnectionState.DISCONNECTED)
     }
 
     private suspend fun handleFrame(frame: ByteArray) {
@@ -364,15 +457,125 @@ class BluetoothInstrumentRepository internal constructor(
         }
     }
 
-    private fun handleConnectionFailure(message: String, exception: Throwable) {
-        Log.e(TAG, message, exception)
+    private suspend fun <T> runExclusive(
+        operation: String,
+        block: suspend () -> T
+    ): T {
+        val operationJob = requireNotNull(currentCoroutineContext()[Job]) {
+            "BLE operations must run in a coroutine"
+        }
+        check(activeOperation.compareAndSet(null, operationJob)) {
+            "Cannot start $operation while another BLE operation is active"
+        }
+
+        try {
+            return block()
+        } finally {
+            activeOperation.compareAndSet(operationJob, null)
+        }
+    }
+
+    private suspend fun awaitPreviousOperation(
+        operation: String,
+        cancelScanning: Boolean = false
+    ) {
+        val currentJob = currentCoroutineContext()[Job] ?: return
+        val previousJob = activeOperation.get() ?: return
+        if (previousJob === currentJob) return
+
+        when {
+            cancelScanning && stateMachine.state == ConnectionState.SCANNING -> {
+                previousJob.cancel(
+                    CancellationException("BLE scan cancelled before $operation")
+                )
+                previousJob.join()
+            }
+
+            stateMachine.state == ConnectionState.DISCONNECTED ||
+                stateMachine.state is ConnectionState.ERROR -> {
+                previousJob.join()
+            }
+        }
+    }
+
+    private fun handleTransportStage(stage: TransportConnectionStage) {
+        when (stage) {
+            TransportConnectionStage.CONNECTING -> Unit
+            TransportConnectionStage.DISCOVERING_SERVICES ->
+                if (stateMachine.state == ConnectionState.CONNECTING) {
+                    transitionTo(ConnectionState.DISCOVERING_SERVICES)
+                }
+
+            TransportConnectionStage.READY_FOR_HANDSHAKE -> Unit
+        }
+    }
+
+    private fun handleTransportDisconnected() {
+        val stateBeforeDisconnect = stateMachine.state
+        clearConnectionData()
+
+        if (
+            stateBeforeDisconnect !is ConnectionState.ERROR &&
+            stateBeforeDisconnect != ConnectionState.BLUETOOTH_DISABLED &&
+            stateBeforeDisconnect != ConnectionState.PERMISSION_REQUIRED
+        ) {
+            transitionTo(ConnectionState.DISCONNECTED)
+        }
+    }
+
+    private fun clearConnectionData() {
         stateRecoveryRequested = false
+        stateRecoveryJob?.cancel()
+        stateRecoveryJob = null
         session.reset()
         _currentSession.value = null
         eventStream.reset()
         deviceCapabilities.value = null
+    }
+
+    private fun fail(
+        error: ConnectionError,
+        exception: Throwable
+    ) {
+        Log.e(TAG, error.detail ?: "BLE operation failed", exception)
+        clearConnectionData()
         transport.disconnect()
-        _connectionState.value = ConnectionState.DISCONNECTED
+        stateMachine.fail(error)
+        publishState()
+    }
+
+    private fun fail(
+        code: ConnectionErrorCode,
+        message: String,
+        exception: Throwable
+    ) {
+        fail(
+            ConnectionError(
+                code = code,
+                detail = exception.message ?: message
+            ),
+            exception
+        )
+    }
+
+    private fun fail(
+        state: ConnectionState,
+        message: String,
+        exception: Throwable
+    ) {
+        Log.e(TAG, message, exception)
+        clearConnectionData()
+        transport.disconnect()
+        transitionTo(state)
+    }
+
+    private fun transitionTo(next: ConnectionState) {
+        stateMachine.transitionTo(next)
+        publishState()
+    }
+
+    private fun publishState() {
+        _connectionState.value = stateMachine.state
     }
 
     private companion object {

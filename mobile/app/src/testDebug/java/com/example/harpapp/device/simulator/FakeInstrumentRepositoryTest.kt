@@ -12,7 +12,12 @@ import com.example.harpapp.protocol.Capabilities
 import com.example.harpapp.protocol.LessonResultCode
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -21,8 +26,6 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.flow.take
 
 class FakeInstrumentRepositoryTest {
 
@@ -75,9 +78,9 @@ class FakeInstrumentRepositoryTest {
         }
 
         assertTrue(actual === expected)
-        assertEquals(ConnectionState.DISCONNECTED, repository.connectionState.first())
+        assertTrue(repository.connectionState.first() is ConnectionState.ERROR)
 
-        repository.simulateConnectionState(ConnectionState.CONNECTED, device.name)
+        repository.connect(device)
         repository.disconnect()
         assertEquals(ConnectionState.DISCONNECTED, repository.connectionState.first())
     }
@@ -100,6 +103,74 @@ class FakeInstrumentRepositoryTest {
         val handshake = events.await()
         assertTrue(handshake[0] is InstrumentEvent.ConfigurationUpdated)
         assertTrue(handshake[1] is InstrumentEvent.BatteryUpdated)
+    }
+
+    @Test
+    fun exposesConnectionLifecycleStages() = runBlocking {
+        val repository = FakeInstrumentRepository(SimulatorConfig(connectDelayMs = 1))
+        val states = async(start = CoroutineStart.UNDISPATCHED) {
+            repository.connectionState.drop(1).take(4).toList()
+        }
+
+        repository.connect(SimulatorConfig().device)
+
+        assertEquals(
+            listOf(
+                ConnectionState.CONNECTING,
+                ConnectionState.DISCOVERING_SERVICES,
+                ConnectionState.HANDSHAKING,
+                ConnectionState.CONNECTED
+            ),
+            states.await()
+        )
+    }
+
+    @Test
+    fun rejectsParallelConnectionAttempts() = runBlocking {
+        val repository = FakeInstrumentRepository(SimulatorConfig(connectDelayMs = 100))
+        val firstConnection = async(start = CoroutineStart.UNDISPATCHED) {
+            runCatching { repository.connect(SimulatorConfig().device) }
+        }
+        delay(10)
+
+        val secondFailure = runCatching {
+            repository.connect(SimulatorConfig().device)
+        }.exceptionOrNull()
+
+        assertTrue(secondFailure is IllegalStateException)
+        repository.disconnect()
+        firstConnection.cancelAndJoin()
+    }
+
+    @Test
+    fun connectionCancelsActiveScanBeforeStarting() = runBlocking {
+        val repository = FakeInstrumentRepository(SimulatorConfig(scanDelayMs = 100))
+        val scan = async(start = CoroutineStart.UNDISPATCHED) {
+            repository.scanForDevices()
+        }
+        delay(10)
+
+        repository.connect(SimulatorConfig().device)
+
+        scan.join()
+        assertTrue(scan.isCancelled)
+        assertEquals(ConnectionState.CONNECTED, repository.connectionState.first())
+    }
+
+    @Test
+    fun reconnectWaitsForCancelledConnectionToFinish() = runBlocking {
+        val repository = FakeInstrumentRepository(SimulatorConfig(connectDelayMs = 100))
+        val firstConnection = async(start = CoroutineStart.UNDISPATCHED) {
+            repository.connect(SimulatorConfig().device)
+        }
+        delay(10)
+
+        repository.disconnect()
+        repository.reconnect()
+
+        firstConnection.join()
+        assertTrue(firstConnection.isCancelled)
+        assertEquals(ConnectionState.CONNECTED, repository.connectionState.first())
     }
 
     @Test

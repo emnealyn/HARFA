@@ -41,6 +41,7 @@ internal class HarpSession(
     private var nextOutgoingSequence = 0
     private var lastIncomingSequence: Int? = null
     private val commandMutex = Mutex()
+    private var nextGeneration = 0L
 
     private var nextSid = initialSid.also {
         require(it in SessionIds.MIN..SessionIds.MAX) { "Invalid initial sid $it" }
@@ -48,10 +49,14 @@ internal class HarpSession(
 
     var currentSid: Int = SessionIds.NONE
         private set
+    /** Local generation used to reject commands after reconnect, even when wire `sid` repeats. */
+    var currentGeneration: Long = 0L
+        private set
 
     suspend fun start(): HarpMessage.DeviceInfo {
         reset()
         state = State.HANDSHAKING
+        currentGeneration = ++nextGeneration
         currentSid = allocateSid()
 
         repeat(MAX_HELLO_ATTEMPTS) { attempt ->
@@ -101,12 +106,17 @@ internal class HarpSession(
         error("Handshake did not complete")
     }
 
-    suspend fun sendCommand(expectedSid: Int, messageFactory: (seq: Int, sid: Int) -> HarpMessage) {
+    suspend fun sendCommand(
+        expectedSid: Int,
+        expectedGeneration: Long = currentGeneration,
+        messageFactory: (seq: Int, sid: Int) -> HarpMessage
+    ) {
         commandMutex.withLock {
             check(state == State.READY) { "HARFA session is not ready" }
-            if (expectedSid != currentSid) {
+            if (expectedSid != currentSid || expectedGeneration != currentGeneration) {
                 throw HarpStaleSessionException(
-                    "Command prepared for session $expectedSid, current session is $currentSid"
+                    "Command prepared for session $expectedSid/$expectedGeneration, " +
+                        "current session is $currentSid/$currentGeneration"
                 )
             }
 

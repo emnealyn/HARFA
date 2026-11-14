@@ -1,72 +1,237 @@
 package com.example.harpapp.presentation.ui.screens
 
-import android.Manifest
-import android.os.Build
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.BluetoothConnected
+import androidx.compose.material.icons.filled.BluetoothDisabled
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.Piano
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.harpapp.R
+import com.example.harpapp.device.bluetooth.BluetoothPermissions
+import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.InstrumentDevice
+import com.example.harpapp.domain.model.isOperationInProgress
+import com.example.harpapp.presentation.ui.connectionErrorMessage
+import com.example.harpapp.presentation.ui.connectionStateMessage
+import com.example.harpapp.presentation.ui.connectionStateTitle
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
 
+private sealed interface BluetoothPermissionAction {
+    data object Scan : BluetoothPermissionAction
+    data class Connect(val device: InstrumentDevice) : BluetoothPermissionAction
+}
 @Composable
 fun BluetoothScreen(
     viewModel: BluetoothViewModel
 ) {
-    val isConnected by viewModel.isConnected.collectAsState()
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val connectionState by viewModel.connectionState.collectAsState(
+        initial = ConnectionState.DISCONNECTED
+    )
+    val currentConnectionState = connectionState
     val connectedDeviceName by viewModel.connectedDeviceName.collectAsState(initial = null)
     val discoveredDevices by viewModel.discoveredDevices.collectAsState(initial = emptyList())
-    val scanFailed by viewModel.scanFailed.collectAsState()
 
-    var hasPermissions by remember { mutableStateOf(false) }
+    var missingPermissions by remember {
+        mutableStateOf(BluetoothPermissions.missingPermissions(context))
+    }
+    var permissionRequestAttempted by rememberSaveable { mutableStateOf(false) }
+    var pendingAction by remember { mutableStateOf<BluetoothPermissionAction?>(null) }
+    var rationaleAction by remember { mutableStateOf<BluetoothPermissionAction?>(null) }
+
+    fun refreshPermissions() {
+        missingPermissions = BluetoothPermissions.missingPermissions(context)
+    }
+
+    fun execute(action: BluetoothPermissionAction) {
+        pendingAction = null
+        when (action) {
+            BluetoothPermissionAction.Scan -> viewModel.scanForDevices()
+            is BluetoothPermissionAction.Connect -> viewModel.connectToDevice(action.device)
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        hasPermissions = permissions.values.all { it }
-        if (hasPermissions) viewModel.scanForDevices()
-    }
-
-    LaunchedEffect(Unit) {
-        val permissions = mutableListOf(
-            Manifest.permission.BLUETOOTH,
-            Manifest.permission.BLUETOOTH_ADMIN,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
-            permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+    ) {
+        permissionRequestAttempted = true
+        val updatedMissingPermissions = BluetoothPermissions.missingPermissions(context)
+        missingPermissions = updatedMissingPermissions
+        if (updatedMissingPermissions.isEmpty()) {
+            pendingAction?.let(::execute)
         }
-
-        permissionLauncher.launch(permissions.toTypedArray())
     }
 
-    val statusColor = if (isConnected)
-        Color(0xFF3B8A40)
-    else
-        MaterialTheme.colorScheme.error
+    fun requestPermissions(action: BluetoothPermissionAction) {
+        val currentMissingPermissions = BluetoothPermissions.missingPermissions(context)
+        missingPermissions = currentMissingPermissions
+        pendingAction = action
 
-    val statusIcon = if (isConnected)
-        Icons.Default.BluetoothConnected
-    else
-        Icons.Default.BluetoothDisabled
+        if (currentMissingPermissions.isEmpty()) {
+            execute(action)
+        } else if (
+            activity != null &&
+            currentMissingPermissions.any {
+                ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
+            }
+        ) {
+            rationaleAction = action
+        } else {
+            permissionLauncher.launch(currentMissingPermissions.toTypedArray())
+        }
+    }
+
+    fun openApplicationSettings() {
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+        )
+    }
+
+    fun openBluetoothSettings() {
+        context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshPermissions()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val hasPermissions = missingPermissions.isEmpty()
+    val showsPermissionRationale = activity != null &&
+        missingPermissions.any {
+            ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
+        }
+    val permanentlyDenied = permissionRequestAttempted &&
+        missingPermissions.isNotEmpty() &&
+        !showsPermissionRationale
+    val operationInProgress = currentConnectionState.isOperationInProgress
+    val canStartOperation =
+        !operationInProgress && currentConnectionState != ConnectionState.CONNECTED
+
+    val statusColor = when {
+        currentConnectionState == ConnectionState.CONNECTED ->
+            Color(0xFF3B8A40)
+        operationInProgress ->
+            MaterialTheme.colorScheme.primary
+        currentConnectionState == ConnectionState.DISCONNECTED ->
+            MaterialTheme.colorScheme.onSurfaceVariant
+        else ->
+            MaterialTheme.colorScheme.error
+    }
+    val statusIcon = when {
+        currentConnectionState == ConnectionState.CONNECTED -> Icons.Default.BluetoothConnected
+        currentConnectionState == ConnectionState.DISCONNECTED -> Icons.Default.Bluetooth
+        operationInProgress -> Icons.Default.Bluetooth
+        else -> Icons.Default.BluetoothDisabled
+    }
+    val statusTitle = stringResource(connectionStateTitle(currentConnectionState))
+    val statusMessage = when (currentConnectionState) {
+        ConnectionState.CONNECTED ->
+            connectedDeviceName ?: stringResource(R.string.no_device)
+        else -> stringResource(connectionStateMessage(currentConnectionState))
+    }
+
+    rationaleAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = {
+                rationaleAction = null
+                pendingAction = null
+            },
+            title = { Text(stringResource(R.string.bluetooth_permissions_rationale_title)) },
+            text = { Text(stringResource(R.string.bluetooth_permissions_rationale_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        rationaleAction = null
+                        val currentMissingPermissions =
+                            BluetoothPermissions.missingPermissions(context)
+                        if (currentMissingPermissions.isEmpty()) {
+                            execute(action)
+                        } else {
+                            permissionLauncher.launch(currentMissingPermissions.toTypedArray())
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.grant_permissions))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        rationaleAction = null
+                        pendingAction = null
+                    }
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -105,26 +270,36 @@ fun BluetoothScreen(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (isConnected) stringResource(R.string.connected)
-                                else stringResource(R.string.disconnected),
+                                text = statusTitle,
                                 style = MaterialTheme.typography.titleLarge,
                                 color = statusColor
                             )
-
                             Text(
-                                text = connectedDeviceName ?: stringResource(R.string.no_device),
+                                text = statusMessage,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
-                        if (isConnected) {
-                            IconButton(onClick = { viewModel.disconnect() }) {
-                                Icon(
-                                    imageVector = Icons.Default.LinkOff,
-                                    contentDescription = "Disconnect",
-                                    tint = statusColor
-                                )
+                        when {
+                            currentConnectionState == ConnectionState.CONNECTED -> {
+                                IconButton(onClick = viewModel::disconnect) {
+                                    Icon(
+                                        imageVector = Icons.Default.LinkOff,
+                                        contentDescription = stringResource(R.string.disconnect),
+                                        tint = statusColor
+                                    )
+                                }
+                            }
+                            operationInProgress &&
+                                currentConnectionState != ConnectionState.DISCONNECTING -> {
+                                IconButton(onClick = viewModel::disconnect) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = stringResource(R.string.cancel),
+                                        tint = statusColor
+                                    )
+                                }
                             }
                         }
                     }
@@ -134,7 +309,9 @@ fun BluetoothScreen(
             item {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Bluetooth,
@@ -152,10 +329,13 @@ fun BluetoothScreen(
                         modifier = Modifier.weight(1f)
                     )
 
-                    IconButton(onClick = { viewModel.scanForDevices() }) {
+                    IconButton(
+                        onClick = { requestPermissions(BluetoothPermissionAction.Scan) },
+                        enabled = canStartOperation
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh",
+                            contentDescription = stringResource(R.string.refresh),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -168,78 +348,144 @@ fun BluetoothScreen(
                         modifier = Modifier.fillMaxWidth(),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
-                        Text(
-                            text = stringResource(R.string.bluetooth_permissions_are_required),
-                            modifier = Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else if (scanFailed) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.bluetooth_scan_failed),
-                            modifier = Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            } else if (discoveredDevices.isEmpty()) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.no_discovered_devices_found),
-                            modifier = Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else {
-                items(discoveredDevices) { device ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { viewModel.connectToDevice(device) },
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Piano,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = if (permanentlyDenied) {
+                                    stringResource(R.string.bluetooth_permissions_permanently_denied)
+                                } else {
+                                    stringResource(R.string.bluetooth_permissions_are_required)
+                                },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = device.name ?: stringResource(R.string.unknown_device),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = {
+                                        if (permanentlyDenied) {
+                                            openApplicationSettings()
+                                        } else {
+                                            requestPermissions(BluetoothPermissionAction.Scan)
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        stringResource(
+                                            if (permanentlyDenied) {
+                                                R.string.open_app_settings
+                                            } else {
+                                                R.string.grant_permissions
+                                            }
+                                        )
+                                    )
+                                }
+                                if (permanentlyDenied) {
+                                    OutlinedButton(onClick = ::refreshPermissions) {
+                                        Text(stringResource(R.string.check_again))
+                                    }
+                                }
                             }
-
-                            Icon(
-                                imageVector = Icons.Default.Link,
-                                contentDescription = "Connect",
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                            )
                         }
                     }
+                }
+            } else if (currentConnectionState == ConnectionState.BLUETOOTH_DISABLED) {
+                item {
+                    StatusCard(
+                        text = stringResource(R.string.connection_bluetooth_disabled_message),
+                        actionLabel = stringResource(R.string.open_bluetooth_settings),
+                        onAction = ::openBluetoothSettings
+                    )
+                }
+            } else if (currentConnectionState is ConnectionState.ERROR) {
+                item {
+                    StatusCard(
+                        text = statusMessage,
+                        actionLabel = stringResource(R.string.retry),
+                        onAction = { requestPermissions(BluetoothPermissionAction.Scan) },
+                        isError = true
+                    )
+                }
+            } else if (!operationInProgress && discoveredDevices.isEmpty()) {
+                item {
+                    StatusCard(text = stringResource(R.string.no_discovered_devices_found))
+                }
+            }
+
+            items(discoveredDevices) { device ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            enabled = canStartOperation,
+                            onClick = {
+                                requestPermissions(BluetoothPermissionAction.Connect(device))
+                            }
+                        ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Piano,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = device.name ?: stringResource(R.string.unknown_device),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.Link,
+                            contentDescription = stringResource(R.string.connect),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusCard(
+    text: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+    isError: Boolean = false
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        border = BorderStroke(
+            1.dp,
+            if (isError) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.outlineVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = text,
+                color = if (isError) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+            if (actionLabel != null && onAction != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(onClick = onAction) {
+                    Text(actionLabel)
                 }
             }
         }

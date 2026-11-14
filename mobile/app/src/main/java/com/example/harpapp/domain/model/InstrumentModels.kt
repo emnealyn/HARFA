@@ -7,14 +7,9 @@ data class InstrumentDevice(
     val address: String
 )
 
-enum class ConnectionState {
-    DISCONNECTED,
-    CONNECTING,
-    CONNECTED
-}
-
+/** Monotonic application session generation, independent of the 8-bit wire `sid`. */
 @JvmInline
-value class SessionId(val value: Int)
+value class SessionId(val value: Long)
 
 class StaleSessionException(
     message: String,

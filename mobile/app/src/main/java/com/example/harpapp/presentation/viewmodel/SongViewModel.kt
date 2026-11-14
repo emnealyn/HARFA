@@ -88,11 +88,18 @@ class SongViewModel(
             lastConnectionState = state
             val current = _progress.value ?: return@collect
             val newProgress = when (state) {
-                ConnectionState.DISCONNECTED -> current.pause()
                 ConnectionState.CONNECTED ->
                     if (_pausedByUser.value) current
                     else current.resume().also { lessonController.resume(it) }
-                ConnectionState.CONNECTING -> current
+                ConnectionState.SCANNING,
+                ConnectionState.CONNECTING,
+                ConnectionState.DISCOVERING_SERVICES,
+                ConnectionState.HANDSHAKING -> current
+                ConnectionState.BLUETOOTH_DISABLED,
+                ConnectionState.PERMISSION_REQUIRED,
+                ConnectionState.DISCONNECTING,
+                ConnectionState.DISCONNECTED,
+                is ConnectionState.ERROR -> current.pause()
             }
             updateProgress(newProgress)
         }

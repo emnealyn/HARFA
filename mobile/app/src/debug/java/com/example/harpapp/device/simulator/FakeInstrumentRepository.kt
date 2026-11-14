@@ -4,7 +4,10 @@ import com.example.harpapp.device.bluetooth.instrumentCapabilitiesOf
 import com.example.harpapp.device.bluetooth.toBatteryStatus
 import com.example.harpapp.domain.model.BatteryPowerState
 import com.example.harpapp.domain.model.BatteryStatus
+import com.example.harpapp.domain.model.ConnectionError
+import com.example.harpapp.domain.model.ConnectionErrorCode
 import com.example.harpapp.domain.model.ConnectionState
+import com.example.harpapp.domain.model.ConnectionStateMachine
 import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentDevice
@@ -15,19 +18,25 @@ import com.example.harpapp.domain.model.SessionId
 import com.example.harpapp.domain.model.StaleSessionException
 import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.domain.repository.InstrumentRepository
+import com.example.harpapp.domain.model.isOperationInProgress
 import com.example.harpapp.protocol.Capabilities
 import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.LessonResultCode
 import com.example.harpapp.protocol.SessionIds
 import com.example.harpapp.protocol.StateRequestFlags
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.yield
 import java.util.ArrayDeque
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Symulator harfy (HARFA-25): do testów jednostkowych i trybu demo w buildzie debug.
@@ -37,7 +46,9 @@ class FakeInstrumentRepository(
     private val config: SimulatorConfig = SimulatorConfig()
 ) : InstrumentRepository {
 
-    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+    private val stateMachine = ConnectionStateMachine()
+    private val activeOperation = AtomicReference<Job?>(null)
+    private val _connectionState = MutableStateFlow(stateMachine.state)
     override val connectionState: Flow<ConnectionState> = _connectionState.asStateFlow()
 
     private val _connectedDeviceName = MutableStateFlow<String?>(null)
@@ -109,7 +120,7 @@ class FakeInstrumentRepository(
     
     private val _currentSession = MutableStateFlow<SessionId?>(null)
     override val currentSession: StateFlow<SessionId?> = _currentSession.asStateFlow()
-    private var sessionCounter = 0
+    private var sessionCounter = 0L
 
     private var lessonStepMask = 0
     private var lessonPaused = false
@@ -146,13 +157,11 @@ class FakeInstrumentRepository(
             clearLessonState()
             _capabilities.value = InstrumentCapabilities.NONE
         }
-        updateConnectionState(state)
+        transitionTo(state)
     }
 
     fun simulateConnectionLoss() {
-        updateConnectionState(ConnectionState.DISCONNECTED)
-        _capabilities.value = InstrumentCapabilities.NONE
-        clearLessonState()
+        disconnect()
     }
 
     /** Ponowne połączenie z ostatnim urządzeniem, z pełnym „handshake”. */
@@ -260,32 +269,76 @@ class FakeInstrumentRepository(
     // --- InstrumentRepository ---
 
     override suspend fun scanForDevices() {
-        if (scanFailures.isNotEmpty()) {
-            throw scanFailures.removeFirst()
+        awaitPreviousOperation("scanning")
+        runExclusive("scanning") {
+            stateMachine.startScanning()
+            publishState()
+            try {
+                if (scanFailures.isNotEmpty()) {
+                    throw scanFailures.removeFirst()
+                }
+                delay(config.scanDelayMs)
+                _discoveredDevices.value = presetDevices ?: listOf(config.device)
+                transitionTo(ConnectionState.DISCONNECTED)
+            } catch (exception: CancellationException) {
+                transitionTo(ConnectionState.DISCONNECTED)
+                throw exception
+            } catch (exception: Exception) {
+                fail(
+                    ConnectionError(
+                        code = ConnectionErrorCode.SCAN_FAILED,
+                        detail = exception.message
+                    )
+                )
+                throw exception
+            }
         }
-        delay(config.scanDelayMs)
-        _discoveredDevices.value = presetDevices ?: listOf(config.device)
     }
 
     override suspend fun connect(device: InstrumentDevice) {
-        updateConnectionState(ConnectionState.CONNECTING)
-        if (connectFailures.isNotEmpty()) {
-            updateConnectionState(ConnectionState.DISCONNECTED)
-            throw connectFailures.removeFirst()
+        if (stateMachine.state == ConnectionState.CONNECTED) {
+            disconnect()
         }
-        delay(config.connectDelayMs)
 
-        lastDevice = device
-        _connectedDeviceName.value = device.name
-        _connectedDeviceId.value = config.deviceId
-        clearLessonState()
-        _capabilities.value = instrumentCapabilitiesOf(config.capabilities)
-        updateConnectionState(ConnectionState.CONNECTED)
+        awaitPreviousOperation("connecting", cancelScanning = true)
+        runExclusive("connecting") {
+            stateMachine.startConnecting()
+            publishState()
+            try {
+                if (connectFailures.isNotEmpty()) {
+                    throw connectFailures.removeFirst()
+                }
+                delay(config.connectDelayMs)
+                transitionTo(ConnectionState.DISCOVERING_SERVICES)
+                yield()
+                transitionTo(ConnectionState.HANDSHAKING)
+                yield()
 
-        // Jak po handshake: CONFIG_STATE, potem BATTERY_STATE (spec §6).
-        emitConfiguration(_instrumentState.value)
-        if (config.capabilities and Capabilities.BATTERY != 0) {
-            emitEvent(_battery.value)
+                lastDevice = device
+                _connectedDeviceName.value = device.name
+                _connectedDeviceId.value = config.deviceId
+                clearLessonState()
+                _capabilities.value = instrumentCapabilitiesOf(config.capabilities)
+                transitionTo(ConnectionState.CONNECTED)
+
+                // Jak po handshake: CONFIG_STATE, potem BATTERY_STATE (spec §6).
+                emitConfiguration(_instrumentState.value)
+                if (config.capabilities and Capabilities.BATTERY != 0) {
+                    emitEvent(_battery.value)
+                }
+            } catch (exception: CancellationException) {
+                clearConnectionData()
+                transitionTo(ConnectionState.DISCONNECTED)
+                throw exception
+            } catch (exception: Exception) {
+                fail(
+                    ConnectionError(
+                        code = ConnectionErrorCode.CONNECTION_FAILED,
+                        detail = exception.message
+                    )
+                )
+                throw exception
+            }
         }
     }
 
@@ -309,9 +362,17 @@ class FakeInstrumentRepository(
     }
 
     override fun disconnect() {
-        updateConnectionState(ConnectionState.DISCONNECTED)
-        _capabilities.value = InstrumentCapabilities.NONE
-        clearLessonState()
+        val currentState = stateMachine.state
+        if (
+            currentState == ConnectionState.CONNECTED ||
+            (currentState.isOperationInProgress && currentState != ConnectionState.DISCONNECTING)
+        ) {
+            transitionTo(ConnectionState.DISCONNECTING)
+        }
+
+        activeOperation.get()?.cancel()
+        clearConnectionData()
+        transitionTo(ConnectionState.DISCONNECTED)
     }
 
     // --- Wewnętrzne ---
@@ -372,13 +433,71 @@ class FakeInstrumentRepository(
         }
     }
 
-    private fun updateConnectionState(state: ConnectionState) {
+    private suspend fun <T> runExclusive(
+        operation: String,
+        block: suspend () -> T
+    ): T {
+        val operationJob = requireNotNull(currentCoroutineContext()[Job]) {
+            "BLE operations must run in a coroutine"
+        }
+        check(activeOperation.compareAndSet(null, operationJob)) {
+            "Cannot start $operation while another BLE operation is active"
+        }
+
+        try {
+            return block()
+        } finally {
+            activeOperation.compareAndSet(operationJob, null)
+        }
+    }
+
+    private suspend fun awaitPreviousOperation(
+        operation: String,
+        cancelScanning: Boolean = false
+    ) {
+        val currentJob = currentCoroutineContext()[Job] ?: return
+        val previousJob = activeOperation.get() ?: return
+        if (previousJob === currentJob) return
+
+        when {
+            cancelScanning && stateMachine.state == ConnectionState.SCANNING -> {
+                previousJob.cancel(
+                    CancellationException("BLE scan cancelled before $operation")
+                )
+                previousJob.join()
+            }
+
+            stateMachine.state == ConnectionState.DISCONNECTED ||
+                stateMachine.state is ConnectionState.ERROR -> {
+                previousJob.join()
+            }
+        }
+    }
+
+    private fun transitionTo(state: ConnectionState) {
+        stateMachine.transitionTo(state)
         if (state != ConnectionState.CONNECTED) {
             _currentSession.value = null
-        } else if (_connectionState.value != ConnectionState.CONNECTED || _currentSession.value == null) {
+        } else if (_currentSession.value == null) {
             _currentSession.value = SessionId(++sessionCounter)
         }
-        _connectionState.value = state
+        publishState()
+    }
+
+    private fun publishState() {
+        _connectionState.value = stateMachine.state
+    }
+
+    private fun clearConnectionData() {
+        _currentSession.value = null
+        _capabilities.value = InstrumentCapabilities.NONE
+        clearLessonState()
+    }
+
+    private fun fail(error: ConnectionError) {
+        clearConnectionData()
+        stateMachine.fail(error)
+        publishState()
     }
 
     private fun clearLessonState() {

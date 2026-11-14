@@ -30,6 +30,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.harpapp.R
 import com.example.harpapp.domain.model.NoteName
+import com.example.harpapp.presentation.ui.connectionErrorMessage
+import com.example.harpapp.presentation.ui.connectionStateMessage
+import com.example.harpapp.presentation.ui.connectionStateTitle
 import com.example.harpapp.presentation.ui.components.harp.BatterySection
 import com.example.harpapp.presentation.ui.components.harp.DeviceCard
 import com.example.harpapp.presentation.ui.components.harp.HarpIllustration
@@ -135,7 +138,20 @@ private fun HarpContent(
     ) {
         when (uiState) {
             HarpUiState.Disconnected -> DisconnectedCard(onNavigateToBluetooth)
-            HarpUiState.Connecting -> ProgressCard(stringResource(R.string.harp_connecting))
+            is HarpUiState.Connecting -> ProgressCard(
+                title = stringResource(connectionStateTitle(uiState.state)),
+                message = stringResource(connectionStateMessage(uiState.state))
+            )
+            is HarpUiState.Unavailable -> ConnectionStatusCard(
+                title = stringResource(connectionStateTitle(uiState.state)),
+                message = stringResource(connectionStateMessage(uiState.state)),
+                onNavigateToBluetooth = onNavigateToBluetooth
+            )
+            is HarpUiState.Error -> ConnectionStatusCard(
+                title = stringResource(connectionErrorMessage(uiState.error.code)),
+                message = stringResource(R.string.connection_error_message),
+                onNavigateToBluetooth = onNavigateToBluetooth
+            )
             is HarpUiState.Connected -> {
                 HarpTabs(selectedTab, onTabSelect)
                 when (selectedTab) {
@@ -191,7 +207,42 @@ private fun DisconnectedCard(onNavigateToBluetooth: () -> Unit) {
 }
 
 @Composable
-private fun ProgressCard(message: String) {
+private fun ConnectionStatusCard(
+    title: String,
+    message: String,
+    onNavigateToBluetooth: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Button(onClick = onNavigateToBluetooth) {
+                Text(stringResource(R.string.bluetooth_settings))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProgressCard(
+    title: String,
+    message: String
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -201,10 +252,14 @@ private fun ProgressCard(message: String) {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             CircularProgressIndicator()
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge
-            )
+            Column {
+                Text(text = title, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
