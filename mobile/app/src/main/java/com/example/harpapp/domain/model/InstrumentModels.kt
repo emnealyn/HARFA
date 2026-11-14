@@ -1,5 +1,7 @@
 package com.example.harpapp.domain.model
 
+import java.io.IOException
+
 data class InstrumentDevice(
     val name: String?,
     val address: String
@@ -10,6 +12,14 @@ enum class ConnectionState {
     CONNECTING,
     CONNECTED
 }
+
+@JvmInline
+value class SessionId(val value: Int)
+
+class StaleSessionException(
+    message: String,
+    cause: Throwable? = null
+) : IOException(message, cause)
 
 data class InstrumentCapabilities(
     val leds: Boolean = false,
@@ -34,10 +44,6 @@ data class BatteryStatus(
     val isLow: Boolean
 )
 
-/**
- * Zdarzenia raportowane przez harfę. Zagranie struny to [NoteEvent] (docs/domain-model.md §4),
- * które również implementuje ten interfejs.
- */
 sealed interface InstrumentEvent {
     data class BatteryUpdated(
         val status: BatteryStatus
@@ -90,4 +96,8 @@ sealed interface InstrumentCommand {
     }
 
     data object EndLesson : InstrumentCommand
+
+    data class PauseLesson(
+        val paused: Boolean
+    ) : InstrumentCommand
 }

@@ -21,6 +21,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -291,6 +293,131 @@ class InstrumentLessonControllerTest {
         repository.emitConfiguration(sharpenedString(11))
 
         assertTrue(repository.sentCommands.isEmpty())
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun signalQueuedBeforeReconnectIsNotSentInNewSession() = runTest {
+        // Kolejka sygnałów obsługiwana dopiero przez runCurrent(), jak przy zajętym wątku kontrolera
+        val queuedController = InstrumentLessonController.Factory(repository).create(backgroundScope) { errors += it }
+        repository.reconnect()
+        var progress = LessonProgress.start(lessonOnStrings(2, 4))
+        queuedController.start(progress)
+        runCurrent()
+        repository.clearRecordedCommands()
+
+        // Trafienie zakolejkowane w sesji 1, obsłużone dopiero po ponownym połączeniu (CR HARFA-14)
+        progress.onNoteEvent(noteOn(2)).also { queuedController.onUpdate(it); progress = it.progress }
+        queuedController.end()
+        repository.simulateConnectionLoss()
+        repository.reconnect()
+        runCurrent()
+
+        assertTrue(repository.sentCommands.isEmpty())
+        assertEquals(0, repository.litStrings.value)
+        assertTrue(errors.isEmpty())
+
+        // Wznowienie w nowej sesji zaczyna lekcję od nowa od bieżącego kroku
+        queuedController.resume(progress)
+        runCurrent()
+        assertEquals(
+            listOf(
+                InstrumentCommand.StartLesson(totalSteps = 2),
+                InstrumentCommand.LessonStep(index = 1, mask = 1 shl 4)
+            ),
+            repository.sentCommands
+        )
+    }
+
+    @Test
+    fun pauseSendsLessonPauseInsteadOfEndingLesson() = runBlocking {
+        repository.reconnect()
+        controller.start(LessonProgress.start(lessonOnStrings(11, 3)))
+        repository.clearRecordedCommands()
+
+        controller.pause()
+
+        assertEquals(listOf(InstrumentCommand.PauseLesson(paused = true)), repository.sentCommands)
+        assertEquals(0, repository.litStrings.value)
+    }
+
+    @Test
+    fun resumeInSameSessionSendsOnlyLessonPauseOff() = runBlocking {
+        repository.reconnect()
+        val progress = LessonProgress.start(lessonOnStrings(11, 3))
+        controller.start(progress)
+        controller.pause()
+        repository.clearRecordedCommands()
+
+        controller.resume(progress)
+
+        assertEquals(listOf(InstrumentCommand.PauseLesson(paused = false)), repository.sentCommands)
+        assertEquals(1 shl 11, repository.litStrings.value)
+    }
+
+    @Test
+    fun resumeAfterReconnectDuringPauseStartsLessonAgain() = runBlocking {
+        repository.reconnect()
+        val progress = LessonProgress.start(lessonOnStrings(11, 3))
+        controller.start(progress)
+        controller.pause()
+
+        repository.simulateConnectionLoss()
+        repository.reconnect()
+        repository.clearRecordedCommands()
+        controller.resume(progress)
+
+        assertEquals(
+            listOf(
+                InstrumentCommand.StartLesson(totalSteps = 2),
+                InstrumentCommand.LessonStep(index = 0, mask = 1 shl 11)
+            ),
+            repository.sentCommands
+        )
+    }
+
+    @Test
+    fun tuningChangeDuringPauseIsSentAfterResume() = runBlocking {
+        repository.reconnect()
+        val progress = LessonProgress.start(lessonOnStrings(11, 3))
+        controller.start(progress)
+        controller.pause()
+        repository.clearRecordedCommands()
+
+        val retuned = sharpenedString(11)
+        repository.emitConfiguration(retuned)
+        assertTrue(repository.sentCommands.isEmpty())
+
+        controller.resume(progress)
+
+        assertEquals(
+            listOf(
+                InstrumentCommand.PauseLesson(paused = false),
+                InstrumentCommand.LessonStep(index = 0, mask = expectedMask(retuned, 11))
+            ),
+            repository.sentCommands
+        )
+    }
+
+    @Test
+    fun ledsOnlyHarpPauseTurnsLedsOffAndResumeRestoresThem() = runBlocking {
+        val harp = FakeInstrumentRepository(SimulatorConfig(capabilities = Capabilities.LEDS))
+        val harpController = InstrumentLessonController.Factory(harp).create(scope) { errors += it }
+        harp.reconnect()
+        val progress = LessonProgress.start(lessonOnStrings(11, 3))
+        harpController.start(progress)
+        harp.clearRecordedCommands()
+
+        harpController.pause()
+        harpController.resume(progress)
+
+        assertEquals(
+            listOf(
+                InstrumentCommand.SetLeds(0, InstrumentCommand.SetLeds.STEADY),
+                InstrumentCommand.SetLeds(1 shl 11, InstrumentCommand.SetLeds.STEADY)
+            ),
+            harp.sentCommands
+        )
         assertTrue(errors.isEmpty())
     }
 }

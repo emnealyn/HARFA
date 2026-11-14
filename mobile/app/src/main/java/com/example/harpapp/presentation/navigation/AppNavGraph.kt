@@ -28,9 +28,11 @@ import com.example.harpapp.presentation.ui.components.TopBar
 import com.example.harpapp.presentation.ui.screens.BluetoothScreen
 import com.example.harpapp.presentation.ui.screens.HarpScreen
 import com.example.harpapp.presentation.ui.screens.HomeScreen
+import com.example.harpapp.presentation.ui.screens.InitializationErrorScreen
 import com.example.harpapp.presentation.ui.screens.SettingsScreen
 import com.example.harpapp.presentation.ui.screens.SongScreen
 import com.example.harpapp.presentation.ui.screens.SplashScreen
+import com.example.harpapp.initialization.AppInitializationState
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
 import com.example.harpapp.presentation.viewmodel.HarpViewModel
 import com.example.harpapp.presentation.viewmodel.HomeViewModel
@@ -40,8 +42,27 @@ import com.example.harpapp.presentation.viewmodel.SongViewModel
 @Composable
 fun AppNavGraph(
     appContainer: AppContainer,
-    settingsViewModel: SettingsViewModel
+    settingsViewModel: SettingsViewModel,
+    initializationState: AppInitializationState,
+    onRetryInitialization: () -> Unit
 ) {
+    when (initializationState) {
+        AppInitializationState.Loading -> {
+            SplashScreen(onAnimationFinished = {})
+            return
+        }
+
+        is AppInitializationState.Error -> {
+            InitializationErrorScreen(
+                message = initializationState.message,
+                onRetry = onRetryInitialization
+            )
+            return
+        }
+
+        AppInitializationState.Ready -> Unit
+    }
+
     val navController = rememberNavController()
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()

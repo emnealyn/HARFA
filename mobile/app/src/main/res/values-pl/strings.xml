@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HARPApp</string>
+    <string name="initialization_error_title">Nie udało się uruchomić aplikacji</string>
+    <string name="initialization_error_message">Nie udało się wczytać danych startowych aplikacji.</string>
+    <string name="retry_initialization">Spróbuj ponownie</string>
     <string name="no_songs_found">Nie znaleziono piosenek :(</string>
     <string name="try_changing_your_search_phrase_or_clear_some_filters">Spróbuj zmienić frazę wyszukiwania lub wyczyść niektóre filtry</string>
     <string name="dark_mode">Ciemny motyw</string>

@@ -11,9 +11,12 @@ import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
+import com.example.harpapp.domain.model.SessionId
+import com.example.harpapp.domain.model.StaleSessionException
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.HarpProtocol
+import com.example.harpapp.protocol.LessonPauseCode
 import com.example.harpapp.protocol.StateRequestFlags
 import com.example.harpapp.protocol.Capabilities
 import kotlinx.coroutines.flow.combine
@@ -26,6 +29,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -48,6 +52,8 @@ class BluetoothInstrumentRepository internal constructor(
     private val deviceCapabilities = MutableStateFlow<Int?>(null)
     override val capabilities: Flow<InstrumentCapabilities> =
         deviceCapabilities.map { it?.let(::instrumentCapabilitiesOf) ?: InstrumentCapabilities.NONE }
+    private val _currentSession = MutableStateFlow<SessionId?>(null)
+    override val currentSession: StateFlow<SessionId?> = _currentSession.asStateFlow()
     private var stateRecoveryRequested = false
     private var stateRecoveryJob: Job? = null
 
@@ -99,6 +105,7 @@ class BluetoothInstrumentRepository internal constructor(
                     TransportEvent.Disconnected -> {
                         stateRecoveryRequested = false
                         session.reset()
+                        _currentSession.value = null
                         eventStream.reset()
                         deviceCapabilities.value = null
                         _connectionState.value = ConnectionState.DISCONNECTED
@@ -131,6 +138,7 @@ class BluetoothInstrumentRepository internal constructor(
                 val deviceInfo = session.start()
                 validateDeviceInfo(deviceInfo)
                 deviceCapabilities.value = deviceInfo.caps
+                _currentSession.value = SessionId(session.currentSid)
 
                 _connectionState.value = ConnectionState.CONNECTED
                 val nameToSave = device.name ?: device.address
@@ -158,15 +166,19 @@ class BluetoothInstrumentRepository internal constructor(
         }
     }
 
-    override suspend fun send(command: InstrumentCommand) {
+    override suspend fun send(command: InstrumentCommand, session: SessionId) {
         withContext(Dispatchers.IO) {
             try {
                 val capabilities = deviceCapabilities.value
                     ?: throw IllegalStateException("HARFA instrument is not connected")
                 validateCommandCapability(command, capabilities)
-                session.sendCommand { sequence -> command.toHarpMessage(sequence) }
+                this@BluetoothInstrumentRepository.session.sendCommand(session.value) { sequence, sid ->
+                    command.toHarpMessage(sequence, sid)
+                }
             } catch (exception: CancellationException) {
                 throw exception
+            } catch (exception: HarpStaleSessionException) {
+                throw StaleSessionException(exception.message ?: "Command from a finished session", exception)
             } catch (exception: HarpCommandTimeoutException) {
                 handleConnectionFailure("No ACK received from the BLE instrument", exception)
                 throw exception
@@ -182,6 +194,7 @@ class BluetoothInstrumentRepository internal constructor(
     override fun disconnect() {
         stateRecoveryRequested = false
         session.reset()
+        _currentSession.value = null
         eventStream.reset()
         deviceCapabilities.value = null
         transport.disconnect()
@@ -192,6 +205,14 @@ class BluetoothInstrumentRepository internal constructor(
         when (val event = session.handleIncoming(frame)) {
             is HarpSessionEvent.InvalidFrame -> {
                 Log.e(TAG, "Ignoring invalid HARFA frame: ${event.status}")
+            }
+
+            is HarpSessionEvent.StaleFrame -> {
+                Log.w(
+                    TAG,
+                    "Ignoring HARFA ${event.message.type} from session ${event.message.sid}, " +
+                        "current session is ${event.currentSid}"
+                )
             }
 
             is HarpSessionEvent.Message -> {
@@ -257,6 +278,7 @@ class BluetoothInstrumentRepository internal constructor(
             is InstrumentCommand.StartLesson,
             is InstrumentCommand.LessonStep,
             is InstrumentCommand.LessonResult,
+            is InstrumentCommand.PauseLesson,
             InstrumentCommand.EndLesson -> {
                 require(capabilities and Capabilities.LESSON != 0) {
                     "Instrument does not support lesson commands"
@@ -265,20 +287,26 @@ class BluetoothInstrumentRepository internal constructor(
         }
     }
 
-    private fun InstrumentCommand.toHarpMessage(sequence: Int): HarpMessage {
+    private fun InstrumentCommand.toHarpMessage(sequence: Int, sid: Int): HarpMessage {
         return when (this) {
             is InstrumentCommand.RequestState ->
-                HarpMessage.StateRequest(sequence, flags)
+                HarpMessage.StateRequest(sequence, sid, flags)
             is InstrumentCommand.SetLeds ->
-                HarpMessage.LedSet(sequence, mask, mode)
+                HarpMessage.LedSet(sequence, sid, mask, mode)
             is InstrumentCommand.StartLesson ->
-                HarpMessage.LessonStart(sequence, totalSteps)
+                HarpMessage.LessonStart(sequence, sid, totalSteps)
             is InstrumentCommand.LessonStep ->
-                HarpMessage.LessonStep(sequence, index, mask)
+                HarpMessage.LessonStep(sequence, sid, index, mask)
             is InstrumentCommand.LessonResult ->
-                HarpMessage.LessonResult(sequence, result)
+                HarpMessage.LessonResult(sequence, sid, result)
             InstrumentCommand.EndLesson ->
-                HarpMessage.LessonEnd(sequence)
+                HarpMessage.LessonEnd(sequence, sid)
+            is InstrumentCommand.PauseLesson ->
+                HarpMessage.LessonPause(
+                    sequence,
+                    sid,
+                    if (paused) LessonPauseCode.PAUSE else LessonPauseCode.RESUME
+                )
         }
     }
 
@@ -320,7 +348,7 @@ class BluetoothInstrumentRepository internal constructor(
                     }
 
                 try {
-                    send(InstrumentCommand.RequestState(flags))
+                    send(InstrumentCommand.RequestState(flags), _currentSession.value ?: break)
                 } catch (exception: CancellationException) {
                     if (!currentCoroutineContext().isActive) {
                         throw exception
@@ -341,6 +369,7 @@ class BluetoothInstrumentRepository internal constructor(
         Log.e(TAG, message, exception)
         stateRecoveryRequested = false
         session.reset()
+        _currentSession.value = null
         eventStream.reset()
         deviceCapabilities.value = null
         transport.disconnect()

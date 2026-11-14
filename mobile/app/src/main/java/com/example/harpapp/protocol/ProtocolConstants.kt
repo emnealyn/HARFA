@@ -2,13 +2,13 @@ package com.example.harpapp.protocol
 
 import java.util.UUID
 
-// Stałe protokołu BLE w wersji 1.0, zgodnie z docs/protocol/ble-protocol.md
+// Stałe protokołu BLE w wersji 2.0, zgodnie z docs/protocol/ble-protocol.md
 object HarpProtocol {
-    const val VERSION_MAJOR = 1
+    const val VERSION_MAJOR = 2
     const val VERSION_MINOR = 0
 
-    const val HEADER_SIZE = 4
-    const val MAX_PAYLOAD_SIZE = 16
+    const val HEADER_SIZE = 5
+    const val MAX_PAYLOAD_SIZE = 15
     const val MAX_FRAME_SIZE = HEADER_SIZE + MAX_PAYLOAD_SIZE
 
     const val STRING_COUNT = 15
@@ -32,7 +32,8 @@ enum class MessageType(val code: Int, val minPayloadSize: Int) {
     LESSON_START(0x31, 2),
     LESSON_STEP(0x32, 4),
     LESSON_RESULT(0x33, 1),
-    LESSON_END(0x34, 0);
+    LESSON_END(0x34, 0),
+    LESSON_PAUSE(0x35, 1);
 
     companion object {
         fun fromCode(code: Int): MessageType? = entries.firstOrNull { it.code == code }
@@ -47,7 +48,8 @@ enum class StatusCode(val code: Int) {
     INVALID_ARGUMENT(0x04),
     NOT_READY(0x05),
     BUSY(0x06),
-    INTERNAL(0x07);
+    INTERNAL(0x07),
+    STALE_SESSION(0x08);
 
     companion object {
         // Nowe kody mogą pojawić się w kolejnych wersjach minor, dlatego wynik może być null
@@ -85,6 +87,17 @@ object LessonResultCode {
     const val MISS = 0x00
     const val HIT = 0x01
     const val COMPLETE = 0x02
+}
+
+object LessonPauseCode {
+    const val RESUME = 0x00
+    const val PAUSE = 0x01
+}
+
+object SessionIds {
+    const val NONE = 0x00
+    const val MIN = 0x01
+    const val MAX = 0xFF
 }
 
 object BatteryPercent {

@@ -7,6 +7,8 @@ import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.LessonProgress
 import com.example.harpapp.domain.model.LessonStep
 import com.example.harpapp.domain.model.ProgressUpdate
+import com.example.harpapp.domain.model.SessionId
+import com.example.harpapp.domain.model.StaleSessionException
 import com.example.harpapp.domain.model.StepOutcome
 import com.example.harpapp.domain.repository.InstrumentRepository
 import kotlinx.coroutines.CancellationException
@@ -27,15 +29,24 @@ class InstrumentLessonController private constructor(
     private val onError: (Throwable) -> Unit
 ) {
     private sealed interface Signal {
-        data class Start(val progress: LessonProgress) : Signal
-        data class Update(val update: ProgressUpdate) : Signal
-        data object End : Signal
-        data class TuningChanged(val state: InstrumentState) : Signal
-        data object SessionLost : Signal
+        val session: SessionId?
+
+        data class Start(val progress: LessonProgress, override val session: SessionId?) : Signal
+        data class Resume(val progress: LessonProgress, override val session: SessionId?) : Signal
+        data class Update(val update: ProgressUpdate, override val session: SessionId?) : Signal
+        data class Pause(override val session: SessionId?) : Signal
+        data class End(override val session: SessionId?) : Signal
+        data class TuningChanged(val state: InstrumentState, override val session: SessionId?) : Signal
+        data object SessionLost : Signal {
+            override val session: SessionId? = null
+        }
     }
 
     private val signals = Channel<Signal>(Channel.UNLIMITED)
 
+    private var activeSession: SessionId? = null
+    private var lessonSession: SessionId? = null
+    private var paused = false
     private var litStep: LessonStep? = null
     private var litMask: Int = 0
 
@@ -45,7 +56,7 @@ class InstrumentLessonController private constructor(
         }
         scope.launch {
             repository.instrumentState.distinctUntilChanged().collect {
-                signals.trySend(Signal.TuningChanged(it))
+                enqueue { session -> Signal.TuningChanged(it, session) }
             }
         }
         scope.launch {
@@ -57,49 +68,55 @@ class InstrumentLessonController private constructor(
 
     /** Nowa lekcja: LESSON_START i pierwszy LESSON_STEP. */
     fun start(progress: LessonProgress) {
-        signals.trySend(Signal.Start(progress))
+        enqueue { Signal.Start(progress, it) }
     }
 
     /** Wynik zagrania: LESSON_RESULT, a po trafieniu także kolejny LESSON_STEP. */
     fun onUpdate(update: ProgressUpdate) {
-        if (update.outcome != StepOutcome.IGNORED) signals.trySend(Signal.Update(update))
+        if (update.outcome != StepOutcome.IGNORED) enqueue { Signal.Update(update, it) }
     }
 
     /**
-     * Wznowienie po ponownym połączeniu. Spec §6 pkt 9: w nowej sesji trzeba wysłać
-     * LESSON_START i ostatni nieukończony LESSON_STEP.
+     * Wznowienie lekcji. W tej samej sesji, w której harfa ma wstrzymaną lekcję, wystarczy
+     * `LESSON_PAUSE(0)`. W nowej sesji (po ponownym połączeniu) trzeba wysłać `LESSON_START`
+     * i bieżący `LESSON_STEP` (spec §8 pkt 9).
      */
     fun resume(progress: LessonProgress) {
-        if (!progress.isCompleted) signals.trySend(Signal.Start(progress))
+        if (!progress.isCompleted) enqueue { Signal.Resume(progress, it) }
     }
 
-    /**
-     * Ręczna pauza. Protokół nie ma osobnej komendy pauzy, więc lekcja na harfie jest kończona
-     * (`LESSON_END` gasi diody). Wznowienie przez [resume] wysyła `LESSON_START` i bieżący krok.
-     */
     fun pause() {
-        signals.trySend(Signal.End)
+        enqueue { Signal.Pause(it) }
     }
 
     fun end() {
-        signals.trySend(Signal.End)
+        enqueue { Signal.End(it) }
+    }
+
+    private inline fun enqueue(build: (SessionId?) -> Signal) {
+        signals.trySend(build(repository.currentSession.value))
     }
 
     private suspend fun handle(signal: Signal) {
         if (signal == Signal.SessionLost) {
-            litStep = null
+            clearHarpState()
             return
         }
-        if (repository.connectionState.first() != ConnectionState.CONNECTED) return
+
+        val current = repository.currentSession.value
+        if (current != activeSession) {
+            clearHarpState()
+            activeSession = current
+        }
+        val session = signal.session
+        if (session == null || session != current) return
 
         val commands: List<InstrumentCommand> = when (signal) {
-            is Signal.Start -> {
-                litStep = null
-                listOfNotNull(
-                    InstrumentCommand.StartLesson(signal.progress.lesson.steps.size),
-                    stepCommand(signal.progress.currentStep)
-                )
-            }
+            is Signal.Start -> startCommands(signal.progress, session)
+
+            is Signal.Resume ->
+                if (lessonSession == session && paused) resumeCommands(signal.progress)
+                else startCommands(signal.progress, session)
 
             is Signal.Update -> when (signal.update.outcome) {
                 StepOutcome.HIT -> listOfNotNull(
@@ -115,14 +132,24 @@ class InstrumentLessonController private constructor(
                 StepOutcome.IGNORED -> emptyList()
             }
 
-            Signal.End -> {
+            is Signal.Pause ->
+                if (lessonSession != session || paused) {
+                    emptyList()
+                } else {
+                    paused = true
+                    listOf(InstrumentCommand.PauseLesson(paused = true))
+                }
+
+            is Signal.End -> {
                 litStep = null
+                lessonSession = null
+                paused = false
                 listOf(InstrumentCommand.EndLesson)
             }
 
             is Signal.TuningChanged -> {
                 val step = litStep
-                if (step == null || maskFor(step, signal.state) == litMask) emptyList()
+                if (paused || step == null || maskFor(step, signal.state) == litMask) emptyList()
                 else listOfNotNull(stepCommand(step, signal.state))
             }
 
@@ -134,12 +161,14 @@ class InstrumentLessonController private constructor(
             val wireCommand = adaptTo(capabilities, command)
             if (wireCommand != null) {
                 try {
-                    repository.send(wireCommand)
+                    repository.send(wireCommand, session)
+                } catch (e: StaleSessionException) {
+                    clearHarpState()
+                    return
                 } catch (e: CancellationException) {
                     if (!currentCoroutineContext().isActive) throw e
-                    
-                    litStep = null
-                    litMask = 0
+
+                    clearHarpState()
                     return
                 } catch (e: Exception) {
                     onError(e)
@@ -148,6 +177,37 @@ class InstrumentLessonController private constructor(
             }
             if (command is InstrumentCommand.LessonStep) litMask = command.mask
         }
+    }
+
+    private suspend fun startCommands(
+        progress: LessonProgress,
+        session: SessionId
+    ): List<InstrumentCommand> {
+        litStep = null
+        lessonSession = session
+        paused = false
+        return listOfNotNull(
+            InstrumentCommand.StartLesson(progress.lesson.steps.size),
+            stepCommand(progress.currentStep)
+        )
+    }
+
+    private suspend fun resumeCommands(progress: LessonProgress): List<InstrumentCommand> {
+        paused = false
+        val step = progress.currentStep
+        val state = repository.instrumentState.first()
+        val stepChanged = step != litStep || (step != null && maskFor(step, state) != litMask)
+        return listOfNotNull(
+            InstrumentCommand.PauseLesson(paused = false),
+            if (stepChanged) stepCommand(step, state) else null
+        )
+    }
+
+    private fun clearHarpState() {
+        lessonSession = null
+        paused = false
+        litStep = null
+        litMask = 0
     }
 
     private fun adaptTo(
@@ -161,6 +221,9 @@ class InstrumentLessonController private constructor(
                 InstrumentCommand.SetLeds(command.mask, InstrumentCommand.SetLeds.STEADY)
             is InstrumentCommand.LessonResult ->
                 if (command.result == InstrumentCommand.LessonResult.COMPLETE) ledsOff() else null
+            is InstrumentCommand.PauseLesson ->
+                if (command.paused) ledsOff()
+                else InstrumentCommand.SetLeds(litMask, InstrumentCommand.SetLeds.STEADY)
             InstrumentCommand.EndLesson -> ledsOff()
             else -> null
         }

@@ -7,8 +7,10 @@ import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
+import com.example.harpapp.domain.model.SessionId
 import com.example.harpapp.domain.model.BatteryStatus
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 interface InstrumentRepository {
     val connectionState: Flow<ConnectionState>
@@ -31,11 +33,13 @@ interface InstrumentRepository {
 
     val batteryStatus: Flow<BatteryStatus?>
 
+    val currentSession: StateFlow<SessionId?>
+
     suspend fun scanForDevices()
 
     suspend fun connect(device: InstrumentDevice)
 
-    suspend fun send(command: InstrumentCommand)
+    suspend fun send(command: InstrumentCommand, session: SessionId)
 
     fun disconnect()
 }

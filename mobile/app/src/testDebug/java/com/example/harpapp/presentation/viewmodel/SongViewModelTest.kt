@@ -189,7 +189,7 @@ class SongViewModelTest {
     }
 
     @Test
-    fun userPauseEndsLessonOnHarpIgnoresNotesAndResumeSendsCurrentStep() = runTest(dispatcher) {
+    fun userPausePausesLessonOnHarpIgnoresNotesAndResumeContinuesIt() = runTest(dispatcher) {
         startLessonOnConnectedHarp()
         harp.pluck(2)
         harp.clearRecordedCommands()
@@ -200,7 +200,8 @@ class SongViewModelTest {
         assertTrue(viewModel.isLessonPaused.value)
         assertFalse(viewModel.isPausedByConnection.value)
         assertTrue(viewModel.canToggleLessonPause.value)
-        assertEquals(listOf(InstrumentCommand.EndLesson), harp.sentCommands)
+        assertEquals(listOf(InstrumentCommand.PauseLesson(paused = true)), harp.sentCommands)
+        assertEquals(0, harp.litStrings.value)
 
         harp.pluck(4)
         assertEquals(1, viewModel.currentNoteIndex.value)
@@ -208,9 +209,31 @@ class SongViewModelTest {
         viewModel.toggleLessonPause()
 
         assertEquals(LessonStatus.IN_PROGRESS, status)
+        // Ta sama sesja: harfa pamięta krok, wystarczy LESSON_PAUSE(0)
         assertEquals(
             listOf(
-                InstrumentCommand.EndLesson,
+                InstrumentCommand.PauseLesson(paused = true),
+                InstrumentCommand.PauseLesson(paused = false)
+            ),
+            harp.sentCommands
+        )
+        assertEquals(1 shl 4, harp.litStrings.value)
+    }
+
+    @Test
+    fun userResumeAfterReconnectStartsLessonInNewSession() = runTest(dispatcher) {
+        startLessonOnConnectedHarp()
+        harp.pluck(2)
+        viewModel.toggleLessonPause()
+
+        harp.simulateConnectionLoss()
+        harp.reconnect()
+        harp.clearRecordedCommands()
+        viewModel.toggleLessonPause()
+
+        assertEquals(LessonStatus.IN_PROGRESS, status)
+        assertEquals(
+            listOf(
                 InstrumentCommand.StartLesson(totalSteps = 2),
                 InstrumentCommand.LessonStep(index = 1, mask = 1 shl 4)
             ),

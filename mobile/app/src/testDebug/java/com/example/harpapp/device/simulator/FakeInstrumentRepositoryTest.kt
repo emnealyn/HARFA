@@ -6,6 +6,7 @@ import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
+import com.example.harpapp.domain.model.StaleSessionException
 import com.example.harpapp.protocol.BatteryFlags
 import com.example.harpapp.protocol.Capabilities
 import com.example.harpapp.protocol.LessonResultCode
@@ -16,6 +17,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -34,7 +36,7 @@ class FakeInstrumentRepositoryTest {
         assertEquals(listOf(device), repository.discoveredDevices.first())
 
         repository.connect(device)
-        repository.send(InstrumentCommand.SetLeds(mask = 1, mode = 0))
+        repository.send(InstrumentCommand.SetLeds(mask = 1, mode = 0), repository.currentSession.value!!)
 
         assertEquals(ConnectionState.CONNECTED, repository.connectionState.first())
         assertEquals(
@@ -135,8 +137,8 @@ class FakeInstrumentRepositoryTest {
         val repository = FakeInstrumentRepository()
         repository.reconnect()
 
-        repository.send(InstrumentCommand.StartLesson(totalSteps = 2))
-        repository.send(InstrumentCommand.LessonStep(index = 0, mask = 1 shl 11))
+        repository.send(InstrumentCommand.StartLesson(totalSteps = 2), repository.currentSession.value!!)
+        repository.send(InstrumentCommand.LessonStep(index = 0, mask = 1 shl 11), repository.currentSession.value!!)
         assertEquals(1 shl 11, repository.litStrings.value)
 
         val note = async(start = CoroutineStart.UNDISPATCHED) { repository.noteEvents.first() }
@@ -152,13 +154,54 @@ class FakeInstrumentRepositoryTest {
     }
 
     @Test
+    fun pauseKeepsCurrentStepAndResumeRelightsIt() = runBlocking {
+        val repository = FakeInstrumentRepository()
+        repository.reconnect()
+        val session = repository.currentSession.value!!
+        repository.send(InstrumentCommand.StartLesson(totalSteps = 2), session)
+        repository.send(InstrumentCommand.LessonStep(index = 0, mask = 1 shl 11), session)
+
+        repository.send(InstrumentCommand.PauseLesson(paused = true), session)
+        assertEquals(0, repository.litStrings.value)
+
+        // Krok wysłany w pauzie jest zapamiętany, ale diody zapalają się dopiero po wznowieniu
+        repository.send(InstrumentCommand.LessonStep(index = 1, mask = 1 shl 3), session)
+        assertEquals(0, repository.litStrings.value)
+
+        repository.send(InstrumentCommand.PauseLesson(paused = false), session)
+        assertEquals(1 shl 3, repository.litStrings.value)
+    }
+
+    @Test
+    fun everyConnectionIsNewSessionAndCommandsFromOldSessionAreRejected() = runBlocking {
+        val repository = FakeInstrumentRepository()
+        repository.reconnect()
+        val oldSession = repository.currentSession.value!!
+
+        repository.simulateConnectionLoss()
+        assertNull(repository.currentSession.value)
+        repository.reconnect()
+        assertNotEquals(oldSession, repository.currentSession.value)
+
+        var error: Throwable? = null
+        try {
+            repository.send(InstrumentCommand.LessonStep(index = 0, mask = 1), oldSession)
+        } catch (e: StaleSessionException) {
+            error = e
+        }
+        assertTrue(error != null)
+        assertTrue(repository.sentCommands.isEmpty())
+        assertEquals(0, repository.litStrings.value)
+    }
+
+    @Test
     fun rejectsCommandsWithoutCapability() = runBlocking {
         val repository = FakeInstrumentRepository(SimulatorConfig(capabilities = 0))
         repository.reconnect()
 
         var error: Throwable? = null
         try {
-            repository.send(InstrumentCommand.LessonResult(LessonResultCode.HIT))
+            repository.send(InstrumentCommand.LessonResult(LessonResultCode.HIT), repository.currentSession.value!!)
         } catch (e: IllegalArgumentException) {
             error = e
         }

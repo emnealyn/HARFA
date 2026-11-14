@@ -1,5 +1,5 @@
 /*
- * Kodek ramek protokołu BLE HARFA w wersji 1.0 (docs/protocol/ble-protocol.md).
+ * Kodek ramek protokołu BLE HARFA w wersji 2.0 (docs/protocol/ble-protocol.md).
  *
  * Czysty C99: bez HAL, bez alokacji pamięci, bez stdio. Ten sam kod jest
  * kompilowany w firmware STM32WB55 oraz w testach kontraktowych na komputerze.
@@ -14,12 +14,22 @@
 extern "C" {
 #endif
 
-#define HARFA_PROTO_VERSION_MAJOR 1u
+#define HARFA_PROTO_VERSION_MAJOR 2u
 #define HARFA_PROTO_VERSION_MINOR 0u
 
-#define HARFA_HEADER_SIZE 4u
-#define HARFA_MAX_PAYLOAD_SIZE 16u
+#define HARFA_HEADER_SIZE 5u
+#define HARFA_MAX_PAYLOAD_SIZE 15u
 #define HARFA_MAX_FRAME_SIZE (HARFA_HEADER_SIZE + HARFA_MAX_PAYLOAD_SIZE)
+
+/* Offsety pól nagłówka: ver | type | seq | sid | len */
+#define HARFA_OFF_VER 0u
+#define HARFA_OFF_TYPE 1u
+#define HARFA_OFF_SEQ 2u
+#define HARFA_OFF_SID 3u
+#define HARFA_OFF_LEN 4u
+
+/* sid = 0: brak sesji (sekcja 8.1) */
+#define HARFA_SID_NONE 0x00u
 
 #define HARFA_STRING_COUNT 15u
 #define HARFA_LEVER_COUNT 7u
@@ -41,7 +51,8 @@ typedef enum {
     HARFA_MSG_LESSON_START = 0x31,
     HARFA_MSG_LESSON_STEP = 0x32,
     HARFA_MSG_LESSON_RESULT = 0x33,
-    HARFA_MSG_LESSON_END = 0x34
+    HARFA_MSG_LESSON_END = 0x34,
+    HARFA_MSG_LESSON_PAUSE = 0x35
 } harfa_msg_type_t;
 
 typedef enum {
@@ -52,7 +63,8 @@ typedef enum {
     HARFA_STATUS_INVALID_ARGUMENT = 0x04,
     HARFA_STATUS_NOT_READY = 0x05,
     HARFA_STATUS_BUSY = 0x06,
-    HARFA_STATUS_INTERNAL = 0x07
+    HARFA_STATUS_INTERNAL = 0x07,
+    HARFA_STATUS_STALE_SESSION = 0x08
 } harfa_status_t;
 
 /* Maska caps w DEVICE_INFO */
@@ -80,6 +92,9 @@ typedef enum {
 #define HARFA_LESSON_MISS 0x00u
 #define HARFA_LESSON_HIT 0x01u
 #define HARFA_LESSON_COMPLETE 0x02u
+
+#define HARFA_LESSON_RESUME 0x00u
+#define HARFA_LESSON_PAUSE 0x01u
 
 typedef struct {
     uint8_t proto_major;
@@ -151,8 +166,13 @@ typedef struct {
 } harfa_lesson_result_t;
 
 typedef struct {
+    uint8_t paused; /* HARFA_LESSON_PAUSE / HARFA_LESSON_RESUME */
+} harfa_lesson_pause_t;
+
+typedef struct {
     harfa_msg_type_t type;
     uint8_t seq;
+    uint8_t sid; /* identyfikator sesji, HARFA_SID_NONE = brak sesji */
     union {
         harfa_hello_t hello;
         harfa_device_info_t device_info;
@@ -166,6 +186,7 @@ typedef struct {
         harfa_lesson_start_t lesson_start;
         harfa_lesson_step_t lesson_step;
         harfa_lesson_result_t lesson_result;
+        harfa_lesson_pause_t lesson_pause;
     } body; /* LESSON_END nie ma payloadu */
 } harfa_msg_t;
 

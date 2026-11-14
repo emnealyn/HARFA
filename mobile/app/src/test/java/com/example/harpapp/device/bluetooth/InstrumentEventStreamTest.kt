@@ -107,17 +107,17 @@ class InstrumentEventStreamTest {
         stream.accept(message("battery_state_normal"))
         val before = stream.batteryStatus.value
 
-        assertNull(stream.accept(HarpMessage.BatteryState(seq = 0, percent = 101, millivolts = 0, flags = 0)))
+        assertNull(stream.accept(HarpMessage.BatteryState(seq = 0, sid = 1, percent = 101, millivolts = 0, flags = 0)))
         assertEquals(before, stream.batteryStatus.value)
     }
 
     @Test
     fun inneINiepoprawneWiadomosciSaPomijane() {
         val events = collectNoteEvents {
-            assertNull(stream.accept(HarpMessage.LessonEnd(seq = 0)))
-            assertNull(stream.accept(HarpMessage.StringEvent(seq = 0, stringId = 15, midi = 60, tMs = 0)))
+            assertNull(stream.accept(HarpMessage.LessonEnd(seq = 0, sid = 1)))
+            assertNull(stream.accept(HarpMessage.StringEvent(seq = 0, sid = 1, stringId = 15, midi = 60, tMs = 0)))
             assertNull(
-                stream.accept(HarpMessage.ConfigState(seq = 0, octaveShift = 5, lever = List(7) { 0 }, baseOctave = 2))
+                stream.accept(HarpMessage.ConfigState(seq = 0, sid = 1, octaveShift = 5, lever = List(7) { 0 }, baseOctave = 2))
             )
         }
 
