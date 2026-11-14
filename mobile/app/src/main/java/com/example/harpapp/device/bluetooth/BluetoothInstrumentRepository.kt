@@ -1,6 +1,5 @@
 package com.example.harpapp.device.bluetooth
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import com.example.harpapp.domain.model.BatteryStatus
@@ -42,7 +41,6 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicReference
 
-@SuppressLint("MissingPermission")
 class BluetoothInstrumentRepository internal constructor(
     context: Context,
     private val transport: InstrumentTransport = BleGattInstrumentTransport(context),
@@ -255,6 +253,13 @@ class BluetoothInstrumentRepository internal constructor(
                 fail(
                     ConnectionErrorCode.TIMEOUT,
                     "No ACK received from the BLE instrument",
+                    exception
+                )
+                throw exception
+            } catch (exception: SecurityException) {
+                fail(
+                    ConnectionState.PERMISSION_REQUIRED,
+                    "Bluetooth permissions are missing",
                     exception
                 )
                 throw exception

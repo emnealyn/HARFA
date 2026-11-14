@@ -1,6 +1,6 @@
 package com.example.harpapp.device.bluetooth
 
-import android.annotation.SuppressLint
+import android.Manifest
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
@@ -9,8 +9,10 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.protocol.HarpProtocol
 import kotlinx.coroutines.CancellationException
@@ -24,7 +26,6 @@ import java.io.IOException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-@SuppressLint("MissingPermission")
 internal class BleGattInstrumentTransport(
     context: Context
 ) : InstrumentTransport {
@@ -46,6 +47,7 @@ internal class BleGattInstrumentTransport(
         device: InstrumentDevice,
         onStage: (TransportConnectionStage) -> Unit
     ) {
+        BluetoothPermissions.requireConnectPermission(appContext)
         onStage(TransportConnectionStage.CONNECTING)
         try {
             withTimeout(CONNECTION_TIMEOUT_MS) {
@@ -53,6 +55,21 @@ internal class BleGattInstrumentTransport(
                     disconnectGatt(notify = false)
                     connectionStageCallback = onStage
                     connectContinuation = continuation
+
+                    if (
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                        ContextCompat.checkSelfPermission(
+                            appContext,
+                            Manifest.permission.BLUETOOTH_CONNECT
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        failConnection(
+                            BluetoothPermissionRequiredException(
+                                listOf(Manifest.permission.BLUETOOTH_CONNECT)
+                            )
+                        )
+                        return@suspendCancellableCoroutine
+                    }
 
                     val bluetoothAdapter = bluetoothManager?.adapter
                     if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
@@ -106,6 +123,7 @@ internal class BleGattInstrumentTransport(
         require(bytes.size <= HarpProtocol.MAX_FRAME_SIZE) {
             "BLE frame cannot exceed ${HarpProtocol.MAX_FRAME_SIZE} bytes"
         }
+        BluetoothPermissions.requireConnectPermission(appContext)
 
         suspendCancellableCoroutine { continuation ->
             val gatt = bluetoothGatt
@@ -120,6 +138,21 @@ internal class BleGattInstrumentTransport(
             if (writeContinuation != null) {
                 continuation.resumeWithException(
                     IllegalStateException("Another BLE write is already pending")
+                )
+                return@suspendCancellableCoroutine
+            }
+
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                ContextCompat.checkSelfPermission(
+                    appContext,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                continuation.resumeWithException(
+                    BluetoothPermissionRequiredException(
+                        listOf(Manifest.permission.BLUETOOTH_CONNECT)
+                    )
                 )
                 return@suspendCancellableCoroutine
             }
@@ -186,8 +219,16 @@ internal class BleGattInstrumentTransport(
         }
         resumeWriteWithException(CancellationException("BLE GATT connection was cancelled"))
 
-        gatt?.disconnect()
-        gatt?.close()
+        if (
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            gatt?.disconnect()
+        }
+        closeGattHandle(gatt)
 
         if (notify && hadConnection) {
             _events.tryEmit(TransportEvent.Disconnected)
@@ -201,7 +242,22 @@ internal class BleGattInstrumentTransport(
             newState: Int
         ) {
             if (gatt !== bluetoothGatt) {
-                gatt.close()
+                closeGattHandle(gatt)
+                return
+            }
+
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                ContextCompat.checkSelfPermission(
+                    appContext,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                failConnection(
+                    BluetoothPermissionRequiredException(
+                        listOf(Manifest.permission.BLUETOOTH_CONNECT)
+                    )
+                )
                 return
             }
 
@@ -234,6 +290,21 @@ internal class BleGattInstrumentTransport(
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (gatt !== bluetoothGatt) return
+
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                ContextCompat.checkSelfPermission(
+                    appContext,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                failConnection(
+                    BluetoothPermissionRequiredException(
+                        listOf(Manifest.permission.BLUETOOTH_CONNECT)
+                    )
+                )
+                return
+            }
 
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 failConnection(
@@ -290,6 +361,21 @@ internal class BleGattInstrumentTransport(
         ) {
             if (gatt !== bluetoothGatt || descriptor.uuid != CCCD_UUID) return
 
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                ContextCompat.checkSelfPermission(
+                    appContext,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                failConnection(
+                    BluetoothPermissionRequiredException(
+                        listOf(Manifest.permission.BLUETOOTH_CONNECT)
+                    )
+                )
+                return
+            }
+
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 failConnection(
                     BleServiceDiscoveryException(
@@ -345,6 +431,21 @@ internal class BleGattInstrumentTransport(
         gatt: BluetoothGatt,
         descriptor: BluetoothGattDescriptor
     ) {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            failConnection(
+                BluetoothPermissionRequiredException(
+                    listOf(Manifest.permission.BLUETOOTH_CONNECT)
+                )
+            )
+            return
+        }
+
         val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
         } else {
@@ -400,8 +501,24 @@ internal class BleGattInstrumentTransport(
             rxCharacteristic = null
             connectionStageCallback = null
         }
-        gatt?.disconnect()
-        gatt?.close()
+        if (
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            gatt?.disconnect()
+        }
+        closeGattHandle(gatt)
+    }
+
+    private fun closeGattHandle(gatt: BluetoothGatt?) {
+        try {
+            gatt?.close()
+        } catch (exception: SecurityException) {
+            Log.w(TAG, "Could not close BLE GATT after permission loss", exception)
+        }
     }
 
     private fun resumeWriteWithException(error: Throwable) {

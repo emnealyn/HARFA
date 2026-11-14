@@ -1,13 +1,16 @@
 package com.example.harpapp.device.bluetooth
 
-import android.annotation.SuppressLint
+import android.Manifest
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.ParcelUuid
+import androidx.core.content.ContextCompat
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.protocol.HarpProtocol
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -15,16 +18,17 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-@SuppressLint("MissingPermission")
 internal class BleInstrumentScanner(
     context: Context
 ) {
 
-    private val bluetoothManager = context.applicationContext
+    private val appContext = context.applicationContext
+    private val bluetoothManager = appContext
         .getSystemService(BluetoothManager::class.java)
 
     suspend fun scan(timeoutMs: Long = DEFAULT_SCAN_TIMEOUT_MS): List<InstrumentDevice> {
         require(timeoutMs > 0) { "Scan timeout must be greater than zero" }
+        BluetoothPermissions.requireRuntimePermissions(appContext)
 
         val devices = LinkedHashMap<String, InstrumentDevice>()
         withTimeoutOrNull(timeoutMs) {
@@ -38,11 +42,41 @@ internal class BleInstrumentScanner(
         devices: MutableMap<String, InstrumentDevice>
     ) {
         suspendCancellableCoroutine<Unit> { continuation ->
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                ContextCompat.checkSelfPermission(
+                    appContext,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                continuation.resumeWithException(
+                    BluetoothPermissionRequiredException(
+                        listOf(Manifest.permission.BLUETOOTH_CONNECT)
+                    )
+                )
+                return@suspendCancellableCoroutine
+            }
+
             val bluetoothAdapter = bluetoothManager?.adapter
             if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
                 continuation.resumeWithException(
                     BluetoothUnavailableException(
                         "Bluetooth adapter is unavailable or disabled"
+                    )
+                )
+                return@suspendCancellableCoroutine
+            }
+
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                ContextCompat.checkSelfPermission(
+                    appContext,
+                    Manifest.permission.BLUETOOTH_SCAN
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                continuation.resumeWithException(
+                    BluetoothPermissionRequiredException(
+                        listOf(Manifest.permission.BLUETOOTH_SCAN)
                     )
                 )
                 return@suspendCancellableCoroutine
@@ -68,7 +102,15 @@ internal class BleInstrumentScanner(
                 }
 
                 override fun onScanFailed(errorCode: Int) {
-                    scanner.stopScan(this)
+                    if (
+                        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                        ContextCompat.checkSelfPermission(
+                            appContext,
+                            Manifest.permission.BLUETOOTH_SCAN
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        scanner.stopScan(this)
+                    }
                     if (continuation.isActive) {
                         continuation.resumeWithException(
                             IllegalStateException("BLE scan failed: errorCode=$errorCode")
@@ -78,7 +120,15 @@ internal class BleInstrumentScanner(
             }
 
             continuation.invokeOnCancellation {
-                scanner.stopScan(callback)
+                if (
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                    ContextCompat.checkSelfPermission(
+                        appContext,
+                        Manifest.permission.BLUETOOTH_SCAN
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    scanner.stopScan(callback)
+                }
             }
 
             try {
@@ -103,6 +153,16 @@ internal class BleInstrumentScanner(
         devices: MutableMap<String, InstrumentDevice>,
         result: ScanResult
     ) {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
         val device = result.device ?: return
         val address = try {
             device.address

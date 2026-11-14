@@ -1,5 +1,6 @@
 package com.example.harpapp.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.harpapp.domain.model.BatteryStatus
@@ -11,10 +12,8 @@ import com.example.harpapp.domain.usecase.lowBatteryWarnings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -53,21 +52,17 @@ class BluetoothViewModel(
         }
     }
 
-        private val _scanFailed = MutableStateFlow(false)
-        val scanFailed: StateFlow<Boolean> = _scanFailed.asStateFlow()
-
-        fun scanForDevices() {
-            viewModelScope.launch {
-                _scanFailed.value = false
-                try {
-                    instrumentRepository.scanForDevices()
-                } catch (exception: CancellationException) {
-                    throw exception
-                } catch (exception: Exception) {
-                    _scanFailed.value = true
-                }
+    fun scanForDevices() {
+        viewModelScope.launch {
+            try {
+                instrumentRepository.scanForDevices()
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.e(TAG, "Could not scan for Bluetooth instruments", exception)
             }
         }
+    }
 
     fun connectToDevice(device: InstrumentDevice) {
         viewModelScope.launch {
@@ -82,5 +77,9 @@ class BluetoothViewModel(
     override fun onCleared() {
         instrumentRepository.disconnect()
         super.onCleared()
+    }
+
+    private companion object {
+        const val TAG = "BluetoothViewModel"
     }
 }
