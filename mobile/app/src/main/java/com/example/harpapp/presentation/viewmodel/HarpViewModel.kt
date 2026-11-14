@@ -95,7 +95,11 @@ class HarpViewModel(
     )
 
     fun setTargetSong(songId: String?) {
-        targetSongId.value = songId?.takeIf { it.isNotBlank() }
+        val target = songId?.takeIf { it.isNotBlank() }
+        targetSongId.value = target
+        if (target != null) {
+            _selectedTab.value = HarpTab.TUNING
+        }
     }
 
     val uiState: StateFlow<HarpUiState> = combine(
