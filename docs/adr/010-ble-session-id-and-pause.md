@@ -58,6 +58,7 @@ Wybrano **opcję 1A** i **opcję 2A**: protokół 2.0 z identyfikatorem sesji w 
 * Harfa odpowiada `ACK(STALE_SESSION)` (`0x08`) na komendę z innym `sid` i jej nie wykonuje. Aplikacja odrzuca ramki z innym `sid`.
 * Bajt `ver` na offsecie 0 jest zamrożony we wszystkich wersjach. Od 2.0 zamrożony jest też format `HELLO` i `ERROR`.
 * `LESSON_PAUSE` (`0x35`, `paused`: `1` = wstrzymaj, `0` = wznów) zachowuje lekcję i bieżący krok, gasi diody na czas pauzy i przywraca je po wznowieniu.
+* `SessionId` w warstwie aplikacji jest lokalną, monotoniczną generacją połączenia i nie jest wartością 8-bitowego `sid`. Dzięki temu stara komenda pozostaje nieaktualna także po zawinięciu `sid`.
 
 Szczegóły są w [specyfikacji protokołu](../protocol/ble-protocol.md) (sekcje 2, 4.10, 6, 8.1).
 

@@ -39,18 +39,25 @@ internal class BleGattInstrumentTransport(
     private var connectContinuation: CancellableContinuation<Unit>? = null
     private var writeContinuation: CancellableContinuation<Unit>? = null
     private var rxCharacteristic: BluetoothGattCharacteristic? = null
+    @Volatile
+    private var connectionStageCallback: ((TransportConnectionStage) -> Unit)? = null
 
-    override suspend fun connect(device: InstrumentDevice) {
+    override suspend fun connect(
+        device: InstrumentDevice,
+        onStage: (TransportConnectionStage) -> Unit
+    ) {
+        onStage(TransportConnectionStage.CONNECTING)
         try {
             withTimeout(CONNECTION_TIMEOUT_MS) {
                 suspendCancellableCoroutine<Unit> { continuation ->
-                    disconnect()
+                    disconnectGatt(notify = false)
+                    connectionStageCallback = onStage
                     connectContinuation = continuation
 
                     val bluetoothAdapter = bluetoothManager?.adapter
                     if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
                         failConnection(
-                            IllegalStateException(
+                            BluetoothUnavailableException(
                                 "Bluetooth adapter is unavailable or disabled"
                             )
                         )
@@ -90,7 +97,7 @@ internal class BleGattInstrumentTransport(
             }
         } catch (exception: TimeoutCancellationException) {
             disconnect()
-            throw IOException("BLE GATT connection timed out", exception)
+            throw BleConnectionTimeoutException("BLE GATT connection timed out")
         }
     }
 
@@ -160,10 +167,15 @@ internal class BleGattInstrumentTransport(
     }
 
     override fun disconnect() {
+        disconnectGatt(notify = true)
+    }
+
+    private fun disconnectGatt(notify: Boolean) {
         val hadConnection = bluetoothGatt != null || connectContinuation != null
         val gatt = bluetoothGatt
         bluetoothGatt = null
         rxCharacteristic = null
+        connectionStageCallback = null
 
         val continuation = connectContinuation
         connectContinuation = null
@@ -177,7 +189,7 @@ internal class BleGattInstrumentTransport(
         gatt?.disconnect()
         gatt?.close()
 
-        if (hadConnection) {
+        if (notify && hadConnection) {
             _events.tryEmit(TransportEvent.Disconnected)
         }
     }
@@ -211,8 +223,11 @@ internal class BleGattInstrumentTransport(
                 if (!gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)) {
                     Log.w(TAG, "Could not request high BLE connection priority")
                 }
+                connectionStageCallback?.invoke(TransportConnectionStage.DISCOVERING_SERVICES)
                 if (!gatt.discoverServices()) {
-                    failConnection(IOException("Could not start GATT service discovery"))
+                    failConnection(
+                        BleServiceDiscoveryException("Could not start GATT service discovery")
+                    )
                 }
             }
         }
@@ -221,7 +236,11 @@ internal class BleGattInstrumentTransport(
             if (gatt !== bluetoothGatt) return
 
             if (status != BluetoothGatt.GATT_SUCCESS) {
-                failConnection(IOException("GATT service discovery failed: status=$status"))
+                failConnection(
+                    BleServiceDiscoveryException(
+                        "GATT service discovery failed: status=$status"
+                    )
+                )
                 return
             }
 
@@ -230,7 +249,11 @@ internal class BleGattInstrumentTransport(
             val tx = service?.getCharacteristic(HarpProtocol.TX_CHARACTERISTIC_UUID)
 
             if (service == null || rx == null || tx == null) {
-                failConnection(IllegalStateException("HARFA GATT service or characteristics are missing"))
+                failConnection(
+                    BleServiceDiscoveryException(
+                        "HARFA GATT service or characteristics are missing"
+                    )
+                )
                 return
             }
 
@@ -242,14 +265,18 @@ internal class BleGattInstrumentTransport(
             val cccd = tx.getDescriptor(CCCD_UUID)
 
             if (!canWrite || !canNotify || cccd == null) {
-                failConnection(IllegalStateException("HARFA GATT characteristics have invalid properties"))
+                failConnection(
+                    BleServiceDiscoveryException(
+                        "HARFA GATT characteristics have invalid properties"
+                    )
+                )
                 return
             }
 
             rxCharacteristic = rx
 
             if (!gatt.setCharacteristicNotification(tx, true)) {
-                failConnection(IOException("Could not enable TX notifications"))
+                failConnection(BleServiceDiscoveryException("Could not enable TX notifications"))
                 return
             }
 
@@ -264,10 +291,15 @@ internal class BleGattInstrumentTransport(
             if (gatt !== bluetoothGatt || descriptor.uuid != CCCD_UUID) return
 
             if (status != BluetoothGatt.GATT_SUCCESS) {
-                failConnection(IOException("Could not write TX CCCD: status=$status"))
+                failConnection(
+                    BleServiceDiscoveryException(
+                        "Could not write TX CCCD: status=$status"
+                    )
+                )
                 return
             }
 
+            connectionStageCallback?.invoke(TransportConnectionStage.READY_FOR_HANDSHAKE)
             val continuation = connectContinuation ?: return
             connectContinuation = null
             continuation.resume(Unit)
@@ -327,7 +359,9 @@ internal class BleGattInstrumentTransport(
         }
 
         if (result != BluetoothGatt.GATT_SUCCESS) {
-            failConnection(IOException("Could not start TX CCCD write: status=$result"))
+            failConnection(
+                BleServiceDiscoveryException("Could not start TX CCCD write: status=$result")
+            )
         }
     }
 
@@ -364,6 +398,7 @@ internal class BleGattInstrumentTransport(
         if (gatt === bluetoothGatt) {
             bluetoothGatt = null
             rxCharacteristic = null
+            connectionStageCallback = null
         }
         gatt?.disconnect()
         gatt?.close()

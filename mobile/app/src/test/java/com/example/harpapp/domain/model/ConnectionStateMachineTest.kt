@@ -72,6 +72,19 @@ class ConnectionStateMachineTest {
         }
     }
 
+    @Test
+    fun allowsRetryAfterBluetoothOrPermissionState() {
+        val machine = ConnectionStateMachine()
+
+        machine.transitionTo(ConnectionState.BLUETOOTH_DISABLED)
+        machine.startScanning()
+        machine.completeDisconnect()
+        machine.transitionTo(ConnectionState.PERMISSION_REQUIRED)
+        machine.startConnecting()
+
+        assertEquals(ConnectionState.CONNECTING, machine.state)
+    }
+
     private fun assertIllegalState(action: () -> Unit) {
         try {
             action()

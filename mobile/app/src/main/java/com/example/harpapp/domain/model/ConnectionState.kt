@@ -91,7 +91,10 @@ class ConnectionStateMachine(
     }
 
     private val ConnectionState.canStartOperation: Boolean
-        get() = this == ConnectionState.DISCONNECTED || this is ConnectionState.ERROR
+        get() = this == ConnectionState.DISCONNECTED ||
+            this == ConnectionState.BLUETOOTH_DISABLED ||
+            this == ConnectionState.PERMISSION_REQUIRED ||
+            this is ConnectionState.ERROR
 
     private fun canTransition(
         from: ConnectionState,

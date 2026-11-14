@@ -1,7 +1,7 @@
-# ADR 010: Wersjonowany katalog tylko do odczytu i oddzielenie stanu użytkownika w Room
+# ADR 011: Wersjonowany katalog tylko do odczytu i oddzielenie stanu użytkownika w Room
 
 * **Stan:** Przyjęty
-* **Data:** 2026-03-31
+* **Data:** 2026-11-12
 * **Osoby decyzyjne:** Alicja Kowalska
 
 ## Kontekst

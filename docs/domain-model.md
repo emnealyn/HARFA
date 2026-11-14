@@ -221,7 +221,7 @@ Gdy użytkownik wznowi lekcję bez połączenia, pozostaje ona wstrzymana jak po
 
 Przebieg lekcji na komendy protokołu przekłada `InstrumentLessonController` (warstwa `domain`). Komendy wysyła tylko przy aktywnym połączeniu, a komendy z poprzedniej sesji nie są ponawiane (spec §8 pkt 9).
 
-Każdy sygnał kontrolera (start, wynik, pauza, wznowienie, koniec, zmiana strojenia) dostaje identyfikator sesji (`SessionId` z `InstrumentRepository.currentSession`) w chwili, w której powstał. Sygnał z sesji, która już się skończyła, jest pomijany, a repozytorium odrzuca komendę z nieaktualną sesją (`StaleSessionException`). Dzięki temu sygnał zakolejkowany przed zerwaniem połączenia nie trafia do harfy po ponownym połączeniu ([ADR 010](adr/010-ble-session-id-and-pause.md)).
+Każdy sygnał kontrolera (start, wynik, pauza, wznowienie, koniec, zmiana strojenia) dostaje lokalny identyfikator generacji sesji (`SessionId` z `InstrumentRepository.currentSession`) w chwili, w której powstał. Jest on niezależny od 8-bitowego `sid` w ramce BLE. Sygnał z sesji, która już się skończyła, jest pomijany, a repozytorium odrzuca komendę z nieaktualną sesją (`StaleSessionException`). Dzięki temu sygnał zakolejkowany przed zerwaniem połączenia nie trafia do harfy po ponownym połączeniu, także po zawinięciu `sid` ([ADR 010](adr/010-ble-session-id-and-pause.md)).
 
 | Zdarzenie w aplikacji | Komendy |
 | :--- | :--- |

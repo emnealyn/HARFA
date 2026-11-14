@@ -41,7 +41,9 @@ internal class BleInstrumentScanner(
             val bluetoothAdapter = bluetoothManager?.adapter
             if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
                 continuation.resumeWithException(
-                    IllegalStateException("Bluetooth adapter is unavailable or disabled")
+                    BluetoothUnavailableException(
+                        "Bluetooth adapter is unavailable or disabled"
+                    )
                 )
                 return@suspendCancellableCoroutine
             }
