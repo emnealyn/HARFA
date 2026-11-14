@@ -42,6 +42,7 @@ object HarpCodec {
             is HarpMessage.LessonStep -> payload.u16(message.index).u16(message.mask)
             is HarpMessage.LessonResult -> payload.u8(message.result)
             is HarpMessage.LessonEnd -> Unit
+            is HarpMessage.LessonPause -> payload.u8(message.paused)
         }
 
         val body = payload.toByteArray()
@@ -49,6 +50,7 @@ object HarpCodec {
             .u8(VERSION_MAJOR)
             .u8(message.type.code)
             .u8(message.seq)
+            .u8(message.sid)
             .u8(body.size)
             .toByteArray()
         return header + body
@@ -62,6 +64,7 @@ object HarpCodec {
         val ver = reader.u8()
         val typeCode = reader.u8()
         val seq = reader.u8()
+        val sid = reader.u8()
         val len = reader.u8()
 
         if (ver != VERSION_MAJOR) return DecodeResult.Failure(StatusCode.UNSUPPORTED_VERSION)
@@ -74,9 +77,10 @@ object HarpCodec {
 
         // Nadmiarowe bajty na końcu payloadu są pomijane (zgodność z przyszłymi wersjami minor)
         val message = when (type) {
-            MessageType.HELLO -> HarpMessage.Hello(seq, reader.u8(), reader.u8())
+            MessageType.HELLO -> HarpMessage.Hello(seq, sid, reader.u8(), reader.u8())
             MessageType.DEVICE_INFO -> HarpMessage.DeviceInfo(
                 seq = seq,
+                sid = sid,
                 protoMajor = reader.u8(),
                 protoMinor = reader.u8(),
                 fwMajor = reader.u8(),
@@ -87,27 +91,30 @@ object HarpCodec {
                 caps = reader.u16() and Capabilities.KNOWN_MASK,
                 deviceId = reader.u32()
             )
-            MessageType.STATE_REQUEST -> HarpMessage.StateRequest(seq, reader.u8() and StateRequestFlags.KNOWN_MASK)
-            MessageType.ACK -> HarpMessage.Ack(seq, reader.u8(), reader.u8())
-            MessageType.ERROR -> HarpMessage.Error(seq, reader.u8(), reader.u8(), reader.u8())
+            MessageType.STATE_REQUEST -> HarpMessage.StateRequest(seq, sid, reader.u8() and StateRequestFlags.KNOWN_MASK)
+            MessageType.ACK -> HarpMessage.Ack(seq, sid, reader.u8(), reader.u8())
+            MessageType.ERROR -> HarpMessage.Error(seq, sid, reader.u8(), reader.u8(), reader.u8())
             MessageType.BATTERY_STATE -> HarpMessage.BatteryState(
                 seq = seq,
+                sid = sid,
                 percent = reader.u8(),
                 millivolts = reader.u16(),
                 flags = reader.u8() and BatteryFlags.KNOWN_MASK
             )
-            MessageType.STRING_EVENT -> HarpMessage.StringEvent(seq, reader.u8(), reader.u8(), reader.u16())
+            MessageType.STRING_EVENT -> HarpMessage.StringEvent(seq, sid, reader.u8(), reader.u8(), reader.u16())
             MessageType.CONFIG_STATE -> HarpMessage.ConfigState(
                 seq = seq,
+                sid = sid,
                 octaveShift = reader.u8() - 1,
                 lever = List(LEVER_COUNT) { reader.u8() - 1 },
                 baseOctave = reader.u8()
             )
-            MessageType.LED_SET -> HarpMessage.LedSet(seq, reader.u16(), reader.u8())
-            MessageType.LESSON_START -> HarpMessage.LessonStart(seq, reader.u16())
-            MessageType.LESSON_STEP -> HarpMessage.LessonStep(seq, reader.u16(), reader.u16())
-            MessageType.LESSON_RESULT -> HarpMessage.LessonResult(seq, reader.u8())
-            MessageType.LESSON_END -> HarpMessage.LessonEnd(seq)
+            MessageType.LED_SET -> HarpMessage.LedSet(seq, sid, reader.u16(), reader.u8())
+            MessageType.LESSON_START -> HarpMessage.LessonStart(seq, sid, reader.u16())
+            MessageType.LESSON_STEP -> HarpMessage.LessonStep(seq, sid, reader.u16(), reader.u16())
+            MessageType.LESSON_RESULT -> HarpMessage.LessonResult(seq, sid, reader.u8())
+            MessageType.LESSON_END -> HarpMessage.LessonEnd(seq, sid)
+            MessageType.LESSON_PAUSE -> HarpMessage.LessonPause(seq, sid, reader.u8())
         }
 
         return if (hasValidArguments(message)) {
@@ -118,6 +125,7 @@ object HarpCodec {
     }
 
     private fun hasValidArguments(message: HarpMessage): Boolean = when (message) {
+        is HarpMessage.Hello -> message.sid != SessionIds.NONE
         is HarpMessage.StringEvent -> message.stringId < STRING_COUNT
         is HarpMessage.ConfigState ->
             message.octaveShift in -1..1 &&
@@ -129,6 +137,7 @@ object HarpCodec {
                 (message.mode == LedMode.STEADY || message.mode == LedMode.BLINK)
         is HarpMessage.LessonStep -> message.mask in 0 until STRING_MASK_LIMIT
         is HarpMessage.LessonResult -> message.result in LessonResultCode.MISS..LessonResultCode.COMPLETE
+        is HarpMessage.LessonPause -> message.paused in LessonPauseCode.RESUME..LessonPauseCode.PAUSE
         else -> true
     }
 

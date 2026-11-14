@@ -117,6 +117,7 @@ static int expected_message(const cJSON *d, harfa_msg_t *m)
         return 0;
     }
     m->seq = (uint8_t)num(d, "seq");
+    m->sid = (uint8_t)num(d, "sid");
 
     switch (m->type) {
     case HARFA_MSG_HELLO:
@@ -183,13 +184,16 @@ static int expected_message(const cJSON *d, harfa_msg_t *m)
         break;
     case HARFA_MSG_LESSON_END:
         break;
+    case HARFA_MSG_LESSON_PAUSE:
+        m->body.lesson_pause.paused = (uint8_t)num(d, "paused");
+        break;
     }
     return 1;
 }
 
 static int messages_equal(const harfa_msg_t *a, const harfa_msg_t *b)
 {
-    if (a->type != b->type || a->seq != b->seq) {
+    if (a->type != b->type || a->seq != b->seq || a->sid != b->sid) {
         return 0;
     }
     switch (a->type) {
@@ -240,6 +244,8 @@ static int messages_equal(const harfa_msg_t *a, const harfa_msg_t *b)
         return a->body.lesson_result.result == b->body.lesson_result.result;
     case HARFA_MSG_LESSON_END:
         return 1;
+    case HARFA_MSG_LESSON_PAUSE:
+        return a->body.lesson_pause.paused == b->body.lesson_pause.paused;
     }
     return 0;
 }
@@ -313,6 +319,22 @@ static int check_encode_guards(void)
     m.body.led_set.mask = 0x8000u;
     if (harfa_encode(&m, buf, sizeof(buf)) != 0) {
         printf("FAIL encode_guard_led_mask\n");
+        ok = 0;
+    }
+
+    memset(&m, 0, sizeof(m));
+    m.type = HARFA_MSG_HELLO;
+    m.sid = HARFA_SID_NONE;
+    if (harfa_encode(&m, buf, sizeof(buf)) != 0) {
+        printf("FAIL encode_guard_hello_sid_zero\n");
+        ok = 0;
+    }
+
+    memset(&m, 0, sizeof(m));
+    m.type = HARFA_MSG_LESSON_PAUSE;
+    m.body.lesson_pause.paused = 2u;
+    if (harfa_encode(&m, buf, sizeof(buf)) != 0) {
+        printf("FAIL encode_guard_pause_value\n");
         ok = 0;
     }
 

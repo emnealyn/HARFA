@@ -1,6 +1,6 @@
 # Mock harfy (ESP32, BLE GATT)
 
-Symulator instrumentu na ESP32 zgodny z protokołem BLE HARFA v1.0
+Symulator instrumentu na ESP32 zgodny z protokołem BLE HARFA v2.0
 ([docs/protocol/ble-protocol.md](../../docs/protocol/ble-protocol.md)). Pozwala sprawdzić
 komunikację aplikacji z „prawdziwym” urządzeniem BLE bez fizycznej harfy (HARFA-25).
 
@@ -16,10 +16,13 @@ dla mocka.
   - **RX** `3CFB0002-…`: Write i Write Without Response, przyjmuje komendy aplikacji,
   - **TX** `3CFB0003-…`: Notify z CCCD `0x2902`, wysyła odpowiedzi i zdarzenia.
 - Ramki koduje i dekoduje **ten sam kodek C** co firmware (`firmware/protocol/harfa_proto.c`).
-- Na `HELLO` odpowiada `DEVICE_INFO` (protokół 1.0, 15 strun, caps `LEDS | BATTERY | LESSON`),
-  a potem wysyła `CONFIG_STATE` i `BATTERY_STATE`.
+- Na `HELLO` odpowiada `DEVICE_INFO` (protokół 2.0, 15 strun, caps `LEDS | BATTERY | LESSON`),
+  a potem wysyła `CONFIG_STATE` i `BATTERY_STATE`. Zapamiętuje `sid` z `HELLO` jako identyfikator sesji
+  i wysyła go w nagłówku każdej ramki.
+- Komendę z innym `sid` odrzuca statusem `STALE_SESSION` bez jej wykonania.
 - Na `STATE_REQUEST`, `LED_SET` i `LESSON_*` zawsze odpowiada `ACK` ze statusem zgodnym ze spec §6.2.
-  Retransmisja (ten sam `seq` i `type`) nie jest wykonywana ponownie, tylko dostaje zapamiętany status.
+  Retransmisja (ten sam `sid`, `seq` i `type`) nie jest wykonywana ponownie, tylko dostaje zapamiętany status.
+- `LESSON_PAUSE` wstrzymuje lekcję (gasi diody, zachowuje krok) i ją wznawia.
 - Stan diod i lekcji wypisuje w Serial Monitorze. Po zerwaniu połączenia kończy lekcję, gasi diody
   i ponownie zaczyna się reklamować.
 - `device_id` pochodzi z eFuse układu, więc jest stały dla danej płytki. Aplikacja nie
@@ -83,9 +86,12 @@ Każda ramka jest logowana szesnastkowo: `RX` to ramki od aplikacji, `TX` to ram
 
 1. Skan pokazuje `HARFA-XXXX` z usługą `3CFB0001-…`.
 2. Połącz się i włącz notyfikacje na TX (`3CFB0003-…`).
-3. Zapisz na RX (`3CFB0002-…`) bajty `010100020100` (`HELLO`, protokół 1.0).
+3. Zapisz na RX (`3CFB0002-…`) bajty `02010001020200` (`HELLO`, protokół 2.0, `sid = 1`).
    Przyjdą trzy notyfikacje: `DEVICE_INFO`, `CONFIG_STATE`, `BATTERY_STATE`.
-4. Zapisz `01300103010000` (`LED_SET`, struna 0, świecenie ciągłe). Przyjdzie `ACK` OK, a w Serialu pojawi się `LED: #..............`.
+4. Zapisz `0230010103010000` (`LED_SET`, struna 0, świecenie ciągłe). Przyjdzie `ACK` OK, a w Serialu pojawi się `LED: #..............`.
+5. Zapisz `0230020203010000` (ta sama komenda z `sid = 2`). Przyjdzie `ACK` ze statusem `08` (`STALE_SESSION`), a diody się nie zmienią.
+6. Zapisz kolejno `02310301020300` (`LESSON_START`, 3 kroki), `023204010400000008` (`LESSON_STEP`, struna 11)
+   i `023505010101` (`LESSON_PAUSE`, wstrzymaj): diody gasną. `023506010100` (wznów) zapala je ponownie.
 
 ### Z aplikacją
 

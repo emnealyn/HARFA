@@ -11,11 +11,14 @@ import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.InstrumentEvent
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
+import com.example.harpapp.domain.model.SessionId
+import com.example.harpapp.domain.model.StaleSessionException
 import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.domain.repository.InstrumentRepository
 import com.example.harpapp.protocol.Capabilities
 import com.example.harpapp.protocol.HarpMessage
 import com.example.harpapp.protocol.LessonResultCode
+import com.example.harpapp.protocol.SessionIds
 import com.example.harpapp.protocol.StateRequestFlags
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -103,6 +106,13 @@ class FakeInstrumentRepository(
     private var presetDevices: List<InstrumentDevice>? = null
     private var lastDevice: InstrumentDevice? = null
     private var timestampMs = 0
+    
+    private val _currentSession = MutableStateFlow<SessionId?>(null)
+    override val currentSession: StateFlow<SessionId?> = _currentSession.asStateFlow()
+    private var sessionCounter = 0
+
+    private var lessonStepMask = 0
+    private var lessonPaused = false
 
     val sentCommands: List<InstrumentCommand>
         get() = recordedCommands.toList()
@@ -136,12 +146,11 @@ class FakeInstrumentRepository(
             clearLessonState()
             _capabilities.value = InstrumentCapabilities.NONE
         }
-        _connectionState.value = state
+        updateConnectionState(state)
     }
 
-    /** Nagłe zerwanie połączenia: harfa kończy lekcję i gasi diody (spec §6 pkt 8). */
     fun simulateConnectionLoss() {
-        _connectionState.value = ConnectionState.DISCONNECTED
+        updateConnectionState(ConnectionState.DISCONNECTED)
         _capabilities.value = InstrumentCapabilities.NONE
         clearLessonState()
     }
@@ -224,6 +233,7 @@ class FakeInstrumentRepository(
         val status = requireNotNull(
             HarpMessage.BatteryState(
                 seq = 0,
+                sid = SessionIds.MIN,
                 percent = percent,
                 millivolts = millivolts,
                 flags = flags
@@ -258,9 +268,9 @@ class FakeInstrumentRepository(
     }
 
     override suspend fun connect(device: InstrumentDevice) {
-        _connectionState.value = ConnectionState.CONNECTING
+        updateConnectionState(ConnectionState.CONNECTING)
         if (connectFailures.isNotEmpty()) {
-            _connectionState.value = ConnectionState.DISCONNECTED
+            updateConnectionState(ConnectionState.DISCONNECTED)
             throw connectFailures.removeFirst()
         }
         delay(config.connectDelayMs)
@@ -270,7 +280,7 @@ class FakeInstrumentRepository(
         _connectedDeviceId.value = config.deviceId
         clearLessonState()
         _capabilities.value = instrumentCapabilitiesOf(config.capabilities)
-        _connectionState.value = ConnectionState.CONNECTED
+        updateConnectionState(ConnectionState.CONNECTED)
 
         // Jak po handshake: CONFIG_STATE, potem BATTERY_STATE (spec §6).
         emitConfiguration(_instrumentState.value)
@@ -279,9 +289,14 @@ class FakeInstrumentRepository(
         }
     }
 
-    override suspend fun send(command: InstrumentCommand) {
+    override suspend fun send(command: InstrumentCommand, session: SessionId) {
         check(_connectionState.value == ConnectionState.CONNECTED) {
             "Fake instrument is not connected"
+        }
+        if (session != _currentSession.value) {
+            throw StaleSessionException(
+                "Command prepared for session ${session.value}, current session is ${_currentSession.value?.value}"
+            )
         }
         if (commandFailures.isNotEmpty()) {
             throw commandFailures.removeFirst()
@@ -294,7 +309,7 @@ class FakeInstrumentRepository(
     }
 
     override fun disconnect() {
-        _connectionState.value = ConnectionState.DISCONNECTED
+        updateConnectionState(ConnectionState.DISCONNECTED)
         _capabilities.value = InstrumentCapabilities.NONE
         clearLessonState()
     }
@@ -304,11 +319,21 @@ class FakeInstrumentRepository(
     private suspend fun react(command: InstrumentCommand) {
         when (command) {
             is InstrumentCommand.SetLeds -> _litStrings.value = command.mask
-            is InstrumentCommand.StartLesson -> _litStrings.value = 0
-            is InstrumentCommand.LessonStep -> _litStrings.value = command.mask
+            is InstrumentCommand.StartLesson -> clearLessonState()
+            is InstrumentCommand.LessonStep -> {
+                lessonStepMask = command.mask
+                if (!lessonPaused) _litStrings.value = command.mask
+            }
             is InstrumentCommand.LessonResult ->
-                if (command.result == LessonResultCode.COMPLETE) _litStrings.value = 0
-            InstrumentCommand.EndLesson -> _litStrings.value = 0
+                if (command.result == LessonResultCode.COMPLETE) {
+                    lessonStepMask = 0
+                    _litStrings.value = 0
+                }
+            InstrumentCommand.EndLesson -> clearLessonState()
+            is InstrumentCommand.PauseLesson -> {
+                lessonPaused = command.paused
+                _litStrings.value = if (command.paused) 0 else lessonStepMask
+            }
             is InstrumentCommand.RequestState -> {
                 if (command.flags and StateRequestFlags.CONFIG != 0) {
                     emitConfiguration(_instrumentState.value)
@@ -339,6 +364,7 @@ class FakeInstrumentRepository(
             is InstrumentCommand.StartLesson,
             is InstrumentCommand.LessonStep,
             is InstrumentCommand.LessonResult,
+            is InstrumentCommand.PauseLesson,
             InstrumentCommand.EndLesson ->
                 require(caps and Capabilities.LESSON != 0) {
                     "Instrument does not support lesson commands"
@@ -346,7 +372,18 @@ class FakeInstrumentRepository(
         }
     }
 
+    private fun updateConnectionState(state: ConnectionState) {
+        if (state != ConnectionState.CONNECTED) {
+            _currentSession.value = null
+        } else if (_connectionState.value != ConnectionState.CONNECTED || _currentSession.value == null) {
+            _currentSession.value = SessionId(++sessionCounter)
+        }
+        _connectionState.value = state
+    }
+
     private fun clearLessonState() {
+        lessonStepMask = 0
+        lessonPaused = false
         _litStrings.value = 0
     }
 

@@ -28,10 +28,11 @@ struct RxFrame {
 static QueueHandle_t rxQueue;
 
 // --- Stan sesji i instrumentu ---
-static bool sessionActive = false;    
-static uint8_t txSeq = 0; 
-static bool haveLast = false;    
-static uint8_t lastSeq = 0, lastType = 0, lastStatus = 0;
+static bool sessionActive = false;
+static uint8_t sessionSid = HARFA_SID_NONE;  // sid z ostatniego poprawnego HELLO (spec §8.1)
+static uint8_t txSeq = 0;
+static bool haveLast = false;
+static uint8_t lastSid = 0, lastSeq = 0, lastType = 0, lastStatus = 0;
 
 static harfa_config_state_t config = {0, {0, 0, 0, 0, 0, 0, 0}, 2};
 static uint8_t batteryPercent = 80;
@@ -39,7 +40,9 @@ static uint16_t batteryMillivolts = 3900;
 static uint8_t batteryFlags = 0;
 
 static bool lessonActive = false;
+static bool lessonPaused = false;
 static uint16_t lessonTotalSteps = 0;
+static uint16_t lessonStepMask = 0;  // maska bieżącego kroku, zachowana na czas pauzy
 static uint16_t ledMask = 0;
 static uint8_t ledMode = HARFA_LED_MODE_STEADY;
 
@@ -57,9 +60,11 @@ static void printFrame(const char* dir, const uint8_t* buf, size_t len) {
   Serial.println();
 }
 
-static void sendMsg(harfa_msg_t& msg) {
+// Zdarzenia niosą sid bieżącej sesji, odpowiedzi kopiują sid ramki, na którą odpowiadają.
+static void sendMsg(harfa_msg_t& msg, uint8_t sid) {
   if (!connected) return;
   msg.seq = txSeq++;
+  msg.sid = sid;
   uint8_t buf[HARFA_MAX_FRAME_SIZE];
   size_t n = harfa_encode(&msg, buf, sizeof(buf));
   if (n == 0) {
@@ -72,21 +77,25 @@ static void sendMsg(harfa_msg_t& msg) {
   delay(5);  // odstęp między notyfikacjami, żeby stos BLE ich nie zgubił
 }
 
-static void sendAck(uint8_t ackSeq, uint8_t status) {
+static void sendMsg(harfa_msg_t& msg) {
+  sendMsg(msg, sessionSid);
+}
+
+static void sendAck(uint8_t ackSeq, uint8_t status, uint8_t sid) {
   harfa_msg_t m{};
   m.type = HARFA_MSG_ACK;
   m.body.ack.ack_seq = ackSeq;
   m.body.ack.status = status;
-  sendMsg(m);
+  sendMsg(m, sid);
 }
 
-static void sendError(uint8_t code, uint8_t refSeq, uint8_t refType) {
+static void sendError(uint8_t code, uint8_t refSeq, uint8_t refType, uint8_t sid) {
   harfa_msg_t m{};
   m.type = HARFA_MSG_ERROR;
   m.body.error.code = code;
   m.body.error.ref_seq = refSeq;
   m.body.error.ref_type = refType;
-  sendMsg(m);
+  sendMsg(m, sid);
 }
 
 static void sendDeviceInfo() {
@@ -142,12 +151,15 @@ static void printLeds() {
   for (int i = 0; i < HARFA_STRING_COUNT; i++) {
     Serial.print((ledMask >> i) & 1 ? '#' : '.');
   }
-  Serial.printf("  mask=0x%04X %s\n", ledMask, ledMode == HARFA_LED_MODE_BLINK ? "(miganie)" : "");
+  Serial.printf("  mask=0x%04X %s%s\n", ledMask, ledMode == HARFA_LED_MODE_BLINK ? "(miganie)" : "",
+                lessonPaused ? " (lekcja wstrzymana)" : "");
 }
 
 static void endLessonAndLedsOff() {
   lessonActive = false;
+  lessonPaused = false;
   lessonTotalSteps = 0;
+  lessonStepMask = 0;
   ledMask = 0;
 }
 
@@ -170,7 +182,9 @@ static uint8_t executeCommand(const harfa_msg_t& msg, uint8_t& stateRequestWhat)
 
     case HARFA_MSG_LESSON_START:
       lessonActive = true;
+      lessonPaused = false;
       lessonTotalSteps = msg.body.lesson_start.total_steps;
+      lessonStepMask = 0;
       ledMask = 0;
       Serial.printf("Lekcja: start, krokow %u\n", lessonTotalSteps);
       return HARFA_STATUS_OK;
@@ -178,8 +192,11 @@ static uint8_t executeCommand(const harfa_msg_t& msg, uint8_t& stateRequestWhat)
     case HARFA_MSG_LESSON_STEP:
       if (!lessonActive) return HARFA_STATUS_NOT_READY;
       if (msg.body.lesson_step.index >= lessonTotalSteps) return HARFA_STATUS_INVALID_ARGUMENT;
-      ledMask = msg.body.lesson_step.mask;
-      ledMode = HARFA_LED_MODE_STEADY;
+      lessonStepMask = msg.body.lesson_step.mask;
+      if (!lessonPaused) {  // w pauzie krok jest zapamiętywany, diody zapalą się po wznowieniu
+        ledMask = lessonStepMask;
+        ledMode = HARFA_LED_MODE_STEADY;
+      }
       Serial.printf("Lekcja: krok %u\n", msg.body.lesson_step.index);
       printLeds();
       return HARFA_STATUS_OK;
@@ -190,6 +207,7 @@ static uint8_t executeCommand(const harfa_msg_t& msg, uint8_t& stateRequestWhat)
       Serial.printf("Lekcja: wynik %s\n",
                     r == HARFA_LESSON_HIT ? "HIT" : r == HARFA_LESSON_MISS ? "MISS" : "COMPLETE");
       if (r == HARFA_LESSON_COMPLETE) {
+        lessonStepMask = 0;
         ledMask = 0;  // lekcja trwa do LESSON_END
         printLeds();
       }
@@ -199,6 +217,15 @@ static uint8_t executeCommand(const harfa_msg_t& msg, uint8_t& stateRequestWhat)
     case HARFA_MSG_LESSON_END:
       endLessonAndLedsOff();
       Serial.println("Lekcja: koniec");
+      printLeds();
+      return HARFA_STATUS_OK;
+
+    case HARFA_MSG_LESSON_PAUSE:
+      if (!lessonActive) return HARFA_STATUS_NOT_READY;
+      lessonPaused = msg.body.lesson_pause.paused == HARFA_LESSON_PAUSE;
+      ledMask = lessonPaused ? 0 : lessonStepMask;
+      ledMode = HARFA_LED_MODE_STEADY;
+      Serial.println(lessonPaused ? "Lekcja: wstrzymana" : "Lekcja: wznowiona");
       printLeds();
       return HARFA_STATUS_OK;
 
@@ -212,8 +239,9 @@ static void handleHello(const harfa_msg_t& msg) {
   haveLast = false;
   endLessonAndLedsOff();
   sessionActive = true;
-  Serial.printf("HELLO od aplikacji (v%u.%u) -> nowa sesja\n",
-                msg.body.hello.proto_major, msg.body.hello.proto_minor);
+  sessionSid = msg.sid;
+  Serial.printf("HELLO od aplikacji (v%u.%u) -> nowa sesja, sid %u\n",
+                msg.body.hello.proto_major, msg.body.hello.proto_minor, sessionSid);
   sendDeviceInfo();
   sendConfigState();
   sendBatteryState();
@@ -224,11 +252,13 @@ static void handleFrame(const RxFrame& f) {
   printFrame("RX", f.data, len);
 
   if (f.len < HARFA_HEADER_SIZE) {
-    sendError(HARFA_STATUS_MALFORMED, 0xFF, 0xFF);
+    sendError(HARFA_STATUS_MALFORMED, 0xFF, 0xFF, HARFA_SID_NONE);
     return;
   }
-  uint8_t type = f.data[1];
-  uint8_t seq = f.data[2];
+  // Offsety type i seq są wspólne dla wszystkich wersji protokołu
+  uint8_t type = f.data[HARFA_OFF_TYPE];
+  uint8_t seq = f.data[HARFA_OFF_SEQ];
+  uint8_t sid = f.data[HARFA_OFF_SID];
 
   harfa_msg_t msg{};
   harfa_status_t st = (f.len > HARFA_MAX_FRAME_SIZE)
@@ -236,22 +266,29 @@ static void handleFrame(const RxFrame& f) {
                           : harfa_decode(f.data, len, &msg);
 
   if (st == HARFA_STATUS_UNSUPPORTED_VERSION) {
-    sendError(st, seq, type);
+    sendError(st, seq, type, HARFA_SID_NONE);  // sid nadawcy nieznany w obcej wersji
     return;
   }
 
   if (type == HARFA_MSG_HELLO) {
     if (st != HARFA_STATUS_OK) {
-      sendError(HARFA_STATUS_MALFORMED, seq, HARFA_MSG_HELLO);
+      // MALFORMED albo INVALID_ARGUMENT (sid = 0)
+      sendError(st, seq, HARFA_MSG_HELLO, sid);
     } else {
       handleHello(msg);
     }
     return;
   }
 
-  if (haveLast && seq == lastSeq && type == lastType) {
+  if (sessionActive && sid != sessionSid) {
+    Serial.printf("(komenda z sid %u, biezaca sesja %u - odrzucona)\n", sid, sessionSid);
+    sendAck(seq, HARFA_STATUS_STALE_SESSION, sid);
+    return;
+  }
+
+  if (haveLast && sid == lastSid && seq == lastSeq && type == lastType) {
     Serial.println("(retransmisja - odsylam zapamietany status)");
-    sendAck(seq, lastStatus);
+    sendAck(seq, lastStatus, sid);
     return;
   }
 
@@ -259,10 +296,11 @@ static void handleFrame(const RxFrame& f) {
   uint8_t status = (st == HARFA_STATUS_OK) ? executeCommand(msg, stateRequestWhat) : (uint8_t)st;
 
   haveLast = true;
+  lastSid = sid;
   lastSeq = seq;
   lastType = type;
   lastStatus = status;
-  sendAck(seq, status);
+  sendAck(seq, status, sid);
 
   if (status == HARFA_STATUS_OK && type == HARFA_MSG_STATE_REQUEST) {
     if (stateRequestWhat & HARFA_STATE_CONFIG) sendConfigState();
@@ -312,9 +350,9 @@ static void printHelp() {
 
 static void printStatus() {
   Serial.printf("Nazwa: %s  device_id: 0x%08X\n", deviceName, deviceId);
-  Serial.printf("Polaczenie: %s  sesja: %s  lekcja: %s (%u krokow)\n",
-                connected ? "tak" : "nie", sessionActive ? "aktywna" : "brak",
-                lessonActive ? "trwa" : "brak", lessonTotalSteps);
+  Serial.printf("Polaczenie: %s  sesja: %s (sid %u)  lekcja: %s (%u krokow)\n",
+                connected ? "tak" : "nie", sessionActive ? "aktywna" : "brak", sessionSid,
+                lessonActive ? (lessonPaused ? "wstrzymana" : "trwa") : "brak", lessonTotalSteps);
   Serial.printf("Bateria: %u%%  %u mV  flagi 0x%02X\n", batteryPercent, batteryMillivolts, batteryFlags);
   Serial.print("Strojenie:");
   for (int i = 0; i < HARFA_LEVER_COUNT; i++) {
@@ -381,7 +419,7 @@ static void handleCommand(const char* line) {
 
     case 'e':
       if (sscanf(line, "e %d", &a) == 1 && a >= 0 && a <= 255) {
-        if (requireSession()) sendError((uint8_t)a, 0xFF, 0xFF);
+        if (requireSession()) sendError((uint8_t)a, 0xFF, 0xFF, sessionSid);
       } else {
         Serial.println("Uzycie: e <kod>");
       }
@@ -485,6 +523,7 @@ void loop() {
   if (disconnectEvent) {
     disconnectEvent = false;
     sessionActive = false;
+    sessionSid = HARFA_SID_NONE;
     haveLast = false;
     endLessonAndLedsOff();
     Serial.println("Rozlaczono - lekcja zakonczona, diody zgaszone");
