@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">HARPApp</string>
+    <string name="initialization_error_title">Could not start the application</string>
+    <string name="initialization_error_message">The application could not load its initial data.</string>
+    <string name="retry_initialization">Retry</string>
     <string name="no_songs_found">No songs found :(</string>
     <string name="try_changing_your_search_phrase_or_clear_some_filters">Try changing your search phrase or clear some filters</string>
     <string name="dark_mode">Dark mode</string>

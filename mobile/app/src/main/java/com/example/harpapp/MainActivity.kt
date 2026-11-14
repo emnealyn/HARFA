@@ -14,12 +14,15 @@ import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
-    private val appContainer by lazy { AppContainer(applicationContext) }
+    private val appContainer: AppContainer
+        get() = (application as HarpApplication).appContainer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
+            val harpApplication = application as HarpApplication
+            val initializationState by harpApplication.initializationState.collectAsState()
             val settingsViewModel: SettingsViewModel = viewModel(
                 factory = appContainer.settingsViewModelFactory
             )
@@ -29,7 +32,9 @@ class MainActivity : AppCompatActivity() {
             HARPAppTheme(darkTheme = (mode == ThemeMode.DARK)) {
                 AppNavGraph(
                     appContainer = appContainer,
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    initializationState = initializationState,
+                    onRetryInitialization = harpApplication::retryInitialization
                 )
             }
         }
