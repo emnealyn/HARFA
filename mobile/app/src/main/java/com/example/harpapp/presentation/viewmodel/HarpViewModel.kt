@@ -3,6 +3,7 @@ package com.example.harpapp.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.harpapp.domain.model.BatteryStatus
+import com.example.harpapp.domain.model.ConnectionError
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.HarpLayout
 import com.example.harpapp.domain.model.InstrumentState
@@ -22,7 +23,9 @@ import kotlinx.coroutines.launch
 
 sealed interface HarpUiState {
     data object Disconnected : HarpUiState
-    data object Connecting : HarpUiState
+    data class Connecting(val state: ConnectionState) : HarpUiState
+    data class Unavailable(val state: ConnectionState) : HarpUiState
+    data class Error(val error: ConnectionError) : HarpUiState
     data class Connected(
         val deviceName: String?,
         val deviceId: Long?,
@@ -50,7 +53,12 @@ class HarpViewModel(
         when {
             connection == ConnectionState.CONNECTED ->
                 HarpUiState.Connected(deviceName, deviceId, tuning, battery)
-            connection.isOperationInProgress -> HarpUiState.Connecting
+            connection.isOperationInProgress -> HarpUiState.Connecting(connection)
+            connection == ConnectionState.BLUETOOTH_DISABLED ||
+                connection == ConnectionState.PERMISSION_REQUIRED ->
+                HarpUiState.Unavailable(connection)
+            connection is ConnectionState.ERROR ->
+                HarpUiState.Error(connection.error)
             else -> HarpUiState.Disconnected
         }
     }.stateIn(

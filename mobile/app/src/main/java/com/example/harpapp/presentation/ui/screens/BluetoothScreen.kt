@@ -64,17 +64,18 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.harpapp.R
 import com.example.harpapp.device.bluetooth.BluetoothPermissions
-import com.example.harpapp.domain.model.ConnectionErrorCode
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentDevice
 import com.example.harpapp.domain.model.isOperationInProgress
+import com.example.harpapp.presentation.ui.connectionErrorMessage
+import com.example.harpapp.presentation.ui.connectionStateMessage
+import com.example.harpapp.presentation.ui.connectionStateTitle
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
 
 private sealed interface BluetoothPermissionAction {
     data object Scan : BluetoothPermissionAction
     data class Connect(val device: InstrumentDevice) : BluetoothPermissionAction
 }
-
 @Composable
 fun BluetoothScreen(
     viewModel: BluetoothViewModel
@@ -188,49 +189,11 @@ fun BluetoothScreen(
         operationInProgress -> Icons.Default.Bluetooth
         else -> Icons.Default.BluetoothDisabled
     }
-    val statusTitle = when (currentConnectionState) {
-        ConnectionState.BLUETOOTH_DISABLED ->
-            stringResource(R.string.connection_bluetooth_disabled)
-        ConnectionState.PERMISSION_REQUIRED ->
-            stringResource(R.string.connection_permission_required)
-        ConnectionState.SCANNING ->
-            stringResource(R.string.connection_scanning)
-        ConnectionState.CONNECTING ->
-            stringResource(R.string.connection_connecting)
-        ConnectionState.DISCOVERING_SERVICES ->
-            stringResource(R.string.connection_discovering_services)
-        ConnectionState.HANDSHAKING ->
-            stringResource(R.string.connection_handshaking)
-        ConnectionState.CONNECTED ->
-            stringResource(R.string.connected)
-        ConnectionState.DISCONNECTING ->
-            stringResource(R.string.connection_disconnecting)
-        ConnectionState.DISCONNECTED ->
-            stringResource(R.string.disconnected)
-        is ConnectionState.ERROR ->
-            stringResource(connectionErrorMessage(currentConnectionState.error.code))
-    }
+    val statusTitle = stringResource(connectionStateTitle(currentConnectionState))
     val statusMessage = when (currentConnectionState) {
         ConnectionState.CONNECTED ->
             connectedDeviceName ?: stringResource(R.string.no_device)
-        ConnectionState.BLUETOOTH_DISABLED ->
-            stringResource(R.string.connection_bluetooth_disabled_message)
-        ConnectionState.PERMISSION_REQUIRED ->
-            stringResource(R.string.bluetooth_permissions_are_required)
-        ConnectionState.SCANNING ->
-            stringResource(R.string.connection_scanning_message)
-        ConnectionState.CONNECTING ->
-            stringResource(R.string.connection_connecting_message)
-        ConnectionState.DISCOVERING_SERVICES ->
-            stringResource(R.string.connection_discovering_services_message)
-        ConnectionState.HANDSHAKING ->
-            stringResource(R.string.connection_handshaking_message)
-        ConnectionState.DISCONNECTING ->
-            stringResource(R.string.connection_disconnecting_message)
-        ConnectionState.DISCONNECTED ->
-            stringResource(R.string.no_device)
-        is ConnectionState.ERROR ->
-            stringResource(R.string.connection_error_message)
+        else -> stringResource(connectionStateMessage(currentConnectionState))
     }
 
     rationaleAction?.let { action ->
@@ -527,13 +490,4 @@ private fun StatusCard(
             }
         }
     }
-}
-
-private fun connectionErrorMessage(code: ConnectionErrorCode): Int = when (code) {
-    ConnectionErrorCode.SCAN_FAILED -> R.string.bluetooth_scan_failed
-    ConnectionErrorCode.CONNECTION_FAILED -> R.string.bluetooth_connection_failed
-    ConnectionErrorCode.SERVICE_DISCOVERY_FAILED -> R.string.bluetooth_service_discovery_failed
-    ConnectionErrorCode.HANDSHAKE_FAILED -> R.string.bluetooth_handshake_failed
-    ConnectionErrorCode.TIMEOUT -> R.string.bluetooth_connection_timeout
-    ConnectionErrorCode.UNKNOWN -> R.string.connection_error_message
 }

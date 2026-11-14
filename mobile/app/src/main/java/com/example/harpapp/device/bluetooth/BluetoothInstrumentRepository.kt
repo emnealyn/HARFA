@@ -113,6 +113,7 @@ class BluetoothInstrumentRepository internal constructor(
     }
 
     override suspend fun scanForDevices() {
+        awaitPreviousOperation("scanning")
         runExclusive("scanning") {
             stateMachine.startScanning()
             publishState()
@@ -148,6 +149,7 @@ class BluetoothInstrumentRepository internal constructor(
             disconnect()
         }
 
+        awaitPreviousOperation("connecting", cancelScanning = true)
         runExclusive("connecting") {
             stateMachine.startConnecting()
             publishState()
@@ -470,6 +472,29 @@ class BluetoothInstrumentRepository internal constructor(
             return block()
         } finally {
             activeOperation.compareAndSet(operationJob, null)
+        }
+    }
+
+    private suspend fun awaitPreviousOperation(
+        operation: String,
+        cancelScanning: Boolean = false
+    ) {
+        val currentJob = currentCoroutineContext()[Job] ?: return
+        val previousJob = activeOperation.get() ?: return
+        if (previousJob === currentJob) return
+
+        when {
+            cancelScanning && stateMachine.state == ConnectionState.SCANNING -> {
+                previousJob.cancel(
+                    CancellationException("BLE scan cancelled before $operation")
+                )
+                previousJob.join()
+            }
+
+            stateMachine.state == ConnectionState.DISCONNECTED ||
+                stateMachine.state is ConnectionState.ERROR -> {
+                previousJob.join()
+            }
         }
     }
 

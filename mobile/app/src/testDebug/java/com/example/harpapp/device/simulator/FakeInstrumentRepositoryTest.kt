@@ -143,6 +143,37 @@ class FakeInstrumentRepositoryTest {
     }
 
     @Test
+    fun connectionCancelsActiveScanBeforeStarting() = runBlocking {
+        val repository = FakeInstrumentRepository(SimulatorConfig(scanDelayMs = 100))
+        val scan = async(start = CoroutineStart.UNDISPATCHED) {
+            repository.scanForDevices()
+        }
+        delay(10)
+
+        repository.connect(SimulatorConfig().device)
+
+        scan.join()
+        assertTrue(scan.isCancelled)
+        assertEquals(ConnectionState.CONNECTED, repository.connectionState.first())
+    }
+
+    @Test
+    fun reconnectWaitsForCancelledConnectionToFinish() = runBlocking {
+        val repository = FakeInstrumentRepository(SimulatorConfig(connectDelayMs = 100))
+        val firstConnection = async(start = CoroutineStart.UNDISPATCHED) {
+            repository.connect(SimulatorConfig().device)
+        }
+        delay(10)
+
+        repository.disconnect()
+        repository.reconnect()
+
+        firstConnection.join()
+        assertTrue(firstConnection.isCancelled)
+        assertEquals(ConnectionState.CONNECTED, repository.connectionState.first())
+    }
+
+    @Test
     fun pluckUsesCurrentTuningAndRequiresConnection() = runBlocking {
         val repository = FakeInstrumentRepository()
         assertFalse(repository.pluck(0))
