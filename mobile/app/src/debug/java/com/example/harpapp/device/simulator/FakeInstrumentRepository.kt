@@ -70,6 +70,9 @@ class FakeInstrumentRepository(
     private val _instrumentState = MutableStateFlow(InstrumentState.DEFAULT)
     override val instrumentState: Flow<InstrumentState> = _instrumentState.asStateFlow()
 
+    private val _configurationKnown = MutableStateFlow(false)
+    override val configurationKnown: Flow<Boolean> = _configurationKnown.asStateFlow()
+
     private val _capabilities = MutableStateFlow(InstrumentCapabilities.NONE)
     override val capabilities: Flow<InstrumentCapabilities> = _capabilities.asStateFlow()
 
@@ -154,6 +157,7 @@ class FakeInstrumentRepository(
             _connectedDeviceName.value = deviceName
             _capabilities.value = instrumentCapabilitiesOf(config.capabilities)
         } else if (state == ConnectionState.DISCONNECTED) {
+            _configurationKnown.value = false
             clearLessonState()
             _capabilities.value = InstrumentCapabilities.NONE
         }
@@ -218,7 +222,10 @@ class FakeInstrumentRepository(
         _events.emit(event)
         when (event) {
             is NoteEvent -> _noteEvents.emit(event)
-            is InstrumentEvent.ConfigurationUpdated -> _instrumentState.value = event.state
+            is InstrumentEvent.ConfigurationUpdated -> {
+                _instrumentState.value = event.state
+                _configurationKnown.value = true
+            }
             is InstrumentEvent.BatteryUpdated -> _battery.value = event
             else -> Unit
         }
@@ -300,6 +307,7 @@ class FakeInstrumentRepository(
             disconnect()
         }
 
+        _configurationKnown.value = false
         awaitPreviousOperation("connecting", cancelScanning = true)
         runExclusive("connecting") {
             stateMachine.startConnecting()
@@ -490,6 +498,7 @@ class FakeInstrumentRepository(
 
     private fun clearConnectionData() {
         _currentSession.value = null
+        _configurationKnown.value = false
         _capabilities.value = InstrumentCapabilities.NONE
         clearLessonState()
     }

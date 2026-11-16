@@ -29,6 +29,9 @@ internal class InstrumentEventStream {
     private val _instrumentState = MutableStateFlow(InstrumentState.DEFAULT)
     val instrumentState: StateFlow<InstrumentState> = _instrumentState.asStateFlow()
 
+    private val _configurationKnown = MutableStateFlow(false)
+    val configurationKnown: StateFlow<Boolean> = _configurationKnown.asStateFlow()
+
     private val _batteryStatus = MutableStateFlow<BatteryStatus?>(null)
     val batteryStatus: StateFlow<BatteryStatus?> = _batteryStatus.asStateFlow()
 
@@ -41,6 +44,7 @@ internal class InstrumentEventStream {
         is HarpMessage.StringEvent -> message.toNoteEvent()?.also { _noteEvents.tryEmit(it) }
         is HarpMessage.ConfigState -> message.toInstrumentState()?.let { state ->
             _instrumentState.value = state
+            _configurationKnown.value = true
             InstrumentEvent.ConfigurationUpdated(state)
         }
         is HarpMessage.BatteryState -> message.toBatteryStatus()?.let { status ->
@@ -53,6 +57,7 @@ internal class InstrumentEventStream {
     /** Po zerwaniu połączenia strojenie jest nieznane do kolejnego handshake (protokół §8). */
     fun reset() {
         _instrumentState.value = InstrumentState.DEFAULT
+        _configurationKnown.value = false
         _batteryStatus.value = null
     }
 

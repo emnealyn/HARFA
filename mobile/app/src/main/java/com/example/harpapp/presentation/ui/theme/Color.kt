@@ -19,3 +19,4 @@ val DarkOnSurface = Color(0xFFF1EFEF)
 val DarkLibraryHeader = Color(0xB7F53838)
 
 val Green = Color(0xFF295D2B)
+val ConnectedGreen = Color(0xFF3B8A40)

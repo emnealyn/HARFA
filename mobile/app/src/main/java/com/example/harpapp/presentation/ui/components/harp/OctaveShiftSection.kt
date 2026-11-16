@@ -2,6 +2,9 @@ package com.example.harpapp.presentation.ui.components.harp
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,18 +33,24 @@ import com.example.harpapp.domain.model.StringId
 import kotlin.math.roundToInt
 
 @Composable
-fun OctaveShiftSection(tuning: InstrumentState) {
+fun OctaveShiftSection(tuning: InstrumentState, targetShift: OctaveShift? = null) {
     Column(modifier = Modifier.fillMaxWidth()) {
         SectionTitle(stringResource(R.string.harp_octave_shift_title))
         OctaveShiftSlider(
             current = tuning.octaveShift,
-            baseOctave = tuning.baseOctave
+            baseOctave = tuning.baseOctave,
+            targetShift = targetShift
         )
     }
 }
 
 @Composable
-private fun OctaveShiftSlider(current: OctaveShift, baseOctave: Int, modifier: Modifier = Modifier) {
+private fun OctaveShiftSlider(
+    current: OctaveShift,
+    baseOctave: Int,
+    targetShift: OctaveShift?,
+    modifier: Modifier = Modifier
+) {
     val colors = MaterialTheme.colorScheme
     val stops = OctaveShift.entries
     val thumbPosition by animateFloatAsState(
@@ -101,19 +110,37 @@ private fun OctaveShiftSlider(current: OctaveShift, baseOctave: Int, modifier: M
         ) {
             stops.forEach { shift ->
                 val active = shift == current
+                val isTarget = shift == targetShift && !active
                 val lowest = HarpLayout.basePitch(StringId.ALL.first(), baseOctave + shift.offset)
                 val highest = HarpLayout.basePitch(StringId.ALL.last(), baseOctave + shift.offset)
+                val range = stringResource(
+                    R.string.harp_range,
+                    "${lowest.name}${lowest.octave}",
+                    "${highest.name}${highest.octave}"
+                )
                 Text(
-                    text = stringResource(
-                        R.string.harp_range,
-                        "${lowest.name}${lowest.octave}",
-                        "${highest.name}${highest.octave}"
-                    ),
+                    text = if (isTarget) "→ $range" else range,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                    color = if (active) colors.primary else colors.secondary,
+                    fontWeight = if (active || isTarget) FontWeight.Bold else FontWeight.Normal,
+                    color = when {
+                        isTarget -> colors.error
+                        active -> colors.primary
+                        else -> colors.secondary
+                    },
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp)
+                        .then(
+                            if (isTarget) {
+                                Modifier
+                                    .background(colors.error.copy(alpha = 0.12f), TargetShape)
+                                    .border(1.dp, colors.error.copy(alpha = 0.5f), TargetShape)
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .padding(vertical = 2.dp)
                 )
             }
         }
@@ -140,7 +167,9 @@ private fun AlignedToStop(
     }
 }
 
-private fun octaveShiftLabel(shift: OctaveShift): String = when (shift) {
+private val TargetShape = RoundedCornerShape(10.dp)
+
+internal fun octaveShiftLabel(shift: OctaveShift): String = when (shift) {
     OctaveShift.DOWN -> "−1"
     OctaveShift.NONE -> "0"
     OctaveShift.UP -> "+1"
