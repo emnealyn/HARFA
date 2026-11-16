@@ -147,15 +147,12 @@ fun AppNavGraph(
                         }
 
                         navController.navigate(finalRoute) {
-                            val startDestinationId = navController.graph.findStartDestination().id
-
-                            popUpTo(startDestinationId) {
-                                saveState = (targetRoute == Routes.SETTINGS || targetRoute == Routes.HARP)
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
                             }
 
                             launchSingleTop = true
-                            restoreState = (targetRoute == Routes.SETTINGS || targetRoute == Routes.HARP)
-
+                            restoreState = true
                         }
                     }
                 )
