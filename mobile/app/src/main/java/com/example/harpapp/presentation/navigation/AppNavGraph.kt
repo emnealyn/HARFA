@@ -14,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,6 +30,7 @@ import com.example.harpapp.presentation.ui.screens.HomeScreen
 import com.example.harpapp.presentation.ui.screens.InitializationLoadingScreen
 import com.example.harpapp.presentation.ui.screens.InitializationErrorScreen
 import com.example.harpapp.presentation.ui.screens.SettingsScreen
+import com.example.harpapp.presentation.ui.screens.SongEmptyScreen
 import com.example.harpapp.presentation.ui.screens.SongScreen
 import com.example.harpapp.initialization.AppInitializationState
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
@@ -97,6 +97,20 @@ fun AppNavGraph(
         }
     }
 
+    fun navigateToTopLevel(route: String) {
+        if (route == Routes.HOME && navController.popBackStack(Routes.HOME, false)) {
+            return
+        }
+
+        navController.navigate(route) {
+            popUpTo(Routes.HOME) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -136,24 +150,15 @@ fun AppNavGraph(
                     onNavigate = { targetRoute ->
 
                         val finalRoute = if (targetRoute == Routes.SONG) {
-                            val lastOpenedSongId = songViewModel.song.value?.id
-                            if (!lastOpenedSongId.isNullOrEmpty()) {
-                                Routes.createSongRoute(lastOpenedSongId)
-                            } else {
-                                Routes.createSongRoute("another-love")
-                            }
+                            songViewModel.song.value?.id
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let { songId -> Routes.createSongRoute(songId) }
+                                ?: Routes.SONG
                         } else {
                             targetRoute
                         }
 
-                        navController.navigate(finalRoute) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        navigateToTopLevel(finalRoute)
                     }
                 )
             }
@@ -171,6 +176,14 @@ fun AppNavGraph(
                     onNavigateToSong = { songId ->
                         navController.navigate(Routes.createSongRoute(songId))
 
+                    }
+                )
+            }
+
+            composable(Routes.SONG) {
+                SongEmptyScreen(
+                    onNavigateToHome = {
+                        navigateToTopLevel(Routes.HOME)
                     }
                 )
             }
@@ -249,7 +262,7 @@ fun AppNavGraph(
             }
         }
 
-        if (normalizedRoute == Routes.SONG) {
+        if (currentRoute?.startsWith("song/") == true) {
             appContainer.devTools?.FloatingStrings(Modifier.fillMaxSize())
         }
         }
