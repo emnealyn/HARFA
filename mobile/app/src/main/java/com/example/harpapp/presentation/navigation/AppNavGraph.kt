@@ -28,10 +28,10 @@ import com.example.harpapp.presentation.ui.components.TopBar
 import com.example.harpapp.presentation.ui.screens.BluetoothScreen
 import com.example.harpapp.presentation.ui.screens.HarpScreen
 import com.example.harpapp.presentation.ui.screens.HomeScreen
+import com.example.harpapp.presentation.ui.screens.InitializationLoadingScreen
 import com.example.harpapp.presentation.ui.screens.InitializationErrorScreen
 import com.example.harpapp.presentation.ui.screens.SettingsScreen
 import com.example.harpapp.presentation.ui.screens.SongScreen
-import com.example.harpapp.presentation.ui.screens.SplashScreen
 import com.example.harpapp.initialization.AppInitializationState
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
 import com.example.harpapp.presentation.viewmodel.HarpViewModel
@@ -48,7 +48,7 @@ fun AppNavGraph(
 ) {
     when (initializationState) {
         AppInitializationState.Loading -> {
-            SplashScreen(onAnimationFinished = {})
+            InitializationLoadingScreen()
             return
         }
 
@@ -110,7 +110,7 @@ fun AppNavGraph(
                 else -> stringResource(R.string.app_name)
             }
 
-            if (currentRoute != Routes.SPLASH) {
+            if (currentRoute != null) {
                 TopBar(
                     title = title,
                     onBackClick = {
@@ -130,7 +130,7 @@ fun AppNavGraph(
             }
         },
         bottomBar = {
-            if (currentRoute != Routes.SPLASH) {
+            if (currentRoute != null) {
                 NavBar(
                     currentRoute = normalizedRoute,
                     onNavigate = { targetRoute ->
@@ -166,16 +166,8 @@ fun AppNavGraph(
         Box(modifier = Modifier.padding(innerPadding)) {
         NavHost(
             navController = navController,
-            startDestination = Routes.SPLASH
+            startDestination = Routes.HOME
         ) {
-            composable(Routes.SPLASH) {
-                SplashScreen(onAnimationFinished = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
-                    }
-                })
-            }
-
             composable(Routes.HOME) {
                 HomeScreen(
                     viewModel = homeViewModel,
