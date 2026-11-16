@@ -67,6 +67,13 @@ fun AppNavGraph(
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val isTopLevelRoute = when (currentRoute) {
+        Routes.HOME,
+        Routes.SONG,
+        Routes.SETTINGS -> true
+        Routes.HARP_PATTERN -> navBackStackEntry?.arguments?.getString("songId") == null
+        else -> false
+    }
 
     val normalizedRoute = when {
         currentRoute == Routes.HOME -> Routes.HOME
@@ -111,6 +118,12 @@ fun AppNavGraph(
         }
     }
 
+    fun navigateToBluetooth() {
+        navController.navigate(Routes.BLUETOOTH) {
+            launchSingleTop = true
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -132,12 +145,9 @@ fun AppNavGraph(
                             navController.popBackStack()
                         }
                     },
+                    showBackButton = !isTopLevelRoute,
                     isBluetoothConnected = isBluetoothConnected,
-                    onBluetoothClick = {
-                        navController.navigate(Routes.BLUETOOTH) {
-                            launchSingleTop = true
-                        }
-                    },
+                    onBluetoothClick = ::navigateToBluetooth,
                     connectedDeviceName = connectedDeviceName,
                     batteryStatus = batteryStatus
                 )
@@ -209,9 +219,7 @@ fun AppNavGraph(
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     viewModel = settingsViewModel,
-                    onNavigateToBluetooth = {
-                        navController.navigate(Routes.BLUETOOTH)
-                    },
+                    onNavigateToBluetooth = ::navigateToBluetooth,
                     devTools = appContainer.devTools,
                     onNavigateToSimulator = {
                         navController.navigate(Routes.DEV_SIMULATOR)
@@ -235,9 +243,7 @@ fun AppNavGraph(
                 }
                 HarpScreen(
                     viewModel = harpViewModel,
-                    onNavigateToBluetooth = {
-                        navController.navigate(Routes.BLUETOOTH)
-                    },
+                    onNavigateToBluetooth = ::navigateToBluetooth,
                     onBackToSong = {
                         targetSongId?.let { songId ->
                             navController.navigate(Routes.createSongRoute(songId)) {

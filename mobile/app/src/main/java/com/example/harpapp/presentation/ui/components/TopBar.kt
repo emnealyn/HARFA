@@ -22,6 +22,7 @@ import com.example.harpapp.presentation.ui.theme.HARPAppTheme
 fun TopBar(
     title: String,
     onBackClick: () -> Unit,
+    showBackButton: Boolean = true,
     isBluetoothConnected: Boolean,
     onBluetoothClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -37,12 +38,14 @@ fun TopBar(
             )
         },
         navigationIcon = {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.back),
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
+            if (showBackButton) {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.back),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
             }
         },
         actions = {
