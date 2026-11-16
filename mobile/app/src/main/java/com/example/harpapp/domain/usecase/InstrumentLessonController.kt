@@ -1,6 +1,5 @@
 package com.example.harpapp.domain.usecase
 
-import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentCapabilities
 import com.example.harpapp.domain.model.InstrumentCommand
 import com.example.harpapp.domain.model.InstrumentState
@@ -37,9 +36,7 @@ class InstrumentLessonController private constructor(
         data class Pause(override val session: SessionId?) : Signal
         data class End(override val session: SessionId?) : Signal
         data class TuningChanged(val state: InstrumentState, override val session: SessionId?) : Signal
-        data object SessionLost : Signal {
-            override val session: SessionId? = null
-        }
+        data class SessionLost(override val session: SessionId) : Signal
     }
 
     private val signals = Channel<Signal>(Channel.UNLIMITED)
@@ -60,8 +57,13 @@ class InstrumentLessonController private constructor(
             }
         }
         scope.launch {
-            repository.connectionState.distinctUntilChanged().collect {
-                if (it != ConnectionState.CONNECTED) signals.trySend(Signal.SessionLost)
+            var previousSession = repository.currentSession.value
+            repository.currentSession.collect { currentSession ->
+                val lostSession = previousSession
+                if (currentSession == null && lostSession != null) {
+                    signals.trySend(Signal.SessionLost(lostSession))
+                }
+                previousSession = currentSession
             }
         }
     }
@@ -98,8 +100,11 @@ class InstrumentLessonController private constructor(
     }
 
     private suspend fun handle(signal: Signal) {
-        if (signal == Signal.SessionLost) {
-            clearHarpState()
+        if (signal is Signal.SessionLost) {
+            if (signal.session == activeSession) {
+                clearHarpState()
+                activeSession = null
+            }
             return
         }
 
@@ -153,7 +158,7 @@ class InstrumentLessonController private constructor(
                 else listOfNotNull(stepCommand(step, signal.state))
             }
 
-            Signal.SessionLost -> emptyList()
+            is Signal.SessionLost -> emptyList()
         }
 
         val capabilities = repository.capabilities.first()

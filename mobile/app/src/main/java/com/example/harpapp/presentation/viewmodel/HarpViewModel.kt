@@ -3,6 +3,7 @@ package com.example.harpapp.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.harpapp.domain.model.BatteryStatus
+import com.example.harpapp.domain.model.ConnectionError
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.HarpLayout
 import com.example.harpapp.domain.model.InstrumentState
@@ -11,6 +12,7 @@ import com.example.harpapp.domain.model.StringId
 import com.example.harpapp.domain.model.Tuning
 import com.example.harpapp.domain.model.TuningAnalysis
 import com.example.harpapp.domain.repository.InstrumentRepository
+import com.example.harpapp.domain.model.isOperationInProgress
 import com.example.harpapp.domain.usecase.AnalyzeTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
@@ -28,7 +30,9 @@ import kotlinx.coroutines.launch
 
 sealed interface HarpUiState {
     data object Disconnected : HarpUiState
-    data object Connecting : HarpUiState
+    data class Connecting(val state: ConnectionState) : HarpUiState
+    data class Unavailable(val state: ConnectionState) : HarpUiState
+    data class Error(val error: ConnectionError) : HarpUiState
     data class Connected(
         val deviceName: String?,
         val deviceId: Long?,
@@ -109,10 +113,16 @@ class HarpViewModel(
         instrumentRepository.connectedDeviceId,
         instrumentRepository.batteryStatus
     ) { connection, tuning, deviceName, deviceId, battery ->
-        when (connection) {
-            ConnectionState.DISCONNECTED -> HarpUiState.Disconnected
-            ConnectionState.CONNECTING -> HarpUiState.Connecting
-            ConnectionState.CONNECTED -> HarpUiState.Connected(deviceName, deviceId, tuning, battery)
+        when {
+            connection == ConnectionState.CONNECTED ->
+                HarpUiState.Connected(deviceName, deviceId, tuning, battery)
+            connection.isOperationInProgress -> HarpUiState.Connecting(connection)
+            connection == ConnectionState.BLUETOOTH_DISABLED ||
+                connection == ConnectionState.PERMISSION_REQUIRED ->
+                HarpUiState.Unavailable(connection)
+            connection is ConnectionState.ERROR ->
+                HarpUiState.Error(connection.error)
+            else -> HarpUiState.Disconnected
         }
     }.stateIn(
         scope = viewModelScope,

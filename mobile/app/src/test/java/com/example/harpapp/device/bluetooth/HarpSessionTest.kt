@@ -135,6 +135,31 @@ class HarpSessionTest {
     }
 
     @Test
+    fun previousGenerationIsRejectedEvenWhenWireSessionIdMatches() = runBlocking {
+        val sentFrames = mutableListOf<ByteArray>()
+        val session = connectedSession(sentFrames, sid = 7)
+        val previousGeneration = session.currentGeneration
+
+        val handshake = async(start = CoroutineStart.UNDISPATCHED) { session.start() }
+        val currentSid = session.currentSid
+        session.handleIncoming(HarpCodec.encode(deviceInfoMessage(sid = currentSid)))
+        handshake.await()
+
+        val framesBefore = sentFrames.size
+        try {
+            session.sendCommand(
+                expectedSid = session.currentSid,
+                expectedGeneration = previousGeneration
+            ) { sequence, sid ->
+                HarpMessage.LessonEnd(seq = sequence, sid = sid)
+            }
+            fail("Command from previous generation should be rejected")
+        } catch (expected: HarpStaleSessionException) {
+            assertEquals(framesBefore, sentFrames.size)
+        }
+    }
+
+    @Test
     fun staleSessionAckRejectsCommand() = runBlocking {
         val sentFrames = mutableListOf<ByteArray>()
         val session = connectedSession(sentFrames, sid = 7)

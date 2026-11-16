@@ -339,6 +339,9 @@ class SongViewModelTest {
 
     @Test
     fun tuningWarningIsHiddenBeforeFirstConfigState() = runTest(dispatcher) {
+        harp.simulateConnectionState(ConnectionState.CONNECTING)
+        harp.simulateConnectionState(ConnectionState.DISCOVERING_SERVICES)
+        harp.simulateConnectionState(ConnectionState.HANDSHAKING)
         harp.simulateConnectionState(ConnectionState.CONNECTED)
         viewModel.loadSong(TUNING_SONG_ID)
 

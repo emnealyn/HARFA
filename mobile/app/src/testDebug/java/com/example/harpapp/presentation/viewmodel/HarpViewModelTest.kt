@@ -2,6 +2,9 @@ package com.example.harpapp.presentation.viewmodel
 
 import com.example.harpapp.device.simulator.FakeInstrumentRepository
 import com.example.harpapp.domain.model.Accidental
+import com.example.harpapp.domain.model.ConnectionError
+import com.example.harpapp.domain.model.ConnectionErrorCode
+import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.Difficulty
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.LessonProgress
@@ -18,9 +21,11 @@ import com.example.harpapp.domain.usecase.AnalyzeTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.usecase.GetTuningsUseCase
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -59,6 +64,52 @@ class HarpViewModelTest {
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun exposesDetailedConnectionStatesToTheHarpScreen() = runTest(dispatcher) {
+        val observer = backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            viewModel.uiState.collect { }
+        }
+
+        harp.simulateConnectionState(ConnectionState.CONNECTING)
+        assertEquals(
+            HarpUiState.Connecting(ConnectionState.CONNECTING),
+            viewModel.uiState.value
+        )
+
+        harp.simulateConnectionState(ConnectionState.DISCOVERING_SERVICES)
+        assertEquals(
+            HarpUiState.Connecting(ConnectionState.DISCOVERING_SERVICES),
+            viewModel.uiState.value
+        )
+
+        harp.simulateConnectionState(ConnectionState.HANDSHAKING)
+        assertEquals(
+            HarpUiState.Connecting(ConnectionState.HANDSHAKING),
+            viewModel.uiState.value
+        )
+
+        harp.simulateConnectionState(ConnectionState.CONNECTED)
+        assertTrue(viewModel.uiState.value is HarpUiState.Connected)
+
+        harp.simulateConnectionState(ConnectionState.BLUETOOTH_DISABLED)
+        assertEquals(
+            HarpUiState.Unavailable(ConnectionState.BLUETOOTH_DISABLED),
+            viewModel.uiState.value
+        )
+
+        harp.simulateConnectionState(ConnectionState.PERMISSION_REQUIRED)
+        assertEquals(
+            HarpUiState.Unavailable(ConnectionState.PERMISSION_REQUIRED),
+            viewModel.uiState.value
+        )
+
+        val error = ConnectionError(ConnectionErrorCode.TIMEOUT)
+        harp.simulateConnectionState(ConnectionState.ERROR(error))
+        assertEquals(HarpUiState.Error(error), viewModel.uiState.value)
+
+        observer.cancel()
     }
 
     private fun TestScope.observe() {
@@ -151,12 +202,26 @@ class HarpViewModelTest {
     }
 
     private companion object {
-        fun tuning(id: String, name: String, type: TuningType, vararg changed: Pair<NoteName, Accidental>) =
-            Tuning(id, name, type, NoteName.entries.associateWith { Accidental.NATURAL } + changed)
+        fun tuning(
+            id: String,
+            name: String,
+            type: TuningType,
+            vararg changed: Pair<NoteName, Accidental>
+        ) = Tuning(
+            id,
+            name,
+            type,
+            NoteName.entries.associateWith { Accidental.NATURAL } + changed
+        )
 
         val C_MAJOR = tuning("c-major", "C-dur", TuningType.MAJOR)
         val A_MINOR = tuning("a-minor", "A-moll", TuningType.MINOR)
-        val G_MAJOR = tuning("g-major", "G-dur", TuningType.MAJOR, NoteName.F to Accidental.SHARP)
+        val G_MAJOR = tuning(
+            "g-major",
+            "G-dur",
+            TuningType.MAJOR,
+            NoteName.F to Accidental.SHARP
+        )
 
         val SONG = Song(
             id = "another-love",
@@ -164,7 +229,8 @@ class HarpViewModelTest {
             artist = "Tom Odell",
             difficulty = Difficulty.MEDIUM,
             duration = "0:53",
-            lyricsWithNotes = listOf("E4", "F#4", "G4", "A4", "B4", "C5").map { LyricNote("la", it) },
+            lyricsWithNotes = listOf("E4", "F#4", "G4", "A4", "B4", "C5")
+                .map { LyricNote("la", it) },
             tuningId = G_MAJOR.id
         )
     }
