@@ -90,6 +90,18 @@ fun AppNavGraph(
         viewModel(factory = appContainer.bluetoothViewModelFactory)
     val songViewModel: SongViewModel = viewModel(factory = appContainer.songViewModelFactory)
     val harpViewModel: HarpViewModel = viewModel(factory = appContainer.harpViewModelFactory)
+    val activeSongId = navBackStackEntry
+        ?.takeIf { it.destination.route == Routes.SONG_PATTERN }
+        ?.arguments
+        ?.getString("songId")
+
+    LaunchedEffect(activeSongId) {
+        if (activeSongId == null) {
+            songViewModel.endSession()
+        } else {
+            songViewModel.startSession(activeSongId)
+        }
+    }
 
     val isBluetoothConnected by bluetoothViewModel.isConnected.collectAsState()
     val connectedDeviceName by bluetoothViewModel.connectedDeviceName.collectAsState(initial = null)

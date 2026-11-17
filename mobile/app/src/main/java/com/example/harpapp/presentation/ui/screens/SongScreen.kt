@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,10 +52,6 @@ fun SongScreen(
     onNavigateToHarp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LaunchedEffect(songId) {
-        viewModel.loadSong(songId)
-    }
-
     val uiState by viewModel.uiState
     val isPlaying by viewModel.isPlaying
     val isLearningMode by viewModel.isLearningMode
