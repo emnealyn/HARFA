@@ -26,9 +26,17 @@ import com.example.harpapp.domain.usecase.GetSongUseCase
 import com.example.harpapp.domain.usecase.InstrumentLessonController
 import com.example.harpapp.domain.usecase.PrepareLessonUseCase
 import com.example.harpapp.domain.usecase.SaveSongProgressUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+
+sealed interface SongUiState {
+    data object Loading : SongUiState
+    data class Ready(val song: Song) : SongUiState
+    data object NotFound : SongUiState
+    data class Error(val cause: Throwable) : SongUiState
+}
 
 data class StepTuningHint(
     val pitch: Pitch,
@@ -47,15 +55,22 @@ class SongViewModel(
     instrumentState: Flow<InstrumentState>,
     configurationKnown: Flow<Boolean>,
     private val getSongTuningUseCase: GetSongTuningUseCase,
-    private val analyzeTuningUseCase: AnalyzeTuningUseCase
+    private val analyzeTuningUseCase: AnalyzeTuningUseCase,
+    private val logError: (String, Throwable) -> Unit = { message, error ->
+        Log.e(TAG, message, error)
+    }
 ) : ViewModel() {
+
+    private val _uiState = mutableStateOf<SongUiState>(SongUiState.Loading)
+    val uiState: State<SongUiState> = _uiState
 
     private val lessonController =
         lessonControllerFactory.create(viewModelScope) { error ->
             Log.e(TAG, "Nie udało się wysłać komendy lekcji do harfy", error)
         }
-    private val _song = mutableStateOf<Song?>(null)
-    val song: State<Song?> = _song
+    val song: State<Song?> = derivedStateOf {
+        (_uiState.value as? SongUiState.Ready)?.song
+    }
 
     private val _isPlaying = mutableStateOf(false)
     val isPlaying: State<Boolean> = _isPlaying
@@ -97,12 +112,16 @@ class SongViewModel(
     private val _suggestedTuning = mutableStateOf<Tuning?>(null)
     val songTuning: State<Tuning?> = _suggestedTuning
     private val _pendingStart = mutableStateOf<PendingStart?>(null)
+    private var loadJob: Job? = null
+
+    private val currentSong: Song?
+        get() = (_uiState.value as? SongUiState.Ready)?.song
 
     private val tuningIsKnown: Boolean
         get() = _isConnected.value && _configurationKnown.value
 
     val tuningWarning: State<TuningAnalysis?> = derivedStateOf {
-        val song = _song.value
+        val song = currentSong
         if (song == null || !tuningIsKnown) {
             null
         } else {
@@ -175,27 +194,45 @@ class SongViewModel(
     }
 
     fun loadSong(songId: String) {
-        if (_song.value?.id == songId) return
+        if ((uiState.value as? SongUiState.Ready)?.song?.id == songId) return
 
-        viewModelScope.launch {
-            val song = getSongUseCase(songId)
-            _suggestedTuning.value = song?.let { getSongTuningUseCase(it) }
-            _song.value = song
-            audioPlayer.release()
-            _isPlaying.value = false
-            stopLearning()
+        loadJob?.cancel()
+        _uiState.value = SongUiState.Loading
+        audioPlayer.release()
+        _isPlaying.value = false
+        stopLearning()
+        _suggestedTuning.value = null
 
-            val savedProgress = getSongProgressUseCase.invoke(songId)
-            if (savedProgress != null && !savedProgress.isCompleted) {
-                val restoredProgress = if (lastConnectionState == ConnectionState.CONNECTED) {
-                    savedProgress.resume()
-                } else {
-                    savedProgress.pause()
+        loadJob = viewModelScope.launch {
+            try {
+                val song = getSongUseCase(songId)
+                if (song == null) {
+                    _uiState.value = SongUiState.NotFound
+                    return@launch
                 }
-                updateProgress(restoredProgress)
-                if (lastConnectionState == ConnectionState.CONNECTED) {
-                    lessonController.resume(restoredProgress)
+
+                val suggestedTuning = getSongTuningUseCase(song)
+                _suggestedTuning.value = suggestedTuning
+
+                val savedProgress = getSongProgressUseCase.invoke(songId)
+                if (savedProgress != null && !savedProgress.isCompleted) {
+                    val restoredProgress = if (lastConnectionState == ConnectionState.CONNECTED) {
+                        savedProgress.resume()
+                    } else {
+                        savedProgress.pause()
+                    }
+                    updateProgress(restoredProgress)
+                    if (lastConnectionState == ConnectionState.CONNECTED) {
+                        lessonController.resume(restoredProgress)
+                    }
                 }
+
+                _uiState.value = SongUiState.Ready(song)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                _uiState.value = SongUiState.Error(exception)
+                logError("Nie udało się załadować utworu $songId", exception)
             }
         }
     }
@@ -209,7 +246,7 @@ class SongViewModel(
     }
 
     private fun startLearning() {
-        val song = _song.value ?: return
+        val song = currentSong ?: return
         when (val validation = prepareLessonUseCase(song)) {
             is LessonValidation.Valid -> {
                 _lessonIssues.value = emptyList()
@@ -291,7 +328,7 @@ class SongViewModel(
     }
 
     fun togglePlayPause() {
-        val fileName = _song.value?.midiFilePath ?: return
+        val fileName = currentSong?.midiFilePath ?: return
         _isPlaying.value = audioPlayer.toggle(fileName) {
             _isPlaying.value = false
         }
