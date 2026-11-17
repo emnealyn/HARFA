@@ -66,6 +66,7 @@ class FakeInstrumentRepository(
 
     private val _noteEvents = MutableSharedFlow<NoteEvent>(extraBufferCapacity = 16)
     override val noteEvents: Flow<NoteEvent> = _noteEvents
+    val noteEventSubscriptionCount: StateFlow<Int> = _noteEvents.subscriptionCount
 
     private val _instrumentState = MutableStateFlow(InstrumentState.DEFAULT)
     override val instrumentState: Flow<InstrumentState> = _instrumentState.asStateFlow()

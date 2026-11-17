@@ -126,6 +126,7 @@ class SongViewModelTest {
     fun endingSongSessionPausesLessonAndReleasesPlayer() = runTest(dispatcher) {
         harp.reconnect()
         viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
         viewModel.toggleLearningMode()
         harp.clearRecordedCommands()
         val releaseCallsBeforeEnd = SilentAudioPlayer.releaseCalls
@@ -137,6 +138,33 @@ class SongViewModelTest {
         assertTrue(viewModel.isLearningMode.value)
         assertEquals(LessonStatus.PAUSED, status)
         assertEquals(listOf(InstrumentCommand.PauseLesson(paused = true)), harp.sentCommands)
+    }
+
+    @Test
+    fun instrumentEventsAreSubscribedOnlyDuringSongSession() = runTest(dispatcher) {
+        assertEquals(0, harp.noteEventSubscriptionCount.value)
+
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertEquals(1, harp.noteEventSubscriptionCount.value)
+        viewModel.toggleLearningMode()
+        harp.pluck(2)
+        assertEquals(1, viewModel.currentNoteIndex.value)
+
+        viewModel.endSession()
+        advanceUntilIdle()
+
+        assertEquals(0, harp.noteEventSubscriptionCount.value)
+        harp.pluck(4)
+        assertEquals(1, viewModel.currentNoteIndex.value)
+
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertEquals(1, harp.noteEventSubscriptionCount.value)
+        viewModel.endSession()
     }
 
     private fun noteOn(string: Int): String {

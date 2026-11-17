@@ -28,6 +28,7 @@ import com.example.harpapp.domain.usecase.InstrumentLessonController
 import com.example.harpapp.domain.usecase.PrepareLessonUseCase
 import com.example.harpapp.domain.usecase.SaveSongProgressUseCase
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -51,11 +52,11 @@ class SongViewModel(
     private val deleteSongProgressUseCase: DeleteSongProgressUseCase,
     private val saveSongProgressUseCase: SaveSongProgressUseCase,
     private val audioPlayer: AudioPlayer,
-    noteEvents: Flow<NoteEvent>,
-    connectionState: Flow<ConnectionState>,
+    private val noteEvents: Flow<NoteEvent>,
+    private val connectionState: Flow<ConnectionState>,
     lessonControllerFactory: InstrumentLessonController.Factory,
-    instrumentState: Flow<InstrumentState>,
-    configurationKnown: Flow<Boolean>,
+    private val instrumentState: Flow<InstrumentState>,
+    private val configurationKnown: Flow<Boolean>,
     private val getSongTuningUseCase: GetSongTuningUseCase,
     private val analyzeTuningUseCase: AnalyzeTuningUseCase,
     private val logError: (String, Throwable) -> Unit = { message, error ->
@@ -117,6 +118,7 @@ class SongViewModel(
     private var loadJob: Job? = null
     private var progressSaveJob: Job? = null
     private var sessionTransitionJob: Job? = null
+    private var sessionSubscriptionsJob: Job? = null
     private var activeSongId: String? = null
     private var lastSessionSongId: String? = null
 
@@ -150,44 +152,55 @@ class SongViewModel(
         }
     }
 
-    private val instrumentStateJob: Job = viewModelScope.launch {
-        instrumentState.collect { _instrumentState.value = it }
-    }
-
-    private val configurationKnownJob: Job = viewModelScope.launch {
-        configurationKnown.collect { _configurationKnown.value = it }
-    }
-
-    private val noteListenerJob: Job = viewModelScope.launch {
-        noteEvents.collect { event ->
-            val current = _progress.value ?: return@collect
-            val update = current.onNoteEvent(event)
-            updateProgress(update.progress)
-            lessonController.onUpdate(update)
-        }
-    }
-
-    private val connectionListenerJob: Job = viewModelScope.launch {
-        connectionState.collect { state ->
-            lastConnectionState = state
-            _isConnected.value = state == ConnectionState.CONNECTED
-            val current = _progress.value ?: return@collect
-            val newProgress = when (state) {
-                ConnectionState.CONNECTED ->
-                    if (_pausedByUser.value) current
-                    else current.resume().also { lessonController.resume(it) }
-                ConnectionState.SCANNING,
-                ConnectionState.CONNECTING,
-                ConnectionState.DISCOVERING_SERVICES,
-                ConnectionState.HANDSHAKING -> current
-                ConnectionState.BLUETOOTH_DISABLED,
-                ConnectionState.PERMISSION_REQUIRED,
-                ConnectionState.DISCONNECTING,
-                ConnectionState.DISCONNECTED,
-                is ConnectionState.ERROR -> current.pause()
+    private fun startSessionSubscriptions() {
+        stopSessionSubscriptions()
+        sessionSubscriptionsJob = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                instrumentState.collect { _instrumentState.value = it }
             }
-            updateProgress(newProgress)
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                configurationKnown.collect { _configurationKnown.value = it }
+            }
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                noteEvents.collect { event ->
+                    val current = _progress.value ?: return@collect
+                    val update = current.onNoteEvent(event)
+                    updateProgress(update.progress)
+                    lessonController.onUpdate(update)
+                }
+            }
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                connectionState.collect { state ->
+                    lastConnectionState = state
+                    _isConnected.value = state == ConnectionState.CONNECTED
+                    val current = _progress.value ?: return@collect
+                    val newProgress = when (state) {
+                        ConnectionState.CONNECTED ->
+                            if (_pausedByUser.value) current
+                            else current.resume().also { lessonController.resume(it) }
+                        ConnectionState.SCANNING,
+                        ConnectionState.CONNECTING,
+                        ConnectionState.DISCOVERING_SERVICES,
+                        ConnectionState.HANDSHAKING -> current
+                        ConnectionState.BLUETOOTH_DISABLED,
+                        ConnectionState.PERMISSION_REQUIRED,
+                        ConnectionState.DISCONNECTING,
+                        ConnectionState.DISCONNECTED,
+                        is ConnectionState.ERROR -> current.pause()
+                    }
+                    updateProgress(newProgress)
+                }
+            }
         }
+    }
+
+    private fun stopSessionSubscriptions() {
+        sessionSubscriptionsJob?.cancel()
+        sessionSubscriptionsJob = null
+    }
+
+    private fun ensureSessionSubscriptions() {
+        if (sessionSubscriptionsJob?.isActive != true) startSessionSubscriptions()
     }
 
     private fun updateProgress(newProgress: LessonProgress?) {
@@ -203,13 +216,17 @@ class SongViewModel(
     }
 
     fun startSession(songId: String) {
-        if (activeSongId == songId) return
+        if (activeSongId == songId) {
+            ensureSessionSubscriptions()
+            return
+        }
 
         val previousSongId = lastSessionSongId
         if (activeSongId != null) endSession()
 
         activeSongId = songId
         lastSessionSongId = songId
+        startSessionSubscriptions()
         sessionTransitionJob?.cancel()
         sessionTransitionJob = viewModelScope.launch {
             if (previousSongId != null && previousSongId != songId) {
@@ -224,10 +241,12 @@ class SongViewModel(
     }
 
     fun endSession() {
-        if (activeSongId == null) return
+        val hadActiveSession = activeSongId != null || sessionSubscriptionsJob?.isActive == true
+        if (!hadActiveSession) return
 
         activeSongId = null
         sessionTransitionJob?.cancel()
+        stopSessionSubscriptions()
         loadJob?.cancel()
         loadJob = null
         val current = _progress.value
@@ -245,6 +264,7 @@ class SongViewModel(
     }
 
     fun loadSong(songId: String) {
+        ensureSessionSubscriptions()
         loadSong(songId, forceReload = false)
     }
 
@@ -395,10 +415,6 @@ class SongViewModel(
     override fun onCleared() {
         endSession()
         sessionTransitionJob?.cancel()
-        noteListenerJob.cancel()
-        connectionListenerJob.cancel()
-        instrumentStateJob.cancel()
-        configurationKnownJob.cancel()
         super.onCleared()
     }
 
