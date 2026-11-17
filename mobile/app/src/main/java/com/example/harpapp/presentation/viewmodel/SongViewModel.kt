@@ -20,6 +20,7 @@ import com.example.harpapp.domain.model.Tuning
 import com.example.harpapp.domain.model.TuningAnalysis
 import com.example.harpapp.domain.repository.AudioPlayer
 import com.example.harpapp.domain.usecase.AnalyzeTuningUseCase
+import com.example.harpapp.domain.usecase.DeleteSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
@@ -47,6 +48,7 @@ class SongViewModel(
     private val getSongUseCase: GetSongUseCase,
     private val prepareLessonUseCase: PrepareLessonUseCase,
     private val getSongProgressUseCase: GetSongProgressUseCase,
+    private val deleteSongProgressUseCase: DeleteSongProgressUseCase,
     private val saveSongProgressUseCase: SaveSongProgressUseCase,
     private val audioPlayer: AudioPlayer,
     noteEvents: Flow<NoteEvent>,
@@ -113,6 +115,10 @@ class SongViewModel(
     val songTuning: State<Tuning?> = _suggestedTuning
     private val _pendingStart = mutableStateOf<PendingStart?>(null)
     private var loadJob: Job? = null
+    private var progressSaveJob: Job? = null
+    private var sessionTransitionJob: Job? = null
+    private var activeSongId: String? = null
+    private var lastSessionSongId: String? = null
 
     private val currentSong: Song?
         get() = (_uiState.value as? SongUiState.Ready)?.song
@@ -186,21 +192,70 @@ class SongViewModel(
 
     private fun updateProgress(newProgress: LessonProgress?) {
         _progress.value = newProgress
-        newProgress?.let { progress ->
-            viewModelScope.launch {
-                saveSongProgressUseCase.invoke(progress)
+        newProgress?.let(::persistProgress)
+    }
+
+    private fun persistProgress(progress: LessonProgress) {
+        progressSaveJob?.cancel()
+        progressSaveJob = viewModelScope.launch {
+            saveSongProgressUseCase.invoke(progress)
+        }
+    }
+
+    fun startSession(songId: String) {
+        if (activeSongId == songId) return
+
+        val previousSongId = lastSessionSongId
+        if (activeSongId != null) endSession()
+
+        activeSongId = songId
+        lastSessionSongId = songId
+        sessionTransitionJob?.cancel()
+        sessionTransitionJob = viewModelScope.launch {
+            if (previousSongId != null && previousSongId != songId) {
+                progressSaveJob?.join()
+                deleteSongProgressUseCase(previousSongId)
+                lessonController.end()
+            }
+            if (activeSongId == songId) {
+                loadSong(songId, forceReload = true)
             }
         }
     }
 
+    fun endSession() {
+        if (activeSongId == null) return
+
+        activeSongId = null
+        sessionTransitionJob?.cancel()
+        loadJob?.cancel()
+        loadJob = null
+        val current = _progress.value
+        if (current != null && !current.isCompleted) {
+            _pausedByUser.value = true
+            updateProgress(current.pause())
+            lessonController.pause()
+        } else {
+            _pausedByUser.value = false
+        }
+        _lessonIssues.value = emptyList()
+        _pendingStart.value = null
+        audioPlayer.release()
+        _isPlaying.value = false
+    }
+
     fun loadSong(songId: String) {
-        if ((uiState.value as? SongUiState.Ready)?.song?.id == songId) return
+        loadSong(songId, forceReload = false)
+    }
+
+    private fun loadSong(songId: String, forceReload: Boolean) {
+        if (!forceReload && (uiState.value as? SongUiState.Ready)?.song?.id == songId) return
 
         loadJob?.cancel()
         _uiState.value = SongUiState.Loading
         audioPlayer.release()
         _isPlaying.value = false
-        stopLearning()
+        clearLessonState()
         _suggestedTuning.value = null
 
         loadJob = viewModelScope.launch {
@@ -216,15 +271,8 @@ class SongViewModel(
 
                 val savedProgress = getSongProgressUseCase.invoke(songId)
                 if (savedProgress != null && !savedProgress.isCompleted) {
-                    val restoredProgress = if (lastConnectionState == ConnectionState.CONNECTED) {
-                        savedProgress.resume()
-                    } else {
-                        savedProgress.pause()
-                    }
-                    updateProgress(restoredProgress)
-                    if (lastConnectionState == ConnectionState.CONNECTED) {
-                        lessonController.resume(restoredProgress)
-                    }
+                    _pausedByUser.value = true
+                    updateProgress(savedProgress.pause())
                 }
 
                 _uiState.value = SongUiState.Ready(song)
@@ -265,11 +313,17 @@ class SongViewModel(
     }
 
     private fun beginLesson(lesson: Lesson) {
+        val restored = _progress.value
+            ?.takeIf { it.lesson.songId == lesson.songId && !it.isCompleted }
         _pausedByUser.value = false
-        val progress = LessonProgress.start(lesson)
+        val progress = restored?.resume() ?: LessonProgress.start(lesson)
         if (lastConnectionState == ConnectionState.CONNECTED) {
             updateProgress(progress)
-            lessonController.start(progress)
+            if (restored == null) {
+                lessonController.start(progress)
+            } else {
+                lessonController.resume(progress)
+            }
         } else {
             updateProgress(progress.pause())
         }
@@ -313,6 +367,10 @@ class SongViewModel(
 
     private fun stopLearning() {
         if (_progress.value != null) lessonController.end()
+        clearLessonState()
+    }
+
+    private fun clearLessonState() {
         _progress.value = null
         _pausedByUser.value = false
         _lessonIssues.value = emptyList()
@@ -335,11 +393,12 @@ class SongViewModel(
     }
 
     override fun onCleared() {
+        endSession()
+        sessionTransitionJob?.cancel()
         noteListenerJob.cancel()
         connectionListenerJob.cancel()
         instrumentStateJob.cancel()
         configurationKnownJob.cancel()
-        audioPlayer.release()
         super.onCleared()
     }
 
