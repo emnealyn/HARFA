@@ -31,6 +31,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -73,13 +74,49 @@ class SongViewModelTest {
             instrumentState = harp.instrumentState,
             configurationKnown = harp.configurationKnown,
             getSongTuningUseCase = GetSongTuningUseCase(InMemoryTuningRepository),
-            analyzeTuningUseCase = AnalyzeTuningUseCase()
+            analyzeTuningUseCase = AnalyzeTuningUseCase(),
+            logError = { _, _ -> }
         )
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun initialStateIsLoading() {
+        assertEquals(SongUiState.Loading, viewModel.uiState.value)
+    }
+
+    @Test
+    fun loadingExistingSongProducesReadyState() = runTest(dispatcher) {
+        viewModel.loadSong(LESSON_SONG_ID)
+
+        val state = viewModel.uiState.value
+        assertTrue(state is SongUiState.Ready)
+        assertEquals(LESSON_SONG_ID, (state as SongUiState.Ready).song.id)
+    }
+
+    @Test
+    fun loadingMissingSongProducesNotFoundState() = runTest(dispatcher) {
+        viewModel.loadSong("missing-song")
+
+        assertEquals(SongUiState.NotFound, viewModel.uiState.value)
+        assertNull(viewModel.song.value)
+    }
+
+    @Test
+    fun loadingSongWithRepositoryErrorProducesErrorState() = runTest(dispatcher) {
+        val failure = IllegalStateException("catalog unavailable")
+        songRepository.getSongFailure = failure
+
+        viewModel.loadSong(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue("Unexpected state: $state", state is SongUiState.Error)
+        assertEquals(failure, (state as SongUiState.Error).cause)
     }
 
     private fun noteOn(string: Int): String {
@@ -442,8 +479,13 @@ class SongViewModelTest {
 
     private class InMemorySongRepository(private val songs: Map<String, Song>) : SongRepository {
         private val progressMap = mutableMapOf<String, com.example.harpapp.domain.model.LessonProgress>()
+        var getSongFailure: Throwable? = null
+
         override fun observeSongs(): Flow<List<Song>> = flowOf(songs.values.toList())
-        override suspend fun getSong(songId: String): Song? = songs[songId]
+        override suspend fun getSong(songId: String): Song? {
+            getSongFailure?.let { throw it }
+            return songs[songId]
+        }
         override suspend fun setFavorite(songId: String, isFavorite: Boolean) = Unit
         override fun observeProgress(songId: String): Flow<com.example.harpapp.domain.model.LessonProgress?> = flowOf(progressMap[songId])
         override suspend fun getProgress(songId: String): com.example.harpapp.domain.model.LessonProgress? = progressMap[songId]
