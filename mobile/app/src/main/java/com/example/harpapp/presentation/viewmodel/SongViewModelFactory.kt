@@ -7,6 +7,7 @@ import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteEvent
 import com.example.harpapp.domain.repository.AudioPlayer
 import com.example.harpapp.domain.usecase.AnalyzeTuningUseCase
+import com.example.harpapp.domain.usecase.DeleteSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
@@ -19,6 +20,7 @@ class SongViewModelFactory(
     private val getSongUseCase: GetSongUseCase,
     private val prepareLessonUseCase: PrepareLessonUseCase,
     private val getSongProgressUseCase: GetSongProgressUseCase,
+    private val deleteSongProgressUseCase: DeleteSongProgressUseCase,
     private val saveSongProgressUseCase: SaveSongProgressUseCase,
     private val audioPlayer: AudioPlayer,
     private val noteEvents: Flow<NoteEvent>,
@@ -36,6 +38,7 @@ class SongViewModelFactory(
                 getSongUseCase = getSongUseCase,
                 prepareLessonUseCase = prepareLessonUseCase,
                 getSongProgressUseCase = getSongProgressUseCase,
+                deleteSongProgressUseCase = deleteSongProgressUseCase,
                 saveSongProgressUseCase = saveSongProgressUseCase,
                 audioPlayer = audioPlayer,
                 noteEvents = noteEvents,

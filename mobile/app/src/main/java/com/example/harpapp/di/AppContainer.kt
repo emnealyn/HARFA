@@ -17,6 +17,7 @@ import com.example.harpapp.domain.repository.SettingsRepository
 import com.example.harpapp.domain.repository.SongRepository
 import com.example.harpapp.domain.repository.TuningRepository
 import com.example.harpapp.domain.usecase.AnalyzeTuningUseCase
+import com.example.harpapp.domain.usecase.DeleteSongProgressUseCase
 import com.example.harpapp.domain.usecase.FilterSongsUseCase
 import com.example.harpapp.domain.usecase.GetSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongTuningUseCase
@@ -65,6 +66,7 @@ class AppContainer(
     private val getSongUseCase = GetSongUseCase(songRepository)
     private val setFavoriteUseCase = SetFavoriteUseCase(songRepository)
     private val getSongProgressUseCase = GetSongProgressUseCase(songRepository)
+    private val deleteSongProgressUseCase = DeleteSongProgressUseCase(songRepository)
     private val saveSongProgressUseCase = SaveSongProgressUseCase(songRepository)
     private val filterSongsUseCase = FilterSongsUseCase()
     private val prepareLessonUseCase = PrepareLessonUseCase()
@@ -82,6 +84,7 @@ class AppContainer(
         getSongUseCase = getSongUseCase,
         prepareLessonUseCase = prepareLessonUseCase,
         getSongProgressUseCase = getSongProgressUseCase,
+        deleteSongProgressUseCase = deleteSongProgressUseCase,
         saveSongProgressUseCase = saveSongProgressUseCase,
         audioPlayer = audioPlayer,
         noteEvents = instrumentRepository.noteEvents,

@@ -20,6 +20,7 @@ import com.example.harpapp.domain.repository.AudioPlayer
 import com.example.harpapp.domain.repository.SongRepository
 import com.example.harpapp.domain.repository.TuningRepository
 import com.example.harpapp.domain.usecase.AnalyzeTuningUseCase
+import com.example.harpapp.domain.usecase.DeleteSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongProgressUseCase
 import com.example.harpapp.domain.usecase.GetSongTuningUseCase
 import com.example.harpapp.domain.usecase.GetSongUseCase
@@ -31,6 +32,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -61,10 +63,12 @@ class SongViewModelTest {
             song(TUNING_SONG_ID, "F#2", "G2").copy(tuningId = G_MAJOR.id)
         ).associateBy { it.id }
         songRepository = InMemorySongRepository(songs)
+        SilentAudioPlayer.releaseCalls = 0
         viewModel = SongViewModel(
             getSongUseCase = GetSongUseCase(songRepository),
             prepareLessonUseCase = PrepareLessonUseCase(),
             getSongProgressUseCase = GetSongProgressUseCase(songRepository),
+            deleteSongProgressUseCase = DeleteSongProgressUseCase(songRepository),
             saveSongProgressUseCase = SaveSongProgressUseCase(songRepository),
             audioPlayer = SilentAudioPlayer,
             noteEvents = harp.noteEvents,
@@ -73,13 +77,94 @@ class SongViewModelTest {
             instrumentState = harp.instrumentState,
             configurationKnown = harp.configurationKnown,
             getSongTuningUseCase = GetSongTuningUseCase(InMemoryTuningRepository),
-            analyzeTuningUseCase = AnalyzeTuningUseCase()
+            analyzeTuningUseCase = AnalyzeTuningUseCase(),
+            logError = { _, _ -> }
         )
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun initialStateIsLoading() {
+        assertEquals(SongUiState.Loading, viewModel.uiState.value)
+    }
+
+    @Test
+    fun loadingExistingSongProducesReadyState() = runTest(dispatcher) {
+        viewModel.loadSong(LESSON_SONG_ID)
+
+        val state = viewModel.uiState.value
+        assertTrue(state is SongUiState.Ready)
+        assertEquals(LESSON_SONG_ID, (state as SongUiState.Ready).song.id)
+    }
+
+    @Test
+    fun loadingMissingSongProducesNotFoundState() = runTest(dispatcher) {
+        viewModel.loadSong("missing-song")
+
+        assertEquals(SongUiState.NotFound, viewModel.uiState.value)
+        assertNull(viewModel.song.value)
+    }
+
+    @Test
+    fun loadingSongWithRepositoryErrorProducesErrorState() = runTest(dispatcher) {
+        val failure = IllegalStateException("catalog unavailable")
+        songRepository.getSongFailure = failure
+
+        viewModel.loadSong(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue("Unexpected state: $state", state is SongUiState.Error)
+        assertEquals(failure, (state as SongUiState.Error).cause)
+    }
+
+    @Test
+    fun endingSongSessionPausesLessonAndReleasesPlayer() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+        viewModel.toggleLearningMode()
+        harp.clearRecordedCommands()
+        val releaseCallsBeforeEnd = SilentAudioPlayer.releaseCalls
+
+        viewModel.endSession()
+        viewModel.endSession()
+
+        assertEquals(releaseCallsBeforeEnd + 1, SilentAudioPlayer.releaseCalls)
+        assertTrue(viewModel.isLearningMode.value)
+        assertEquals(LessonStatus.PAUSED, status)
+        assertEquals(listOf(InstrumentCommand.PauseLesson(paused = true)), harp.sentCommands)
+    }
+
+    @Test
+    fun instrumentEventsAreSubscribedOnlyDuringSongSession() = runTest(dispatcher) {
+        assertEquals(0, harp.noteEventSubscriptionCount.value)
+
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertEquals(1, harp.noteEventSubscriptionCount.value)
+        viewModel.toggleLearningMode()
+        harp.pluck(2)
+        assertEquals(1, viewModel.currentNoteIndex.value)
+
+        viewModel.endSession()
+        advanceUntilIdle()
+
+        assertEquals(0, harp.noteEventSubscriptionCount.value)
+        harp.pluck(4)
+        assertEquals(1, viewModel.currentNoteIndex.value)
+
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertEquals(1, harp.noteEventSubscriptionCount.value)
+        viewModel.endSession()
     }
 
     private fun noteOn(string: Int): String {
@@ -168,24 +253,61 @@ class SongViewModelTest {
     }
 
     @Test
-    fun savedProgressIsRestoredOnConnectedHarp() = runTest(dispatcher) {
-        startLessonOnConnectedHarp()
+    fun savedProgressIsRestoredOnlyAfterManualStart() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+        viewModel.toggleLearningMode()
         harp.pluck(2)
+        advanceUntilIdle()
 
-        viewModel.loadSong(INVALID_SONG_ID)
+        viewModel.endSession()
+        advanceUntilIdle()
         harp.clearRecordedCommands()
 
-        viewModel.loadSong(LESSON_SONG_ID)
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertEquals(LessonStatus.PAUSED, status)
+        assertTrue(viewModel.canToggleLessonPause.value)
+        assertTrue(harp.sentCommands.isEmpty())
+
+        viewModel.toggleLessonPause()
 
         assertEquals(LessonStatus.IN_PROGRESS, status)
         assertEquals(1, viewModel.currentNoteIndex.value)
         assertEquals(
             listOf(
-                InstrumentCommand.StartLesson(totalSteps = 2),
-                InstrumentCommand.LessonStep(index = 1, mask = 1 shl 4)
+                InstrumentCommand.PauseLesson(paused = false)
             ),
             harp.sentCommands
         )
+    }
+
+    @Test
+    fun switchingToAnotherSongClearsPreviousLessonProgress() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+        viewModel.toggleLearningMode()
+        harp.pluck(2)
+        advanceUntilIdle()
+
+        viewModel.endSession()
+        advanceUntilIdle()
+        viewModel.startSession(TUNING_SONG_ID)
+        advanceUntilIdle()
+        viewModel.endSession()
+        advanceUntilIdle()
+
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertNull(viewModel.progress.value)
+
+        viewModel.toggleLearningMode()
+
+        assertEquals(0, viewModel.currentNoteIndex.value)
     }
 
     @Test
@@ -430,7 +552,7 @@ class SongViewModelTest {
         viewModel.loadSong(INVALID_SONG_ID)
         viewModel.loadSong(TUNING_SONG_ID)
 
-        assertEquals(LessonStatus.IN_PROGRESS, status)
+        assertEquals(LessonStatus.PAUSED, status)
         assertNull(viewModel.tuningStartWarning.value)
         assertNotNull(viewModel.tuningWarning.value)
     }
@@ -442,8 +564,13 @@ class SongViewModelTest {
 
     private class InMemorySongRepository(private val songs: Map<String, Song>) : SongRepository {
         private val progressMap = mutableMapOf<String, com.example.harpapp.domain.model.LessonProgress>()
+        var getSongFailure: Throwable? = null
+
         override fun observeSongs(): Flow<List<Song>> = flowOf(songs.values.toList())
-        override suspend fun getSong(songId: String): Song? = songs[songId]
+        override suspend fun getSong(songId: String): Song? {
+            getSongFailure?.let { throw it }
+            return songs[songId]
+        }
         override suspend fun setFavorite(songId: String, isFavorite: Boolean) = Unit
         override fun observeProgress(songId: String): Flow<com.example.harpapp.domain.model.LessonProgress?> = flowOf(progressMap[songId])
         override suspend fun getProgress(songId: String): com.example.harpapp.domain.model.LessonProgress? = progressMap[songId]
@@ -456,8 +583,12 @@ class SongViewModelTest {
     }
 
     private object SilentAudioPlayer : AudioPlayer {
+        var releaseCalls = 0
+
         override fun toggle(assetPath: String, onCompleted: () -> Unit): Boolean = false
-        override fun release() = Unit
+        override fun release() {
+            releaseCalls++
+        }
     }
 
     private companion object {
