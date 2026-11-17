@@ -75,6 +75,10 @@
     <string name="no_song_selected_title">No song selected</string>
     <string name="no_song_selected_message">Choose a song on Home to open its details.</string>
     <string name="go_to_home">Go to Home</string>
+    <string name="song_not_found_title">Song not found</string>
+    <string name="song_not_found_message">This song is no longer available.</string>
+    <string name="song_loading_error_title">Could not load the song</string>
+    <string name="song_loading_error_message">An error occurred while loading the song data.</string>
     <string name="title_bluetooth">Bluetooth</string>
     <string name="back">Back</string>
     <string name="bluetooth_status">Bluetooth status</string>
