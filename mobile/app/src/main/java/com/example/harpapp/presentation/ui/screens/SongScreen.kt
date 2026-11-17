@@ -225,31 +225,31 @@ fun SongContent(
 
     val imageResId = song.getCoverResourceId()
 
-        if (isLandscape) {
-            Row(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
+    if (isLandscape) {
+        Row(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                Surface(
                     modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .size(140.dp)
+                        .aspectRatio(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    shadowElevation = 4.dp
                 ) {
-                    Surface(
-                        modifier = Modifier
-                            .size(140.dp)
-                            .aspectRatio(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        shadowElevation = 4.dp
-                    ) {
-                        Image(
-                            painter = painterResource(id = imageResId),
-                            contentDescription = "Album Cover",
-                            contentScale = ContentScale.Crop
-                        )
+                    Image(
+                        painter = painterResource(id = imageResId),
+                        contentDescription = "Album Cover",
+                        contentScale = ContentScale.Crop
+                    )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
