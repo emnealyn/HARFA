@@ -6,6 +6,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.harpapp.domain.model.AudioPlaybackState
 import com.example.harpapp.domain.model.CatalogIssue
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentState
@@ -75,8 +76,19 @@ class SongViewModel(
         (_uiState.value as? SongUiState.Ready)?.song
     }
 
-    private val _isPlaying = mutableStateOf(false)
-    val isPlaying: State<Boolean> = _isPlaying
+    private val _audioPlaybackState = mutableStateOf<AudioPlaybackState>(
+        AudioPlaybackState.Idle
+    )
+    val audioPlaybackState: State<AudioPlaybackState> = _audioPlaybackState
+    val isPlaying: State<Boolean> = derivedStateOf {
+        _audioPlaybackState.value is AudioPlaybackState.Playing
+    }
+    val isPreparingAudio: State<Boolean> = derivedStateOf {
+        _audioPlaybackState.value is AudioPlaybackState.Preparing
+    }
+    val audioPlaybackError: State<Throwable?> = derivedStateOf {
+        (_audioPlaybackState.value as? AudioPlaybackState.Error)?.cause
+    }
 
     private val _progress = mutableStateOf<LessonProgress?>(null)
     val progress: State<LessonProgress?> = _progress
@@ -124,6 +136,14 @@ class SongViewModel(
 
     private val currentSong: Song?
         get() = (_uiState.value as? SongUiState.Ready)?.song
+
+    init {
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            audioPlayer.playbackState.collect { state ->
+                _audioPlaybackState.value = state
+            }
+        }
+    }
 
     private val tuningIsKnown: Boolean
         get() = _isConnected.value && _configurationKnown.value
@@ -260,7 +280,6 @@ class SongViewModel(
         _lessonIssues.value = emptyList()
         _pendingStart.value = null
         audioPlayer.release()
-        _isPlaying.value = false
     }
 
     fun loadSong(songId: String) {
@@ -274,7 +293,6 @@ class SongViewModel(
         loadJob?.cancel()
         _uiState.value = SongUiState.Loading
         audioPlayer.release()
-        _isPlaying.value = false
         clearLessonState()
         _suggestedTuning.value = null
 
@@ -407,9 +425,7 @@ class SongViewModel(
 
     fun togglePlayPause() {
         val fileName = currentSong?.midiFilePath ?: return
-        _isPlaying.value = audioPlayer.toggle(fileName) {
-            _isPlaying.value = false
-        }
+        audioPlayer.toggle(fileName) {}
     }
 
     override fun onCleared() {
