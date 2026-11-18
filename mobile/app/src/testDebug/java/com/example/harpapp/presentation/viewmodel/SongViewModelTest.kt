@@ -67,6 +67,7 @@ class SongViewModelTest {
         ).associateBy { it.id }
         songRepository = InMemorySongRepository(songs)
         SilentAudioPlayer.releaseCalls = 0
+        SilentAudioPlayer.playbackStateMutable.value = AudioPlaybackState.Idle
         viewModel = SongViewModel(
             getSongUseCase = GetSongUseCase(songRepository),
             prepareLessonUseCase = PrepareLessonUseCase(),
@@ -123,6 +124,24 @@ class SongViewModelTest {
         val state = viewModel.uiState.value
         assertTrue("Unexpected state: $state", state is SongUiState.Error)
         assertEquals(failure, (state as SongUiState.Error).cause)
+    }
+
+    @Test
+    fun audioPlaybackStateIsExposedByViewModel() = runTest(dispatcher) {
+        SilentAudioPlayer.playbackStateMutable.value =
+            AudioPlaybackState.Playing("midi/test.mid")
+
+        assertTrue(viewModel.isPlaying.value)
+        assertFalse(viewModel.isPreparingAudio.value)
+        assertNull(viewModel.audioPlaybackError.value)
+
+        val failure = IllegalStateException("audio unavailable")
+        SilentAudioPlayer.playbackStateMutable.value =
+            AudioPlaybackState.Error("midi/test.mid", failure)
+
+        assertFalse(viewModel.isPlaying.value)
+        assertFalse(viewModel.isPreparingAudio.value)
+        assertEquals(failure, viewModel.audioPlaybackError.value)
     }
 
     @Test
@@ -587,12 +606,15 @@ class SongViewModelTest {
 
     private object SilentAudioPlayer : AudioPlayer {
         var releaseCalls = 0
-        override val playbackState: StateFlow<AudioPlaybackState> =
-            MutableStateFlow(AudioPlaybackState.Idle)
+        val playbackStateMutable = MutableStateFlow<AudioPlaybackState>(
+            AudioPlaybackState.Idle
+        )
+        override val playbackState: StateFlow<AudioPlaybackState> = playbackStateMutable
 
         override fun toggle(assetPath: String, onCompleted: () -> Unit): Boolean = false
         override fun release() {
             releaseCalls++
+            playbackStateMutable.value = AudioPlaybackState.Idle
         }
     }
 
