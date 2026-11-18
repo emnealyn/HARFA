@@ -290,11 +290,12 @@ class SongViewModelTest {
         viewModel.startSession(LESSON_SONG_ID)
         advanceUntilIdle()
 
-        assertEquals(LessonStatus.PAUSED, status)
-        assertTrue(viewModel.canToggleLessonPause.value)
+        assertNull(viewModel.progress.value)
+        assertFalse(viewModel.isLearningMode.value)
+        assertFalse(viewModel.canToggleLessonPause.value)
         assertTrue(harp.sentCommands.isEmpty())
 
-        viewModel.toggleLessonPause()
+        viewModel.toggleLearningMode()
 
         assertEquals(LessonStatus.IN_PROGRESS, status)
         assertEquals(1, viewModel.currentNoteIndex.value)
@@ -565,7 +566,7 @@ class SongViewModelTest {
     }
 
     @Test
-    fun restoredLessonShowsBannerWithoutDialog() = runTest(dispatcher) {
+    fun savedProgressDoesNotActivateLessonWhenSongIsReloaded() = runTest(dispatcher) {
         harp.reconnect()
         viewModel.loadSong(TUNING_SONG_ID)
         viewModel.toggleLearningMode()
@@ -574,7 +575,8 @@ class SongViewModelTest {
         viewModel.loadSong(INVALID_SONG_ID)
         viewModel.loadSong(TUNING_SONG_ID)
 
-        assertEquals(LessonStatus.PAUSED, status)
+        assertNull(viewModel.progress.value)
+        assertFalse(viewModel.isLearningMode.value)
         assertNull(viewModel.tuningStartWarning.value)
         assertNotNull(viewModel.tuningWarning.value)
     }
