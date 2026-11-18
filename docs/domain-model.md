@@ -178,7 +178,7 @@ Oktawy są sprawdzane w kolejności: bieżąca, `0`, pozostałe. Analiza nie szu
 Ostrzeżenia na ekranie utworu (tylko przy znanym strojeniu, §3.1):
 
 - **Baner** pod przyciskami nauki, gdy wynik nie jest `Compatible`. Mówi o zmianie tonacji i oktawy („Zmień tonację na: G-dur”, „Zmień oktawę na: +1”), a nie o pojedynczych przełącznikach. Przycisk „Pomoc w strojeniu” otwiera ekran „Harfa” z kartą utworu (§3.3). Baner znika sam po przestrojeniu harfy.
-- **Dialog przy ręcznym starcie nauki**: „Otwórz pomoc w strojeniu”, „Zacznij mimo to” albo „Anuluj”. Lekcja wznowiona z zapisanego postępu nie pokazuje dialogu, tylko baner.
+- **Dialog przy ręcznym starcie nauki**: „Otwórz pomoc w strojeniu”, „Zacznij mimo to” albo „Anuluj”. Zapisany postęp nie aktywuje lekcji przy wejściu na ekran; zostaje użyty dopiero po ręcznym rozpoczęciu nauki.
 - **Podpowiedź dla bieżącego kroku**, gdy jego nuta nie ma struny (`LESSON_STEP` z pustą maską, §5.3). Zastępuje baner i mówi, której nuty dotyczy.
 
 ---
@@ -351,5 +351,5 @@ Model **MUSI** przechodzić testy jednostkowe, które obejmują co najmniej:
 9. Sterowanie lekcją z `FakeInstrumentRepository` (`InstrumentLessonControllerTest`, `SongViewModelTest`) wysyła komendy z tabel w §5.3. Obejmuje to: pełną lekcję, pauzę i wznowienie (w tej samej i w nowej sesji), powtórzenie, utratę i odzyskanie połączenia, pominięcie sygnału zakolejkowanego w poprzedniej sesji, start bez połączenia, zmianę strojenia w trakcie kroku oraz harfę bez `CAP_LESSON`.
 10. Analiza strojenia (`AnalyzeTuningUseCase`) rozróżnia wszystkie wyniki z §3.4. Testy obejmują: strojenie naturalne, jeden przełącznik, oktawę, konflikt, nuty poza zakresem, enharmonię (`G#4` jako `Ab`), pierwszeństwo sugestii i brak grywalnej sugestii.
 11. `configurationKnown` jest `false` przed pierwszym `CONFIG_STATE` i po rozłączeniu. Bez połączenia i przed pierwszą ramką nie ma ostrzeżenia o strojeniu.
-12. Ostrzeżenia na ekranie utworu (`SongViewModelTest`): baner znika po przestrojeniu, dialog przy ręcznym starcie, brak dialogu przy wznowieniu, podpowiedź przy pustej masce i ponowny `LESSON_STEP` z właściwą maską po przestrojeniu.
+12. Ostrzeżenia na ekranie utworu (`SongViewModelTest`): baner znika po przestrojeniu, dialog przy ręcznym starcie, zapisany postęp nie aktywuje lekcji przy ponownym wejściu, podpowiedź przy pustej masce i ponowny `LESSON_STEP` z właściwą maską po przestrojeniu.
 13. Ekran „Harfa” (`HarpViewModelTest`): wykryta tonacja pokazuje wszystkie pasujące strojenia albo nic; karta utworu pojawia się tylko po wejściu z utworu i staje się `Compatible` po przestrojeniu.

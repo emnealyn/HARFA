@@ -133,6 +133,7 @@ class SongViewModel(
     private var sessionSubscriptionsJob: Job? = null
     private var activeSongId: String? = null
     private var lastSessionSongId: String? = null
+    private var restoredProgress: LessonProgress? = null
 
     private val currentSong: Song?
         get() = (_uiState.value as? SongUiState.Ready)?.song
@@ -279,6 +280,7 @@ class SongViewModel(
         }
         _lessonIssues.value = emptyList()
         _pendingStart.value = null
+        restoredProgress = null
         audioPlayer.release()
     }
 
@@ -309,8 +311,7 @@ class SongViewModel(
 
                 val savedProgress = getSongProgressUseCase.invoke(songId)
                 if (savedProgress != null && !savedProgress.isCompleted) {
-                    _pausedByUser.value = true
-                    updateProgress(savedProgress.pause())
+                    restoredProgress = savedProgress.pause()
                 }
 
                 _uiState.value = SongUiState.Ready(song)
@@ -346,13 +347,15 @@ class SongViewModel(
             is LessonValidation.Invalid -> {
                 _lessonIssues.value = validation.issues
                 _progress.value = null
+                restoredProgress = null
             }
         }
     }
 
     private fun beginLesson(lesson: Lesson) {
-        val restored = _progress.value
+        val restored = restoredProgress
             ?.takeIf { it.lesson.songId == lesson.songId && !it.isCompleted }
+        restoredProgress = null
         _pausedByUser.value = false
         val progress = restored?.resume() ?: LessonProgress.start(lesson)
         if (lastConnectionState == ConnectionState.CONNECTED) {
@@ -413,6 +416,7 @@ class SongViewModel(
         _pausedByUser.value = false
         _lessonIssues.value = emptyList()
         _pendingStart.value = null
+        restoredProgress = null
     }
 
     fun dismissLearningCompleteDialog() {
