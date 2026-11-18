@@ -2,6 +2,7 @@ package com.example.harpapp.presentation.viewmodel
 
 import com.example.harpapp.device.simulator.FakeInstrumentRepository
 import com.example.harpapp.domain.model.Accidental
+import com.example.harpapp.domain.model.AudioPlaybackState
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.Difficulty
 import com.example.harpapp.domain.model.HarpLayout
@@ -30,6 +31,8 @@ import com.example.harpapp.domain.usecase.SaveSongProgressUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -584,6 +587,8 @@ class SongViewModelTest {
 
     private object SilentAudioPlayer : AudioPlayer {
         var releaseCalls = 0
+        override val playbackState: StateFlow<AudioPlaybackState> =
+            MutableStateFlow(AudioPlaybackState.Idle)
 
         override fun toggle(assetPath: String, onCompleted: () -> Unit): Boolean = false
         override fun release() {
