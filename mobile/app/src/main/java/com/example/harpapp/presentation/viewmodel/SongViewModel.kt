@@ -198,7 +198,10 @@ class SongViewModel(
                     val newProgress = when (state) {
                         ConnectionState.CONNECTED ->
                             if (_pausedByUser.value) current
-                            else current.resume().also { lessonController.resume(it) }
+                            else {
+                                stopReferenceTrack()
+                                current.resume().also { lessonController.resume(it) }
+                            }
                         ConnectionState.SCANNING,
                         ConnectionState.CONNECTING,
                         ConnectionState.DISCOVERING_SERVICES,
@@ -353,6 +356,7 @@ class SongViewModel(
     }
 
     private fun beginLesson(lesson: Lesson) {
+        stopReferenceTrack()
         val restored = restoredProgress
             ?.takeIf { it.lesson.songId == lesson.songId && !it.isCompleted }
         restoredProgress = null
@@ -389,6 +393,7 @@ class SongViewModel(
         val current = _progress.value ?: return
         when (current.status) {
             LessonStatus.IN_PROGRESS -> {
+                stopReferenceTrack()
                 _pausedByUser.value = true
                 updateProgress(current.pause())
                 lessonController.pause()
@@ -396,6 +401,7 @@ class SongViewModel(
             LessonStatus.PAUSED -> {
                 if (!_pausedByUser.value) return
                 _pausedByUser.value = false
+                stopReferenceTrack()
                 if (lastConnectionState == ConnectionState.CONNECTED) {
                     val resumed = current.resume()
                     updateProgress(resumed)
@@ -417,6 +423,10 @@ class SongViewModel(
         _lessonIssues.value = emptyList()
         _pendingStart.value = null
         restoredProgress = null
+    }
+
+    private fun stopReferenceTrack() {
+        audioPlayer.release()
     }
 
     fun dismissLearningCompleteDialog() {
