@@ -22,6 +22,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,6 +56,8 @@ fun SongScreen(
 ) {
     val uiState by viewModel.uiState
     val isPlaying by viewModel.isPlaying
+    val isPreparingAudio by viewModel.isPreparingAudio
+    val audioPlaybackError by viewModel.audioPlaybackError
     val isLearningMode by viewModel.isLearningMode
     val currentNoteIndex by viewModel.currentNoteIndex
     val learningComplete by viewModel.learningComplete
@@ -76,6 +80,8 @@ fun SongScreen(
         is SongUiState.Ready -> SongContent(
             song = state.song,
             isPlaying = isPlaying,
+            isPreparingAudio = isPreparingAudio,
+            audioPlaybackError = audioPlaybackError,
             onPlayPauseClick = { viewModel.togglePlayPause() },
             isLearningMode = isLearningMode,
             onLearningModeClick = { viewModel.toggleLearningMode() },
@@ -193,6 +199,84 @@ private fun LessonPauseButton(
 }
 
 @Composable
+private fun ReferenceTrackButton(
+    isPlaying: Boolean,
+    isPreparingAudio: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val buttonContentDescription = when {
+        isPreparingAudio -> stringResource(R.string.reference_track_preparing)
+        isPlaying -> stringResource(R.string.reference_track_pause)
+        else -> stringResource(R.string.reference_track_play)
+    }
+
+    OutlinedIconButton(
+        onClick = onClick,
+        enabled = !isPreparingAudio,
+        modifier = modifier.semantics {
+            contentDescription = buttonContentDescription
+        },
+        shape = CircleShape,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+        colors = IconButtonDefaults.outlinedIconButtonColors(
+            contentColor = MaterialTheme.colorScheme.primary
+        )
+    ) {
+        if (isPreparingAudio) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp
+            )
+        } else {
+            Icon(
+                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReferenceTrackInfo(
+    isPreparingAudio: Boolean,
+    audioPlaybackError: Throwable?,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(R.string.reference_track_title),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            text = stringResource(R.string.reference_track_description),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        when {
+            isPreparingAudio -> Text(
+                text = stringResource(R.string.reference_track_preparing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            audioPlaybackError != null -> Text(
+                text = stringResource(R.string.reference_track_error),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
 fun SongContent(
     song: Song,
     isPlaying: Boolean,
@@ -200,6 +284,8 @@ fun SongContent(
     isLearningMode: Boolean,
     onLearningModeClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isPreparingAudio: Boolean = false,
+    audioPlaybackError: Throwable? = null,
     currentNoteIndex: Int = -1,
     learningComplete: Boolean = false,
     onDismissDialog: () -> Unit = {},
@@ -312,22 +398,19 @@ fun SongContent(
                             )
                         }
                         
-                        OutlinedIconButton(
+                        ReferenceTrackButton(
+                            isPlaying = isPlaying,
+                            isPreparingAudio = isPreparingAudio,
                             onClick = onPlayPauseClick,
-                            modifier = Modifier.size(44.dp),
-                            shape = CircleShape,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                            colors = IconButtonDefaults.outlinedIconButtonColors(
-                                contentColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                            modifier = Modifier.size(44.dp)
+                        )
                     }
+
+                    ReferenceTrackInfo(
+                        isPreparingAudio = isPreparingAudio,
+                        audioPlaybackError = audioPlaybackError,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
 
                     if (showLessonPause) {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -484,22 +567,19 @@ fun SongContent(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                    OutlinedIconButton(
+                    ReferenceTrackButton(
+                        isPlaying = isPlaying,
+                        isPreparingAudio = isPreparingAudio,
                         onClick = onPlayPauseClick,
-                        modifier = Modifier.size(48.dp),
-                        shape = CircleShape,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                        colors = IconButtonDefaults.outlinedIconButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause MIDI" else "Play MIDI",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                        modifier = Modifier.size(48.dp)
+                    )
                 }
+
+                ReferenceTrackInfo(
+                    isPreparingAudio = isPreparingAudio,
+                    audioPlaybackError = audioPlaybackError,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
                 if (showLessonPause) {
                     LessonPauseButton(

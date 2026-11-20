@@ -2,6 +2,7 @@ package com.example.harpapp.presentation.viewmodel
 
 import com.example.harpapp.device.simulator.FakeInstrumentRepository
 import com.example.harpapp.domain.model.Accidental
+import com.example.harpapp.domain.model.AudioPlaybackState
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.Difficulty
 import com.example.harpapp.domain.model.HarpLayout
@@ -30,6 +31,8 @@ import com.example.harpapp.domain.usecase.SaveSongProgressUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -64,6 +67,7 @@ class SongViewModelTest {
         ).associateBy { it.id }
         songRepository = InMemorySongRepository(songs)
         SilentAudioPlayer.releaseCalls = 0
+        SilentAudioPlayer.playbackStateMutable.value = AudioPlaybackState.Idle
         viewModel = SongViewModel(
             getSongUseCase = GetSongUseCase(songRepository),
             prepareLessonUseCase = PrepareLessonUseCase(),
@@ -120,6 +124,38 @@ class SongViewModelTest {
         val state = viewModel.uiState.value
         assertTrue("Unexpected state: $state", state is SongUiState.Error)
         assertEquals(failure, (state as SongUiState.Error).cause)
+    }
+
+    @Test
+    fun audioPlaybackStateIsExposedByViewModel() = runTest(dispatcher) {
+        SilentAudioPlayer.playbackStateMutable.value =
+            AudioPlaybackState.Playing("midi/test.mid")
+
+        assertTrue(viewModel.isPlaying.value)
+        assertFalse(viewModel.isPreparingAudio.value)
+        assertNull(viewModel.audioPlaybackError.value)
+
+        val failure = IllegalStateException("audio unavailable")
+        SilentAudioPlayer.playbackStateMutable.value =
+            AudioPlaybackState.Error("midi/test.mid", failure)
+
+        assertFalse(viewModel.isPlaying.value)
+        assertFalse(viewModel.isPreparingAudio.value)
+        assertEquals(failure, viewModel.audioPlaybackError.value)
+    }
+
+    @Test
+    fun startingLessonStopsReferenceTrack() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.loadSong(LESSON_SONG_ID)
+        SilentAudioPlayer.playbackStateMutable.value =
+            AudioPlaybackState.Playing("midi/test.mid")
+        val releaseCallsBeforeStart = SilentAudioPlayer.releaseCalls
+
+        viewModel.toggleLearningMode()
+
+        assertEquals(releaseCallsBeforeStart + 1, SilentAudioPlayer.releaseCalls)
+        assertEquals(AudioPlaybackState.Idle, SilentAudioPlayer.playbackStateMutable.value)
     }
 
     @Test
@@ -268,11 +304,12 @@ class SongViewModelTest {
         viewModel.startSession(LESSON_SONG_ID)
         advanceUntilIdle()
 
-        assertEquals(LessonStatus.PAUSED, status)
-        assertTrue(viewModel.canToggleLessonPause.value)
+        assertNull(viewModel.progress.value)
+        assertFalse(viewModel.isLearningMode.value)
+        assertFalse(viewModel.canToggleLessonPause.value)
         assertTrue(harp.sentCommands.isEmpty())
 
-        viewModel.toggleLessonPause()
+        viewModel.toggleLearningMode()
 
         assertEquals(LessonStatus.IN_PROGRESS, status)
         assertEquals(1, viewModel.currentNoteIndex.value)
@@ -343,6 +380,27 @@ class SongViewModelTest {
     }
 
     @Test
+    fun pausingAndResumingLessonStopsReferenceTrack() = runTest(dispatcher) {
+        startLessonOnConnectedHarp()
+
+        SilentAudioPlayer.playbackStateMutable.value =
+            AudioPlaybackState.Playing("midi/test.mid")
+        val releaseCallsBeforePause = SilentAudioPlayer.releaseCalls
+        viewModel.toggleLessonPause()
+
+        assertEquals(releaseCallsBeforePause + 1, SilentAudioPlayer.releaseCalls)
+        assertEquals(AudioPlaybackState.Idle, SilentAudioPlayer.playbackStateMutable.value)
+
+        SilentAudioPlayer.playbackStateMutable.value =
+            AudioPlaybackState.Playing("midi/test.mid")
+        val releaseCallsBeforeResume = SilentAudioPlayer.releaseCalls
+        viewModel.toggleLessonPause()
+
+        assertEquals(releaseCallsBeforeResume + 1, SilentAudioPlayer.releaseCalls)
+        assertEquals(AudioPlaybackState.Idle, SilentAudioPlayer.playbackStateMutable.value)
+    }
+
+    @Test
     fun userResumeAfterReconnectStartsLessonInNewSession() = runTest(dispatcher) {
         startLessonOnConnectedHarp()
         harp.pluck(2)
@@ -388,6 +446,9 @@ class SongViewModelTest {
         assertTrue(viewModel.isPausedByConnection.value)
         assertFalse(viewModel.canToggleLessonPause.value)
 
+        SilentAudioPlayer.playbackStateMutable.value =
+            AudioPlaybackState.Playing("midi/test.mid")
+        val releaseCallsBeforeReconnect = SilentAudioPlayer.releaseCalls
         viewModel.toggleLessonPause()
         assertEquals(LessonStatus.PAUSED, status)
 
@@ -395,6 +456,8 @@ class SongViewModelTest {
         harp.reconnect()
 
         assertEquals(LessonStatus.IN_PROGRESS, status)
+        assertEquals(releaseCallsBeforeReconnect + 1, SilentAudioPlayer.releaseCalls)
+        assertEquals(AudioPlaybackState.Idle, SilentAudioPlayer.playbackStateMutable.value)
         assertEquals(1, viewModel.currentNoteIndex.value)
         assertFalse(viewModel.isPausedByConnection.value)
         assertEquals(
@@ -543,7 +606,7 @@ class SongViewModelTest {
     }
 
     @Test
-    fun restoredLessonShowsBannerWithoutDialog() = runTest(dispatcher) {
+    fun savedProgressDoesNotActivateLessonWhenSongIsReloaded() = runTest(dispatcher) {
         harp.reconnect()
         viewModel.loadSong(TUNING_SONG_ID)
         viewModel.toggleLearningMode()
@@ -552,7 +615,8 @@ class SongViewModelTest {
         viewModel.loadSong(INVALID_SONG_ID)
         viewModel.loadSong(TUNING_SONG_ID)
 
-        assertEquals(LessonStatus.PAUSED, status)
+        assertNull(viewModel.progress.value)
+        assertFalse(viewModel.isLearningMode.value)
         assertNull(viewModel.tuningStartWarning.value)
         assertNotNull(viewModel.tuningWarning.value)
     }
@@ -584,10 +648,15 @@ class SongViewModelTest {
 
     private object SilentAudioPlayer : AudioPlayer {
         var releaseCalls = 0
+        val playbackStateMutable = MutableStateFlow<AudioPlaybackState>(
+            AudioPlaybackState.Idle
+        )
+        override val playbackState: StateFlow<AudioPlaybackState> = playbackStateMutable
 
         override fun toggle(assetPath: String, onCompleted: () -> Unit): Boolean = false
         override fun release() {
             releaseCalls++
+            playbackStateMutable.value = AudioPlaybackState.Idle
         }
     }
 
