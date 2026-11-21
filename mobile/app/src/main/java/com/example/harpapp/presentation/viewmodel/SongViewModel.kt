@@ -6,6 +6,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.harpapp.domain.model.AudioPlaybackProgress
 import com.example.harpapp.domain.model.AudioPlaybackState
 import com.example.harpapp.domain.model.CatalogIssue
 import com.example.harpapp.domain.model.ConnectionState
@@ -80,6 +81,8 @@ class SongViewModel(
         AudioPlaybackState.Idle
     )
     val audioPlaybackState: State<AudioPlaybackState> = _audioPlaybackState
+    private val _audioPlaybackProgress = mutableStateOf(AudioPlaybackProgress.EMPTY)
+    val audioPlaybackProgress: State<AudioPlaybackProgress> = _audioPlaybackProgress
     val isPlaying: State<Boolean> = derivedStateOf {
         _audioPlaybackState.value is AudioPlaybackState.Playing
     }
@@ -138,14 +141,6 @@ class SongViewModel(
     private val currentSong: Song?
         get() = (_uiState.value as? SongUiState.Ready)?.song
 
-    init {
-        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            audioPlayer.playbackState.collect { state ->
-                _audioPlaybackState.value = state
-            }
-        }
-    }
-
     private val tuningIsKnown: Boolean
         get() = _isConnected.value && _configurationKnown.value
 
@@ -176,6 +171,16 @@ class SongViewModel(
     private fun startSessionSubscriptions() {
         stopSessionSubscriptions()
         sessionSubscriptionsJob = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                audioPlayer.playbackState.collect { state ->
+                    _audioPlaybackState.value = state
+                }
+            }
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                audioPlayer.playbackProgress.collect { progress ->
+                    _audioPlaybackProgress.value = progress
+                }
+            }
             launch(start = CoroutineStart.UNDISPATCHED) {
                 instrumentState.collect { _instrumentState.value = it }
             }
@@ -285,6 +290,8 @@ class SongViewModel(
         _pendingStart.value = null
         restoredProgress = null
         audioPlayer.release()
+        _audioPlaybackState.value = AudioPlaybackState.Idle
+        _audioPlaybackProgress.value = AudioPlaybackProgress.EMPTY
     }
 
     fun loadSong(songId: String) {
@@ -441,6 +448,8 @@ class SongViewModel(
         val fileName = currentSong?.midiFilePath ?: return
         audioPlayer.toggle(fileName) {}
     }
+
+    fun seekTo(positionMs: Long): Boolean = audioPlayer.seekTo(positionMs)
 
     override fun onCleared() {
         endSession()

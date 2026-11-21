@@ -68,6 +68,7 @@ class SongViewModelTest {
         ).associateBy { it.id }
         songRepository = InMemorySongRepository(songs)
         SilentAudioPlayer.releaseCalls = 0
+        SilentAudioPlayer.lastSeekPositionMs = null
         SilentAudioPlayer.playbackStateMutable.value = AudioPlaybackState.Idle
         SilentAudioPlayer.playbackProgressMutable.value = AudioPlaybackProgress.EMPTY
         viewModel = SongViewModel(
@@ -130,6 +131,7 @@ class SongViewModelTest {
 
     @Test
     fun audioPlaybackStateIsExposedByViewModel() = runTest(dispatcher) {
+        viewModel.loadSong(LESSON_SONG_ID)
         SilentAudioPlayer.playbackStateMutable.value =
             AudioPlaybackState.Playing("midi/test.mid")
 
@@ -144,6 +146,50 @@ class SongViewModelTest {
         assertFalse(viewModel.isPlaying.value)
         assertFalse(viewModel.isPreparingAudio.value)
         assertEquals(failure, viewModel.audioPlaybackError.value)
+    }
+
+    @Test
+    fun audioPlaybackProgressIsExposedByViewModel() = runTest(dispatcher) {
+        viewModel.loadSong(LESSON_SONG_ID)
+        val progress = AudioPlaybackProgress(positionMs = 1_250L, durationMs = 10_000L)
+
+        SilentAudioPlayer.playbackProgressMutable.value = progress
+
+        assertEquals(progress, viewModel.audioPlaybackProgress.value)
+    }
+
+    @Test
+    fun seekToDelegatesToAudioPlayer() = runTest(dispatcher) {
+        viewModel.loadSong(LESSON_SONG_ID)
+        val progress = AudioPlaybackProgress(positionMs = 1_250L, durationMs = 10_000L)
+        SilentAudioPlayer.playbackProgressMutable.value = progress
+
+        assertTrue(viewModel.seekTo(4_000L))
+
+        assertEquals(4_000L, SilentAudioPlayer.lastSeekPositionMs)
+        assertEquals(4_000L, viewModel.audioPlaybackProgress.value.positionMs)
+    }
+
+    @Test
+    fun endingSongSessionStopsAudioCollectionAndResetsPlaybackState() = runTest(dispatcher) {
+        viewModel.loadSong(LESSON_SONG_ID)
+        SilentAudioPlayer.playbackStateMutable.value =
+            AudioPlaybackState.Playing("midi/test.mid")
+        SilentAudioPlayer.playbackProgressMutable.value =
+            AudioPlaybackProgress(positionMs = 1_250L, durationMs = 10_000L)
+
+        viewModel.endSession()
+
+        assertEquals(AudioPlaybackState.Idle, viewModel.audioPlaybackState.value)
+        assertEquals(AudioPlaybackProgress.EMPTY, viewModel.audioPlaybackProgress.value)
+
+        SilentAudioPlayer.playbackStateMutable.value =
+            AudioPlaybackState.Playing("midi/test.mid")
+        SilentAudioPlayer.playbackProgressMutable.value =
+            AudioPlaybackProgress(positionMs = 4_000L, durationMs = 10_000L)
+
+        assertFalse(viewModel.isPlaying.value)
+        assertEquals(AudioPlaybackProgress.EMPTY, viewModel.audioPlaybackProgress.value)
     }
 
     @Test
@@ -650,6 +696,7 @@ class SongViewModelTest {
 
     private object SilentAudioPlayer : AudioPlayer {
         var releaseCalls = 0
+        var lastSeekPositionMs: Long? = null
         val playbackStateMutable = MutableStateFlow<AudioPlaybackState>(
             AudioPlaybackState.Idle
         )
@@ -659,6 +706,7 @@ class SongViewModelTest {
 
         override fun toggle(assetPath: String, onCompleted: () -> Unit): Boolean = false
         override fun seekTo(positionMs: Long): Boolean {
+            lastSeekPositionMs = positionMs
             val current = playbackProgressMutable.value
             val target = if (current.durationMs > 0L) {
                 positionMs.coerceIn(0L, current.durationMs)
