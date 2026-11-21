@@ -8,6 +8,7 @@ import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.example.harpapp.domain.model.AudioPlaybackProgress
 import com.example.harpapp.domain.model.AudioPlaybackState
 import com.example.harpapp.domain.repository.AudioPlayer
 import java.io.IOException
@@ -41,6 +42,10 @@ class AndroidAssetAudioPlayer(
         AudioPlaybackState.Idle
     )
     override val playbackState: StateFlow<AudioPlaybackState> = _playbackState.asStateFlow()
+
+    private val _playbackProgress = MutableStateFlow(AudioPlaybackProgress.EMPTY)
+    override val playbackProgress: StateFlow<AudioPlaybackProgress> =
+        _playbackProgress.asStateFlow()
 
     private var mediaPlayer: MediaPlayer? = null
     private var currentAssetPath: String? = null
@@ -95,6 +100,35 @@ class AndroidAssetAudioPlayer(
         player?.release()
 
         _playbackState.value = AudioPlaybackState.Idle
+        _playbackProgress.value = AudioPlaybackProgress.EMPTY
+    }
+
+    override fun seekTo(positionMs: Long): Boolean {
+        val player = mediaPlayer ?: return false
+        val assetPath = currentAssetPath ?: return false
+        if (playbackState.value !is AudioPlaybackState.Playing &&
+            playbackState.value !is AudioPlaybackState.Paused
+        ) {
+            return false
+        }
+
+        val durationMs = _playbackProgress.value.durationMs
+        val targetPositionMs = if (durationMs > 0L) {
+            positionMs.coerceIn(0L, durationMs)
+        } else {
+            positionMs.coerceAtLeast(0L)
+        }
+
+        return try {
+            player.seekTo(targetPositionMs.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+            _playbackProgress.value = _playbackProgress.value.copy(
+                positionMs = targetPositionMs
+            )
+            true
+        } catch (exception: IllegalStateException) {
+            handleError(assetPath, exception, player)
+            false
+        }
     }
 
     private fun prepare(assetPath: String) {
@@ -145,6 +179,7 @@ class AndroidAssetAudioPlayer(
             return
         }
 
+        updatePlaybackProgress(player)
         if (!pendingStart) {
             _playbackState.value = AudioPlaybackState.Paused(assetPath)
             return
@@ -162,6 +197,7 @@ class AndroidAssetAudioPlayer(
                 assetPath = assetPath,
                 cause = IllegalStateException("Audio focus was not granted")
             )
+            _playbackProgress.value = AudioPlaybackProgress.EMPTY
             return false
         }
 
@@ -183,6 +219,7 @@ class AndroidAssetAudioPlayer(
         try {
             player.pause()
             abandonAudioFocus()
+            updatePlaybackProgress(player)
             _playbackState.value = AudioPlaybackState.Paused(assetPath)
         } catch (exception: IllegalStateException) {
             handleError(assetPath, exception, player)
@@ -198,6 +235,7 @@ class AndroidAssetAudioPlayer(
 
         try {
             player.seekTo(0)
+            updatePlaybackProgress(player)
             _playbackState.value = AudioPlaybackState.Paused(assetPath)
             completionCallback?.invoke()
         } catch (exception: IllegalStateException) {
@@ -222,6 +260,14 @@ class AndroidAssetAudioPlayer(
         player.release()
 
         _playbackState.value = AudioPlaybackState.Error(assetPath, exception)
+        _playbackProgress.value = AudioPlaybackProgress.EMPTY
+    }
+
+    private fun updatePlaybackProgress(player: MediaPlayer) {
+        _playbackProgress.value = AudioPlaybackProgress(
+            positionMs = player.currentPosition.toLong().coerceAtLeast(0L),
+            durationMs = player.duration.toLong().coerceAtLeast(0L)
+        )
     }
 
     private fun handleAudioFocusChange(focusChange: Int) {

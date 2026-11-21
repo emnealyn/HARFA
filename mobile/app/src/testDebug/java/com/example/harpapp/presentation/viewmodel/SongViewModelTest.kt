@@ -2,6 +2,7 @@ package com.example.harpapp.presentation.viewmodel
 
 import com.example.harpapp.device.simulator.FakeInstrumentRepository
 import com.example.harpapp.domain.model.Accidental
+import com.example.harpapp.domain.model.AudioPlaybackProgress
 import com.example.harpapp.domain.model.AudioPlaybackState
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.Difficulty
@@ -68,6 +69,7 @@ class SongViewModelTest {
         songRepository = InMemorySongRepository(songs)
         SilentAudioPlayer.releaseCalls = 0
         SilentAudioPlayer.playbackStateMutable.value = AudioPlaybackState.Idle
+        SilentAudioPlayer.playbackProgressMutable.value = AudioPlaybackProgress.EMPTY
         viewModel = SongViewModel(
             getSongUseCase = GetSongUseCase(songRepository),
             prepareLessonUseCase = PrepareLessonUseCase(),
@@ -651,12 +653,26 @@ class SongViewModelTest {
         val playbackStateMutable = MutableStateFlow<AudioPlaybackState>(
             AudioPlaybackState.Idle
         )
+        val playbackProgressMutable = MutableStateFlow(AudioPlaybackProgress.EMPTY)
         override val playbackState: StateFlow<AudioPlaybackState> = playbackStateMutable
+        override val playbackProgress: StateFlow<AudioPlaybackProgress> = playbackProgressMutable
 
         override fun toggle(assetPath: String, onCompleted: () -> Unit): Boolean = false
+        override fun seekTo(positionMs: Long): Boolean {
+            val current = playbackProgressMutable.value
+            val target = if (current.durationMs > 0L) {
+                positionMs.coerceIn(0L, current.durationMs)
+            } else {
+                positionMs.coerceAtLeast(0L)
+            }
+            playbackProgressMutable.value = current.copy(positionMs = target)
+            return true
+        }
+
         override fun release() {
             releaseCalls++
             playbackStateMutable.value = AudioPlaybackState.Idle
+            playbackProgressMutable.value = AudioPlaybackProgress.EMPTY
         }
     }
 
