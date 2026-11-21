@@ -24,6 +24,11 @@ class AndroidAssetAudioPlayer(
         appContext.getSystemService(AudioManager::class.java)
     )
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val progressTicker = PlaybackProgressTicker(
+        scheduler = HandlerProgressPollingScheduler(mainHandler),
+        onTick = ::updateCurrentPlaybackProgress,
+        intervalMs = PROGRESS_UPDATE_INTERVAL_MS
+    )
     private val audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
         .setAudioAttributes(
             AudioAttributes.Builder()
@@ -89,6 +94,7 @@ class AndroidAssetAudioPlayer(
     }
 
     override fun release() {
+        progressTicker.stop()
         pendingStart = false
         shouldResumeAfterFocusGain = false
         completionCallback = null
@@ -205,6 +211,8 @@ class AndroidAssetAudioPlayer(
             player.start()
             shouldResumeAfterFocusGain = false
             _playbackState.value = AudioPlaybackState.Playing(assetPath)
+            updatePlaybackProgress(player)
+            progressTicker.start()
             true
         } catch (exception: IllegalStateException) {
             handleError(assetPath, exception, player)
@@ -218,6 +226,7 @@ class AndroidAssetAudioPlayer(
 
         try {
             player.pause()
+            progressTicker.stop()
             abandonAudioFocus()
             updatePlaybackProgress(player)
             _playbackState.value = AudioPlaybackState.Paused(assetPath)
@@ -229,6 +238,7 @@ class AndroidAssetAudioPlayer(
     private fun handleCompletion(player: MediaPlayer, assetPath: String) {
         if (mediaPlayer !== player) return
 
+        progressTicker.stop()
         pendingStart = false
         shouldResumeAfterFocusGain = false
         abandonAudioFocus()
@@ -249,6 +259,7 @@ class AndroidAssetAudioPlayer(
         player: MediaPlayer
     ) {
         Log.e(TAG, "Could not play audio asset $assetPath", exception)
+        progressTicker.stop()
         pendingStart = false
         shouldResumeAfterFocusGain = false
         abandonAudioFocus()
@@ -270,6 +281,11 @@ class AndroidAssetAudioPlayer(
         )
     }
 
+    private fun updateCurrentPlaybackProgress() {
+        if (_playbackState.value !is AudioPlaybackState.Playing) return
+        mediaPlayer?.let(::updatePlaybackProgress)
+    }
+
     private fun handleAudioFocusChange(focusChange: Int) {
         val player = mediaPlayer ?: return
         val assetPath = currentAssetPath ?: return
@@ -289,6 +305,8 @@ class AndroidAssetAudioPlayer(
                     shouldResumeAfterFocusGain = true
                     try {
                         player.pause()
+                        progressTicker.stop()
+                        updatePlaybackProgress(player)
                         _playbackState.value = AudioPlaybackState.Paused(assetPath)
                     } catch (exception: IllegalStateException) {
                         handleError(assetPath, exception, player)
@@ -320,5 +338,6 @@ class AndroidAssetAudioPlayer(
 
     private companion object {
         const val TAG = "AndroidAssetAudioPlayer"
+        const val PROGRESS_UPDATE_INTERVAL_MS = 100L
     }
 }
