@@ -56,8 +56,6 @@
     <string name="application_theme">Motyw aplikacji</string>
     <string name="difficulty">Trudność: %1$s</string>
     <string name="duration">Czas trwania: %1$s</string>
-    <string name="reference_track_title">Ścieżka referencyjna</string>
-    <string name="reference_track_description">Opcjonalny odsłuch utworu z telefonu. Dźwięk harfy w czasie rzeczywistym generuje STM32.</string>
     <string name="reference_track_play">Odtwórz ścieżkę referencyjną</string>
     <string name="reference_track_pause">Wstrzymaj ścieżkę referencyjną</string>
     <string name="reference_track_preparing">Przygotowywanie ścieżki referencyjnej...</string>

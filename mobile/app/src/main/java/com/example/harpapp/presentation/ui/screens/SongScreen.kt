@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -347,60 +348,59 @@ private fun PlaybackWaveform(
             .height(48.dp)
     ) {
         Canvas(
-            modifier = Modifier
-                .matchParentSize()
-                .padding(horizontal = 8.dp)
+            modifier = Modifier.matchParentSize()
         ) {
             val gap = 3.dp.toPx()
+            val sliderThumbHalfWidth = 2.dp.toPx()
+            val trackStart = sliderThumbHalfWidth
+            val trackWidth = (size.width - sliderThumbHalfWidth * 2f).coerceAtLeast(0f)
             val originalBarCount = PLAYBACK_WAVEFORM_HEIGHTS.size
             val originalBarWidth = max(
                 1.dp.toPx(),
-                (size.width - gap * (originalBarCount - 1)) / originalBarCount
+                (trackWidth - gap * (originalBarCount - 1)) / originalBarCount
             )
             val targetBarWidth = max(1.dp.toPx(), originalBarWidth / 2f)
             val barCount = max(
                 1,
-                ((size.width + gap) / (targetBarWidth + gap)).toInt()
+                ((trackWidth + gap) / (targetBarWidth + gap)).toInt()
             )
             val barWidth = max(
                 1.dp.toPx(),
-                (size.width - gap * (barCount - 1)) / barCount
+                (trackWidth - gap * (barCount - 1)) / barCount
             )
             val centerY = size.height / 2f
             val maxHeight = size.height * 0.78f
 
-            repeat(barCount) { index ->
-                val shapeIndex = if (barCount == 1) {
-                    0
-                } else {
-                    (
-                        index.toFloat() / (barCount - 1) *
-                            (PLAYBACK_WAVEFORM_HEIGHTS.lastIndex)
-                        ).roundToInt()
+            fun drawBars(color: Color) {
+                repeat(barCount) { index ->
+                    val shapeIndex = if (barCount == 1) {
+                        0
+                    } else {
+                        (
+                            index.toFloat() / (barCount - 1) *
+                                (PLAYBACK_WAVEFORM_HEIGHTS.lastIndex)
+                            ).roundToInt()
+                    }
+                    val x = trackStart + barWidth / 2f + index * (barWidth + gap)
+                    val height = max(
+                        4.dp.toPx(),
+                        maxHeight * PLAYBACK_WAVEFORM_HEIGHTS[shapeIndex]
+                    )
+                    drawLine(
+                        color = color,
+                        start = Offset(x, centerY - height / 2f),
+                        end = Offset(x, centerY + height / 2f),
+                        strokeWidth = barWidth,
+                        cap = StrokeCap.Round
+                    )
                 }
-                val x = barWidth / 2f + index * (barWidth + gap)
-                val height = max(
-                    4.dp.toPx(),
-                    maxHeight * PLAYBACK_WAVEFORM_HEIGHTS[shapeIndex]
-                )
-                val positionFraction = if (barCount == 1) {
-                    0f
-                } else {
-                    index.toFloat() / (barCount - 1)
-                }
-                val isPlayed = positionFraction <= playedFraction
-                val color = if (isPlayed) {
-                    colors.primary
-                } else {
-                    colors.onSurfaceVariant.copy(alpha = 0.32f)
-                }
-                drawLine(
-                    color = color,
-                    start = Offset(x, centerY - height / 2f),
-                    end = Offset(x, centerY + height / 2f),
-                    strokeWidth = barWidth,
-                    cap = StrokeCap.Round
-                )
+            }
+
+            drawBars(colors.onSurfaceVariant.copy(alpha = 0.32f))
+            clipRect(
+                right = trackStart + trackWidth * playedFraction
+            ) {
+                drawBars(colors.primary)
             }
         }
 
