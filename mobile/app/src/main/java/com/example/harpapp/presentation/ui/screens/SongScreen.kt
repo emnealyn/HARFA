@@ -2,6 +2,7 @@ package com.example.harpapp.presentation.ui.screens
 
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -18,6 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -29,13 +32,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.harpapp.R
+import com.example.harpapp.domain.model.AudioPlaybackProgress
 import com.example.harpapp.domain.model.CatalogIssue
 import com.example.harpapp.domain.model.Difficulty
 import com.example.harpapp.domain.model.LyricNote
 import com.example.harpapp.domain.model.Song
 import com.example.harpapp.domain.model.TuningAnalysis
 import com.example.harpapp.presentation.ui.components.home.getCoverResourceId
-import com.example.harpapp.presentation.ui.components.home.DifficultyBadge
 import com.example.harpapp.presentation.ui.components.song.CompletedSongDialog
 import com.example.harpapp.presentation.ui.components.song.LessonIssuesDialog
 import com.example.harpapp.presentation.ui.components.song.LyricsDisplay
@@ -46,6 +49,14 @@ import com.example.harpapp.presentation.ui.theme.HARPAppTheme
 import com.example.harpapp.presentation.viewmodel.SongUiState
 import com.example.harpapp.presentation.viewmodel.SongViewModel
 import com.example.harpapp.presentation.viewmodel.StepTuningHint
+import kotlin.math.max
+import kotlin.math.roundToInt
+
+private val PLAYBACK_WAVEFORM_HEIGHTS = floatArrayOf(
+    0.28f, 0.52f, 0.38f, 0.72f, 0.46f, 0.86f, 0.62f, 0.34f,
+    0.58f, 0.78f, 0.42f, 0.68f, 0.32f, 0.54f, 0.9f, 0.5f,
+    0.74f, 0.4f, 0.64f, 0.82f, 0.36f, 0.56f, 0.76f, 0.44f
+)
 
 @Composable
 fun SongScreen(
@@ -58,6 +69,7 @@ fun SongScreen(
     val isPlaying by viewModel.isPlaying
     val isPreparingAudio by viewModel.isPreparingAudio
     val audioPlaybackError by viewModel.audioPlaybackError
+    val audioPlaybackProgress by viewModel.audioPlaybackProgress
     val isLearningMode by viewModel.isLearningMode
     val currentNoteIndex by viewModel.currentNoteIndex
     val learningComplete by viewModel.learningComplete
@@ -82,7 +94,9 @@ fun SongScreen(
             isPlaying = isPlaying,
             isPreparingAudio = isPreparingAudio,
             audioPlaybackError = audioPlaybackError,
+            audioPlaybackProgress = audioPlaybackProgress,
             onPlayPauseClick = { viewModel.togglePlayPause() },
+            onSeek = { positionMs -> viewModel.seekTo(positionMs) },
             isLearningMode = isLearningMode,
             onLearningModeClick = { viewModel.toggleLearningMode() },
             currentNoteIndex = if (isLearningMode) currentNoteIndex else -1,
@@ -226,6 +240,7 @@ private fun ReferenceTrackButton(
         if (isPreparingAudio) {
             CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
+                color = MaterialTheme.colorScheme.primary,
                 strokeWidth = 2.dp
             )
         } else {
@@ -239,41 +254,182 @@ private fun ReferenceTrackButton(
 }
 
 @Composable
-private fun ReferenceTrackInfo(
+private fun ReferenceTrackControls(
+    progress: AudioPlaybackProgress,
+    fallbackDurationText: String,
+    isPlaying: Boolean,
     isPreparingAudio: Boolean,
     audioPlaybackError: Throwable?,
+    onPlayPauseClick: () -> Unit,
+    onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val totalTimeText = if (progress.durationMs > 0L) {
+        formatPlaybackTime(progress.durationMs)
+    } else {
+        fallbackDurationText
+    }
+
     Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = modifier.fillMaxWidth()
     ) {
-        Text(
-            text = stringResource(R.string.reference_track_title),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            text = stringResource(R.string.reference_track_description),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                PlaybackWaveform(
+                    progress = progress,
+                    enabled = !isPreparingAudio && progress.durationMs > 0L,
+                    onSeek = { fraction ->
+                        val positionMs =
+                            (progress.durationMs.toDouble() * fraction).toLong()
+                        onSeek(positionMs)
+                    }
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = formatPlaybackTime(progress.positionMs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = totalTimeText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            ReferenceTrackButton(
+                isPlaying = isPlaying,
+                isPreparingAudio = isPreparingAudio,
+                onClick = onPlayPauseClick,
+                modifier = Modifier.size(48.dp)
+            )
+        }
+
         when {
             isPreparingAudio -> Text(
                 text = stringResource(R.string.reference_track_preparing),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                modifier = Modifier.padding(top = 4.dp)
             )
             audioPlaybackError != null -> Text(
                 text = stringResource(R.string.reference_track_error),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
     }
+}
+
+@Composable
+private fun PlaybackWaveform(
+    progress: AudioPlaybackProgress,
+    enabled: Boolean,
+    onSeek: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = MaterialTheme.colorScheme
+    val playedFraction = if (progress.durationMs > 0L) progress.fraction else 0f
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp)
+    ) {
+        Canvas(
+            modifier = Modifier
+                .matchParentSize()
+                .padding(horizontal = 8.dp)
+        ) {
+            val gap = 3.dp.toPx()
+            val originalBarCount = PLAYBACK_WAVEFORM_HEIGHTS.size
+            val originalBarWidth = max(
+                1.dp.toPx(),
+                (size.width - gap * (originalBarCount - 1)) / originalBarCount
+            )
+            val targetBarWidth = max(1.dp.toPx(), originalBarWidth / 2f)
+            val barCount = max(
+                1,
+                ((size.width + gap) / (targetBarWidth + gap)).toInt()
+            )
+            val barWidth = max(
+                1.dp.toPx(),
+                (size.width - gap * (barCount - 1)) / barCount
+            )
+            val centerY = size.height / 2f
+            val maxHeight = size.height * 0.78f
+
+            repeat(barCount) { index ->
+                val shapeIndex = if (barCount == 1) {
+                    0
+                } else {
+                    (
+                        index.toFloat() / (barCount - 1) *
+                            (PLAYBACK_WAVEFORM_HEIGHTS.lastIndex)
+                        ).roundToInt()
+                }
+                val x = barWidth / 2f + index * (barWidth + gap)
+                val height = max(
+                    4.dp.toPx(),
+                    maxHeight * PLAYBACK_WAVEFORM_HEIGHTS[shapeIndex]
+                )
+                val positionFraction = if (barCount == 1) {
+                    0f
+                } else {
+                    index.toFloat() / (barCount - 1)
+                }
+                val isPlayed = positionFraction <= playedFraction
+                val color = if (isPlayed) {
+                    colors.primary
+                } else {
+                    colors.onSurfaceVariant.copy(alpha = 0.32f)
+                }
+                drawLine(
+                    color = color,
+                    start = Offset(x, centerY - height / 2f),
+                    end = Offset(x, centerY + height / 2f),
+                    strokeWidth = barWidth,
+                    cap = StrokeCap.Round
+                )
+            }
+        }
+
+        Slider(
+            value = progress.fraction,
+            onValueChange = onSeek,
+            enabled = enabled,
+            modifier = Modifier.fillMaxSize(),
+            colors = SliderDefaults.colors(
+                thumbColor = colors.primary,
+                activeTrackColor = Color.Transparent,
+                inactiveTrackColor = Color.Transparent,
+                disabledThumbColor = if (progress.durationMs > 0L) {
+                    colors.primary.copy(alpha = 0.5f)
+                } else {
+                    Color.Transparent
+                },
+                disabledActiveTrackColor = Color.Transparent,
+                disabledInactiveTrackColor = Color.Transparent
+            )
+        )
+    }
+}
+
+private fun formatPlaybackTime(timeMs: Long): String {
+    val totalSeconds = timeMs.coerceAtLeast(0L) / 1_000L
+    val minutes = totalSeconds / 60L
+    val seconds = totalSeconds % 60L
+    return "$minutes:${seconds.toString().padStart(2, '0')}"
 }
 
 @Composable
@@ -286,6 +442,8 @@ fun SongContent(
     modifier: Modifier = Modifier,
     isPreparingAudio: Boolean = false,
     audioPlaybackError: Throwable? = null,
+    audioPlaybackProgress: AudioPlaybackProgress = AudioPlaybackProgress.EMPTY,
+    onSeek: (Long) -> Unit = {},
     currentNoteIndex: Int = -1,
     learningComplete: Boolean = false,
     onDismissDialog: () -> Unit = {},
@@ -355,36 +513,29 @@ fun SongContent(
                         textAlign = TextAlign.Center
                     )
 
-                    Row(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        DifficultyBadge(difficulty = song.difficulty)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = Icons.Default.AccessTime,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Text(
-                            text = song.duration,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    ReferenceTrackControls(
+                        progress = audioPlaybackProgress,
+                        fallbackDurationText = song.duration,
+                        isPlaying = isPlaying,
+                        isPreparingAudio = isPreparingAudio,
+                        audioPlaybackError = audioPlaybackError,
+                        onPlayPauseClick = onPlayPauseClick,
+                        onSeek = onSeek
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
                             onClick = onLearningModeClick,
-                            modifier = Modifier.weight(1f).height(44.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
@@ -397,20 +548,7 @@ fun SongContent(
                                 style = MaterialTheme.typography.labelLarge
                             )
                         }
-                        
-                        ReferenceTrackButton(
-                            isPlaying = isPlaying,
-                            isPreparingAudio = isPreparingAudio,
-                            onClick = onPlayPauseClick,
-                            modifier = Modifier.size(44.dp)
-                        )
                     }
-
-                    ReferenceTrackInfo(
-                        isPreparingAudio = isPreparingAudio,
-                        audioPlaybackError = audioPlaybackError,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
 
                     if (showLessonPause) {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -513,46 +651,28 @@ fun SongContent(
                     textAlign = TextAlign.Center
                 )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    DifficultyBadge(difficulty = song.difficulty)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End
-                    ){
-                        Icon(
-                            imageVector = Icons.Default.AccessTime,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Text(
-                            text = song.duration,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                ReferenceTrackControls(
+                    progress = audioPlaybackProgress,
+                    fallbackDurationText = song.duration,
+                    isPlaying = isPlaying,
+                    isPreparingAudio = isPreparingAudio,
+                    audioPlaybackError = audioPlaybackError,
+                    onPlayPauseClick = onPlayPauseClick,
+                    onSeek = onSeek
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
                         onClick = onLearningModeClick,
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -567,19 +687,7 @@ fun SongContent(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                    ReferenceTrackButton(
-                        isPlaying = isPlaying,
-                        isPreparingAudio = isPreparingAudio,
-                        onClick = onPlayPauseClick,
-                        modifier = Modifier.size(48.dp)
-                    )
                 }
-
-                ReferenceTrackInfo(
-                    isPreparingAudio = isPreparingAudio,
-                    audioPlaybackError = audioPlaybackError,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
 
                 if (showLessonPause) {
                     LessonPauseButton(
