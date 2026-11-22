@@ -337,7 +337,7 @@ class SongViewModelTest {
     }
 
     @Test
-    fun savedProgressIsRestoredOnlyAfterManualStart() = runTest(dispatcher) {
+    fun returningToActiveSongRestoresPausedLessonWithResumeChoices() = runTest(dispatcher) {
         harp.reconnect()
         viewModel.startSession(LESSON_SONG_ID)
         advanceUntilIdle()
@@ -352,12 +352,13 @@ class SongViewModelTest {
         viewModel.startSession(LESSON_SONG_ID)
         advanceUntilIdle()
 
-        assertNull(viewModel.progress.value)
-        assertFalse(viewModel.isLearningMode.value)
-        assertFalse(viewModel.canToggleLessonPause.value)
+        assertEquals(LessonStatus.PAUSED, status)
+        assertTrue(viewModel.canResumeLearning.value)
+        assertTrue(viewModel.showResumeChoices.value)
+        assertTrue(viewModel.isLearningMode.value)
         assertTrue(harp.sentCommands.isEmpty())
 
-        viewModel.toggleLearningMode()
+        viewModel.resumeLearning()
 
         assertEquals(LessonStatus.IN_PROGRESS, status)
         assertEquals(1, viewModel.currentNoteIndex.value)
@@ -370,7 +371,59 @@ class SongViewModelTest {
     }
 
     @Test
-    fun switchingToAnotherSongClearsPreviousLessonProgress() = runTest(dispatcher) {
+    fun restartingFromBeginningIgnoresSavedProgress() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+        viewModel.toggleLearningMode()
+        harp.pluck(2)
+        advanceUntilIdle()
+
+        viewModel.endSession()
+        advanceUntilIdle()
+        harp.clearRecordedCommands()
+
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.canResumeLearning.value)
+        viewModel.restartLearningFromBeginning()
+
+        assertEquals(LessonStatus.IN_PROGRESS, status)
+        assertEquals(0, viewModel.currentNoteIndex.value)
+        assertFalse(viewModel.canResumeLearning.value)
+        assertEquals(
+            listOf(
+                InstrumentCommand.StartLesson(totalSteps = 2),
+                InstrumentCommand.LessonStep(index = 0, mask = 1 shl 2)
+            ),
+            harp.sentCommands
+        )
+    }
+
+    @Test
+    fun stoppingLessonKeepsLastProgressAvailableForResume() = runTest(dispatcher) {
+        startLessonOnConnectedHarp()
+        harp.pluck(2)
+        advanceUntilIdle()
+        harp.clearRecordedCommands()
+
+        viewModel.toggleLearningMode()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLearningMode.value)
+        assertTrue(viewModel.canResumeLearning.value)
+        assertNull(viewModel.progress.value)
+
+        viewModel.resumeLearning()
+
+        assertEquals(LessonStatus.IN_PROGRESS, status)
+        assertEquals(1, viewModel.currentNoteIndex.value)
+        assertFalse(viewModel.canResumeLearning.value)
+    }
+
+    @Test
+    fun switchingSongsWithoutStartingKeepsActiveLesson() = runTest(dispatcher) {
         harp.reconnect()
         viewModel.startSession(LESSON_SONG_ID)
         advanceUntilIdle()
@@ -388,8 +441,38 @@ class SongViewModelTest {
         viewModel.startSession(LESSON_SONG_ID)
         advanceUntilIdle()
 
-        assertNull(viewModel.progress.value)
+        assertEquals(LessonStatus.PAUSED, status)
+        assertTrue(viewModel.isLearningMode.value)
+        assertTrue(viewModel.showResumeChoices.value)
+    }
 
+    @Test
+    fun startingAnotherSongClearsPreviousActiveLesson() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+        viewModel.toggleLearningMode()
+        harp.pluck(2)
+        advanceUntilIdle()
+
+        viewModel.endSession()
+        advanceUntilIdle()
+        harp.clearRecordedCommands()
+
+        viewModel.startSession(TUNING_SONG_ID)
+        advanceUntilIdle()
+        viewModel.toggleLearningMode()
+        viewModel.confirmStartDespiteTuning()
+        advanceUntilIdle()
+
+        viewModel.endSession()
+        advanceUntilIdle()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertNull(viewModel.progress.value)
+        assertFalse(viewModel.isLearningMode.value)
+        assertFalse(viewModel.canResumeLearning.value)
         viewModel.toggleLearningMode()
 
         assertEquals(0, viewModel.currentNoteIndex.value)
@@ -654,7 +737,7 @@ class SongViewModelTest {
     }
 
     @Test
-    fun savedProgressDoesNotActivateLessonWhenSongIsReloaded() = runTest(dispatcher) {
+    fun activeLessonIsRestoredAfterReturningFromAnotherSong() = runTest(dispatcher) {
         harp.reconnect()
         viewModel.loadSong(TUNING_SONG_ID)
         viewModel.toggleLearningMode()
@@ -663,8 +746,9 @@ class SongViewModelTest {
         viewModel.loadSong(INVALID_SONG_ID)
         viewModel.loadSong(TUNING_SONG_ID)
 
-        assertNull(viewModel.progress.value)
-        assertFalse(viewModel.isLearningMode.value)
+        assertEquals(LessonStatus.PAUSED, status)
+        assertTrue(viewModel.isLearningMode.value)
+        assertTrue(viewModel.showResumeChoices.value)
         assertNull(viewModel.tuningStartWarning.value)
         assertNotNull(viewModel.tuningWarning.value)
     }

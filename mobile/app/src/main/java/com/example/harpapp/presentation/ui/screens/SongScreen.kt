@@ -72,6 +72,8 @@ fun SongScreen(
     val audioPlaybackError by viewModel.audioPlaybackError
     val audioPlaybackProgress by viewModel.audioPlaybackProgress
     val isLearningMode by viewModel.isLearningMode
+    val canResumeLearning by viewModel.canResumeLearning
+    val showResumeChoices by viewModel.showResumeChoices
     val currentNoteIndex by viewModel.currentNoteIndex
     val learningComplete by viewModel.learningComplete
     val lessonIssues by viewModel.lessonIssues
@@ -100,6 +102,10 @@ fun SongScreen(
             onSeek = { positionMs -> viewModel.seekTo(positionMs) },
             isLearningMode = isLearningMode,
             onLearningModeClick = { viewModel.toggleLearningMode() },
+            canResumeLearning = canResumeLearning,
+            showResumeChoices = showResumeChoices,
+            onResumeLearningClick = { viewModel.resumeLearning() },
+            onRestartLearningClick = { viewModel.restartLearningFromBeginning() },
             currentNoteIndex = if (isLearningMode) currentNoteIndex else -1,
             learningComplete = learningComplete,
             onDismissDialog = { viewModel.dismissLearningCompleteDialog() },
@@ -210,6 +216,96 @@ private fun LessonPauseButton(
             text = if (isPaused) stringResource(R.string.resume_learning)
             else stringResource(R.string.pause_learning)
         )
+    }
+}
+
+@Composable
+private fun LearningModeControls(
+    isLearningMode: Boolean,
+    canResumeLearning: Boolean,
+    showResumeChoices: Boolean,
+    onLearningModeClick: () -> Unit,
+    onResumeLearningClick: () -> Unit,
+    onRestartLearningClick: () -> Unit,
+    compact: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val buttonHeight = if (compact) 44.dp else 48.dp
+    val textStyle = if (compact) {
+        MaterialTheme.typography.labelLarge
+    } else {
+        MaterialTheme.typography.titleMedium
+    }
+    val fontWeight = if (compact) null else FontWeight.SemiBold
+    val buttonShape = if (compact) {
+        MaterialTheme.shapes.medium
+    } else {
+        MaterialTheme.shapes.large
+    }
+    val buttonColors = ButtonDefaults.buttonColors(
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimary
+    )
+    val showChoiceRow = canResumeLearning && (!isLearningMode || showResumeChoices)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (isLearningMode || !showChoiceRow) {
+            Button(
+                onClick = onLearningModeClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(buttonHeight),
+                colors = buttonColors,
+                shape = buttonShape
+            ) {
+                Text(
+                    text = if (isLearningMode) stringResource(R.string.stop_learning)
+                    else stringResource(R.string.start_learning),
+                    style = textStyle,
+                    fontWeight = fontWeight
+                )
+            }
+        }
+
+        if (showChoiceRow) {
+            if (isLearningMode) {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onResumeLearningClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(buttonHeight),
+                    colors = buttonColors,
+                    shape = buttonShape
+                ) {
+                    Text(
+                        text = stringResource(R.string.resume_learning_short),
+                        style = textStyle,
+                        fontWeight = fontWeight
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onRestartLearningClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(buttonHeight),
+                    shape = buttonShape
+                ) {
+                    Text(
+                        text = stringResource(R.string.restart_learning_short),
+                        style = textStyle,
+                        fontWeight = fontWeight
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -440,6 +536,10 @@ fun SongContent(
     isLearningMode: Boolean,
     onLearningModeClick: () -> Unit,
     modifier: Modifier = Modifier,
+    canResumeLearning: Boolean = false,
+    showResumeChoices: Boolean = false,
+    onResumeLearningClick: () -> Unit = {},
+    onRestartLearningClick: () -> Unit = {},
     isPreparingAudio: Boolean = false,
     audioPlaybackError: Throwable? = null,
     audioPlaybackProgress: AudioPlaybackProgress = AudioPlaybackProgress.EMPTY,
@@ -465,7 +565,7 @@ fun SongContent(
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val showLessonPause = isLearningMode && !learningComplete
+    val showLessonPause = isLearningMode && !learningComplete && !showResumeChoices
 
     val imageResId = song.getCoverResourceId()
 
@@ -527,28 +627,15 @@ fun SongContent(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = onLearningModeClick,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text(
-                                text = if (isLearningMode) stringResource(R.string.stop_learning)
-                                else stringResource(R.string.start_learning),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
+                    LearningModeControls(
+                        isLearningMode = isLearningMode,
+                        canResumeLearning = canResumeLearning,
+                        showResumeChoices = showResumeChoices,
+                        onLearningModeClick = onLearningModeClick,
+                        onResumeLearningClick = onResumeLearningClick,
+                        onRestartLearningClick = onRestartLearningClick,
+                        compact = true
+                    )
 
                     if (showLessonPause) {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -665,29 +752,15 @@ fun SongContent(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = onLearningModeClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = MaterialTheme.shapes.large
-                    ) {
-                        Text(
-                            text = if (isLearningMode) stringResource(R.string.stop_learning)
-                            else stringResource(R.string.start_learning),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
+                LearningModeControls(
+                    isLearningMode = isLearningMode,
+                    canResumeLearning = canResumeLearning,
+                    showResumeChoices = showResumeChoices,
+                    onLearningModeClick = onLearningModeClick,
+                    onResumeLearningClick = onResumeLearningClick,
+                    onRestartLearningClick = onRestartLearningClick,
+                    compact = false
+                )
 
                 if (showLessonPause) {
                     LessonPauseButton(
