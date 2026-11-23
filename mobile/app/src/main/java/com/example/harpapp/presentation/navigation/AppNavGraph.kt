@@ -14,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -28,10 +27,11 @@ import com.example.harpapp.presentation.ui.components.TopBar
 import com.example.harpapp.presentation.ui.screens.BluetoothScreen
 import com.example.harpapp.presentation.ui.screens.HarpScreen
 import com.example.harpapp.presentation.ui.screens.HomeScreen
+import com.example.harpapp.presentation.ui.screens.InitializationLoadingScreen
 import com.example.harpapp.presentation.ui.screens.InitializationErrorScreen
 import com.example.harpapp.presentation.ui.screens.SettingsScreen
+import com.example.harpapp.presentation.ui.screens.SongEmptyScreen
 import com.example.harpapp.presentation.ui.screens.SongScreen
-import com.example.harpapp.presentation.ui.screens.SplashScreen
 import com.example.harpapp.initialization.AppInitializationState
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
 import com.example.harpapp.presentation.viewmodel.HarpViewModel
@@ -48,7 +48,7 @@ fun AppNavGraph(
 ) {
     when (initializationState) {
         AppInitializationState.Loading -> {
-            SplashScreen(onAnimationFinished = {})
+            InitializationLoadingScreen()
             return
         }
 
@@ -67,6 +67,13 @@ fun AppNavGraph(
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val isTopLevelRoute = when (currentRoute) {
+        Routes.HOME,
+        Routes.SONG,
+        Routes.SETTINGS -> true
+        Routes.HARP_PATTERN -> navBackStackEntry?.arguments?.getString("songId") == null
+        else -> false
+    }
 
     val normalizedRoute = when {
         currentRoute == Routes.HOME -> Routes.HOME
@@ -97,6 +104,26 @@ fun AppNavGraph(
         }
     }
 
+    fun navigateToTopLevel(route: String) {
+        if (route == Routes.HOME && navController.popBackStack(Routes.HOME, false)) {
+            return
+        }
+
+        navController.navigate(route) {
+            popUpTo(Routes.HOME) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    fun navigateToBluetooth() {
+        navController.navigate(Routes.BLUETOOTH) {
+            launchSingleTop = true
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -110,7 +137,7 @@ fun AppNavGraph(
                 else -> stringResource(R.string.app_name)
             }
 
-            if (currentRoute != Routes.SPLASH) {
+            if (currentRoute != null) {
                 TopBar(
                     title = title,
                     onBackClick = {
@@ -118,45 +145,30 @@ fun AppNavGraph(
                             navController.popBackStack()
                         }
                     },
+                    showBackButton = !isTopLevelRoute,
                     isBluetoothConnected = isBluetoothConnected,
-                    onBluetoothClick = {
-                        navController.navigate(Routes.BLUETOOTH) {
-                            launchSingleTop = true
-                        }
-                    },
+                    onBluetoothClick = ::navigateToBluetooth,
                     connectedDeviceName = connectedDeviceName,
                     batteryStatus = batteryStatus
                 )
             }
         },
         bottomBar = {
-            if (currentRoute != Routes.SPLASH) {
+            if (currentRoute != null) {
                 NavBar(
                     currentRoute = normalizedRoute,
                     onNavigate = { targetRoute ->
 
                         val finalRoute = if (targetRoute == Routes.SONG) {
-                            val lastOpenedSongId = songViewModel.song.value?.id
-                            if (!lastOpenedSongId.isNullOrEmpty()) {
-                                Routes.createSongRoute(lastOpenedSongId)
-                            } else {
-                                Routes.createSongRoute("another-love")
-                            }
+                            songViewModel.song.value?.id
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let { songId -> Routes.createSongRoute(songId) }
+                                ?: Routes.SONG
                         } else {
                             targetRoute
                         }
 
-                        navController.navigate(finalRoute) {
-                            val startDestinationId = navController.graph.findStartDestination().id
-
-                            popUpTo(startDestinationId) {
-                                saveState = (targetRoute == Routes.SETTINGS || targetRoute == Routes.HARP)
-                            }
-
-                            launchSingleTop = true
-                            restoreState = (targetRoute == Routes.SETTINGS || targetRoute == Routes.HARP)
-
-                        }
+                        navigateToTopLevel(finalRoute)
                     }
                 )
             }
@@ -166,22 +178,22 @@ fun AppNavGraph(
         Box(modifier = Modifier.padding(innerPadding)) {
         NavHost(
             navController = navController,
-            startDestination = Routes.SPLASH
+            startDestination = Routes.HOME
         ) {
-            composable(Routes.SPLASH) {
-                SplashScreen(onAnimationFinished = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
-                    }
-                })
-            }
-
             composable(Routes.HOME) {
                 HomeScreen(
                     viewModel = homeViewModel,
                     onNavigateToSong = { songId ->
                         navController.navigate(Routes.createSongRoute(songId))
 
+                    }
+                )
+            }
+
+            composable(Routes.SONG) {
+                SongEmptyScreen(
+                    onNavigateToHome = {
+                        navigateToTopLevel(Routes.HOME)
                     }
                 )
             }
@@ -207,9 +219,7 @@ fun AppNavGraph(
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     viewModel = settingsViewModel,
-                    onNavigateToBluetooth = {
-                        navController.navigate(Routes.BLUETOOTH)
-                    },
+                    onNavigateToBluetooth = ::navigateToBluetooth,
                     devTools = appContainer.devTools,
                     onNavigateToSimulator = {
                         navController.navigate(Routes.DEV_SIMULATOR)
@@ -233,9 +243,7 @@ fun AppNavGraph(
                 }
                 HarpScreen(
                     viewModel = harpViewModel,
-                    onNavigateToBluetooth = {
-                        navController.navigate(Routes.BLUETOOTH)
-                    },
+                    onNavigateToBluetooth = ::navigateToBluetooth,
                     onBackToSong = {
                         targetSongId?.let { songId ->
                             navController.navigate(Routes.createSongRoute(songId)) {
@@ -260,7 +268,7 @@ fun AppNavGraph(
             }
         }
 
-        if (normalizedRoute == Routes.SONG) {
+        if (currentRoute?.startsWith("song/") == true) {
             appContainer.devTools?.FloatingStrings(Modifier.fillMaxSize())
         }
         }
