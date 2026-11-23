@@ -2,6 +2,7 @@ package com.example.harpapp.presentation.ui.screens
 
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -18,22 +18,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.harpapp.R
+import com.example.harpapp.domain.model.AudioPlaybackProgress
 import com.example.harpapp.domain.model.CatalogIssue
 import com.example.harpapp.domain.model.Difficulty
 import com.example.harpapp.domain.model.LyricNote
 import com.example.harpapp.domain.model.Song
 import com.example.harpapp.domain.model.TuningAnalysis
 import com.example.harpapp.presentation.ui.components.home.getCoverResourceId
-import com.example.harpapp.presentation.ui.components.home.DifficultyBadge
 import com.example.harpapp.presentation.ui.components.song.CompletedSongDialog
 import com.example.harpapp.presentation.ui.components.song.LessonIssuesDialog
 import com.example.harpapp.presentation.ui.components.song.LyricsDisplay
@@ -44,6 +50,14 @@ import com.example.harpapp.presentation.ui.theme.HARPAppTheme
 import com.example.harpapp.presentation.viewmodel.SongUiState
 import com.example.harpapp.presentation.viewmodel.SongViewModel
 import com.example.harpapp.presentation.viewmodel.StepTuningHint
+import kotlin.math.max
+import kotlin.math.roundToInt
+
+private val PLAYBACK_WAVEFORM_HEIGHTS = floatArrayOf(
+    0.28f, 0.52f, 0.38f, 0.72f, 0.46f, 0.86f, 0.62f, 0.34f,
+    0.58f, 0.78f, 0.42f, 0.68f, 0.32f, 0.54f, 0.9f, 0.5f,
+    0.74f, 0.4f, 0.64f, 0.82f, 0.36f, 0.56f, 0.76f, 0.44f
+)
 
 @Composable
 fun SongScreen(
@@ -54,7 +68,12 @@ fun SongScreen(
 ) {
     val uiState by viewModel.uiState
     val isPlaying by viewModel.isPlaying
+    val isPreparingAudio by viewModel.isPreparingAudio
+    val audioPlaybackError by viewModel.audioPlaybackError
+    val audioPlaybackProgress by viewModel.audioPlaybackProgress
     val isLearningMode by viewModel.isLearningMode
+    val canResumeLearning by viewModel.canResumeLearning
+    val showResumeChoices by viewModel.showResumeChoices
     val currentNoteIndex by viewModel.currentNoteIndex
     val learningComplete by viewModel.learningComplete
     val lessonIssues by viewModel.lessonIssues
@@ -76,9 +95,17 @@ fun SongScreen(
         is SongUiState.Ready -> SongContent(
             song = state.song,
             isPlaying = isPlaying,
+            isPreparingAudio = isPreparingAudio,
+            audioPlaybackError = audioPlaybackError,
+            audioPlaybackProgress = audioPlaybackProgress,
             onPlayPauseClick = { viewModel.togglePlayPause() },
+            onSeek = { positionMs -> viewModel.seekTo(positionMs) },
             isLearningMode = isLearningMode,
             onLearningModeClick = { viewModel.toggleLearningMode() },
+            canResumeLearning = canResumeLearning,
+            showResumeChoices = showResumeChoices,
+            onResumeLearningClick = { viewModel.resumeLearning() },
+            onRestartLearningClick = { viewModel.restartLearningFromBeginning() },
             currentNoteIndex = if (isLearningMode) currentNoteIndex else -1,
             learningComplete = learningComplete,
             onDismissDialog = { viewModel.dismissLearningCompleteDialog() },
@@ -193,6 +220,315 @@ private fun LessonPauseButton(
 }
 
 @Composable
+private fun LearningModeControls(
+    isLearningMode: Boolean,
+    canResumeLearning: Boolean,
+    showResumeChoices: Boolean,
+    onLearningModeClick: () -> Unit,
+    onResumeLearningClick: () -> Unit,
+    onRestartLearningClick: () -> Unit,
+    compact: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val buttonHeight = if (compact) 44.dp else 48.dp
+    val textStyle = if (compact) {
+        MaterialTheme.typography.labelLarge
+    } else {
+        MaterialTheme.typography.titleMedium
+    }
+    val fontWeight = if (compact) null else FontWeight.SemiBold
+    val buttonShape = if (compact) {
+        MaterialTheme.shapes.medium
+    } else {
+        MaterialTheme.shapes.large
+    }
+    val buttonColors = ButtonDefaults.buttonColors(
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimary
+    )
+    val showChoiceRow = canResumeLearning && (!isLearningMode || showResumeChoices)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (isLearningMode || !showChoiceRow) {
+            Button(
+                onClick = onLearningModeClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(buttonHeight),
+                colors = buttonColors,
+                shape = buttonShape
+            ) {
+                Text(
+                    text = if (isLearningMode) stringResource(R.string.stop_learning)
+                    else stringResource(R.string.start_learning),
+                    style = textStyle,
+                    fontWeight = fontWeight
+                )
+            }
+        }
+
+        if (showChoiceRow) {
+            if (isLearningMode) {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onResumeLearningClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(buttonHeight),
+                    colors = buttonColors,
+                    shape = buttonShape
+                ) {
+                    Text(
+                        text = stringResource(R.string.resume_learning_short),
+                        style = textStyle,
+                        fontWeight = fontWeight
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onRestartLearningClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(buttonHeight),
+                    shape = buttonShape
+                ) {
+                    Text(
+                        text = stringResource(R.string.restart_learning_short),
+                        style = textStyle,
+                        fontWeight = fontWeight
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReferenceTrackButton(
+    isPlaying: Boolean,
+    isPreparingAudio: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val buttonContentDescription = when {
+        isPreparingAudio -> stringResource(R.string.reference_track_preparing)
+        isPlaying -> stringResource(R.string.reference_track_pause)
+        else -> stringResource(R.string.reference_track_play)
+    }
+
+    OutlinedIconButton(
+        onClick = onClick,
+        enabled = !isPreparingAudio,
+        modifier = modifier.semantics {
+            contentDescription = buttonContentDescription
+        },
+        shape = CircleShape,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+        colors = IconButtonDefaults.outlinedIconButtonColors(
+            contentColor = MaterialTheme.colorScheme.primary
+        )
+    ) {
+        if (isPreparingAudio) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 2.dp
+            )
+        } else {
+            Icon(
+                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReferenceTrackControls(
+    progress: AudioPlaybackProgress,
+    fallbackDurationText: String,
+    isPlaying: Boolean,
+    isPreparingAudio: Boolean,
+    audioPlaybackError: Throwable?,
+    onPlayPauseClick: () -> Unit,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val totalTimeText = if (progress.durationMs > 0L) {
+        formatPlaybackTime(progress.durationMs)
+    } else {
+        fallbackDurationText
+    }
+
+    Column(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                PlaybackWaveform(
+                    progress = progress,
+                    enabled = !isPreparingAudio && progress.durationMs > 0L,
+                    onSeek = { fraction ->
+                        val positionMs =
+                            (progress.durationMs.toDouble() * fraction).toLong()
+                        onSeek(positionMs)
+                    }
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = formatPlaybackTime(progress.positionMs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = totalTimeText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            ReferenceTrackButton(
+                isPlaying = isPlaying,
+                isPreparingAudio = isPreparingAudio,
+                onClick = onPlayPauseClick,
+                modifier = Modifier.size(48.dp)
+            )
+        }
+
+        when {
+            isPreparingAudio -> Text(
+                text = stringResource(R.string.reference_track_preparing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            audioPlaybackError != null -> Text(
+                text = stringResource(R.string.reference_track_error),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaybackWaveform(
+    progress: AudioPlaybackProgress,
+    enabled: Boolean,
+    onSeek: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = MaterialTheme.colorScheme
+    val playedFraction = if (progress.durationMs > 0L) progress.fraction else 0f
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp)
+    ) {
+        Canvas(
+            modifier = Modifier.matchParentSize()
+        ) {
+            val gap = 3.dp.toPx()
+            val sliderThumbHalfWidth = 2.dp.toPx()
+            val trackStart = sliderThumbHalfWidth
+            val trackWidth = (size.width - sliderThumbHalfWidth * 2f).coerceAtLeast(0f)
+            val originalBarCount = PLAYBACK_WAVEFORM_HEIGHTS.size
+            val originalBarWidth = max(
+                1.dp.toPx(),
+                (trackWidth - gap * (originalBarCount - 1)) / originalBarCount
+            )
+            val targetBarWidth = max(1.dp.toPx(), originalBarWidth / 2f)
+            val barCount = max(
+                1,
+                ((trackWidth + gap) / (targetBarWidth + gap)).toInt()
+            )
+            val barWidth = max(
+                1.dp.toPx(),
+                (trackWidth - gap * (barCount - 1)) / barCount
+            )
+            val centerY = size.height / 2f
+            val maxHeight = size.height * 0.78f
+
+            fun drawBars(color: Color) {
+                repeat(barCount) { index ->
+                    val shapeIndex = if (barCount == 1) {
+                        0
+                    } else {
+                        (
+                            index.toFloat() / (barCount - 1) *
+                                (PLAYBACK_WAVEFORM_HEIGHTS.lastIndex)
+                            ).roundToInt()
+                    }
+                    val x = trackStart + barWidth / 2f + index * (barWidth + gap)
+                    val height = max(
+                        4.dp.toPx(),
+                        maxHeight * PLAYBACK_WAVEFORM_HEIGHTS[shapeIndex]
+                    )
+                    drawLine(
+                        color = color,
+                        start = Offset(x, centerY - height / 2f),
+                        end = Offset(x, centerY + height / 2f),
+                        strokeWidth = barWidth,
+                        cap = StrokeCap.Round
+                    )
+                }
+            }
+
+            drawBars(colors.onSurfaceVariant.copy(alpha = 0.32f))
+            clipRect(
+                right = trackStart + trackWidth * playedFraction
+            ) {
+                drawBars(colors.primary)
+            }
+        }
+
+        Slider(
+            value = progress.fraction,
+            onValueChange = onSeek,
+            enabled = enabled,
+            modifier = Modifier.fillMaxSize(),
+            colors = SliderDefaults.colors(
+                thumbColor = colors.primary,
+                activeTrackColor = Color.Transparent,
+                inactiveTrackColor = Color.Transparent,
+                disabledThumbColor = if (progress.durationMs > 0L) {
+                    colors.primary.copy(alpha = 0.5f)
+                } else {
+                    Color.Transparent
+                },
+                disabledActiveTrackColor = Color.Transparent,
+                disabledInactiveTrackColor = Color.Transparent
+            )
+        )
+    }
+}
+
+private fun formatPlaybackTime(timeMs: Long): String {
+    val totalSeconds = timeMs.coerceAtLeast(0L) / 1_000L
+    val minutes = totalSeconds / 60L
+    val seconds = totalSeconds % 60L
+    return "$minutes:${seconds.toString().padStart(2, '0')}"
+}
+
+@Composable
 fun SongContent(
     song: Song,
     isPlaying: Boolean,
@@ -200,6 +536,14 @@ fun SongContent(
     isLearningMode: Boolean,
     onLearningModeClick: () -> Unit,
     modifier: Modifier = Modifier,
+    canResumeLearning: Boolean = false,
+    showResumeChoices: Boolean = false,
+    onResumeLearningClick: () -> Unit = {},
+    onRestartLearningClick: () -> Unit = {},
+    isPreparingAudio: Boolean = false,
+    audioPlaybackError: Throwable? = null,
+    audioPlaybackProgress: AudioPlaybackProgress = AudioPlaybackProgress.EMPTY,
+    onSeek: (Long) -> Unit = {},
     currentNoteIndex: Int = -1,
     learningComplete: Boolean = false,
     onDismissDialog: () -> Unit = {},
@@ -221,7 +565,7 @@ fun SongContent(
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val showLessonPause = isLearningMode && !learningComplete
+    val showLessonPause = isLearningMode && !learningComplete && !showResumeChoices
 
     val imageResId = song.getCoverResourceId()
 
@@ -269,65 +613,29 @@ fun SongContent(
                         textAlign = TextAlign.Center
                     )
 
-                    Row(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        DifficultyBadge(difficulty = song.difficulty)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = Icons.Default.AccessTime,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Text(
-                            text = song.duration,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    ReferenceTrackControls(
+                        progress = audioPlaybackProgress,
+                        fallbackDurationText = song.duration,
+                        isPlaying = isPlaying,
+                        isPreparingAudio = isPreparingAudio,
+                        audioPlaybackError = audioPlaybackError,
+                        onPlayPauseClick = onPlayPauseClick,
+                        onSeek = onSeek
+                    )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = onLearningModeClick,
-                            modifier = Modifier.weight(1f).height(44.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text(
-                                text = if (isLearningMode) stringResource(R.string.stop_learning)
-                                else stringResource(R.string.start_learning),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                        
-                        OutlinedIconButton(
-                            onClick = onPlayPauseClick,
-                            modifier = Modifier.size(44.dp),
-                            shape = CircleShape,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                            colors = IconButtonDefaults.outlinedIconButtonColors(
-                                contentColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    LearningModeControls(
+                        isLearningMode = isLearningMode,
+                        canResumeLearning = canResumeLearning,
+                        showResumeChoices = showResumeChoices,
+                        onLearningModeClick = onLearningModeClick,
+                        onResumeLearningClick = onResumeLearningClick,
+                        onRestartLearningClick = onRestartLearningClick,
+                        compact = true
+                    )
 
                     if (showLessonPause) {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -430,76 +738,29 @@ fun SongContent(
                     textAlign = TextAlign.Center
                 )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    DifficultyBadge(difficulty = song.difficulty)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End
-                    ){
-                        Icon(
-                            imageVector = Icons.Default.AccessTime,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Text(
-                            text = song.duration,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = onLearningModeClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = MaterialTheme.shapes.large
-                    ) {
-                        Text(
-                            text = if (isLearningMode) stringResource(R.string.stop_learning)
-                            else stringResource(R.string.start_learning),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    OutlinedIconButton(
-                        onClick = onPlayPauseClick,
-                        modifier = Modifier.size(48.dp),
-                        shape = CircleShape,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                        colors = IconButtonDefaults.outlinedIconButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause MIDI" else "Play MIDI",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
+                ReferenceTrackControls(
+                    progress = audioPlaybackProgress,
+                    fallbackDurationText = song.duration,
+                    isPlaying = isPlaying,
+                    isPreparingAudio = isPreparingAudio,
+                    audioPlaybackError = audioPlaybackError,
+                    onPlayPauseClick = onPlayPauseClick,
+                    onSeek = onSeek
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LearningModeControls(
+                    isLearningMode = isLearningMode,
+                    canResumeLearning = canResumeLearning,
+                    showResumeChoices = showResumeChoices,
+                    onLearningModeClick = onLearningModeClick,
+                    onResumeLearningClick = onResumeLearningClick,
+                    onRestartLearningClick = onRestartLearningClick,
+                    compact = false
+                )
 
                 if (showLessonPause) {
                     LessonPauseButton(

@@ -6,6 +6,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.harpapp.domain.model.AudioPlaybackProgress
+import com.example.harpapp.domain.model.AudioPlaybackState
 import com.example.harpapp.domain.model.CatalogIssue
 import com.example.harpapp.domain.model.ConnectionState
 import com.example.harpapp.domain.model.InstrumentState
@@ -75,11 +77,30 @@ class SongViewModel(
         (_uiState.value as? SongUiState.Ready)?.song
     }
 
-    private val _isPlaying = mutableStateOf(false)
-    val isPlaying: State<Boolean> = _isPlaying
+    private val _audioPlaybackState = mutableStateOf<AudioPlaybackState>(
+        AudioPlaybackState.Idle
+    )
+    val audioPlaybackState: State<AudioPlaybackState> = _audioPlaybackState
+    private val _audioPlaybackProgress = mutableStateOf(AudioPlaybackProgress.EMPTY)
+    val audioPlaybackProgress: State<AudioPlaybackProgress> = _audioPlaybackProgress
+    val isPlaying: State<Boolean> = derivedStateOf {
+        _audioPlaybackState.value is AudioPlaybackState.Playing
+    }
+    val isPreparingAudio: State<Boolean> = derivedStateOf {
+        _audioPlaybackState.value is AudioPlaybackState.Preparing
+    }
+    val audioPlaybackError: State<Throwable?> = derivedStateOf {
+        (_audioPlaybackState.value as? AudioPlaybackState.Error)?.cause
+    }
 
     private val _progress = mutableStateOf<LessonProgress?>(null)
     val progress: State<LessonProgress?> = _progress
+    private val _resumableProgress = mutableStateOf<LessonProgress?>(null)
+    val canResumeLearning: State<Boolean> = derivedStateOf {
+        _resumableProgress.value != null
+    }
+    private val _showResumeChoices = mutableStateOf(false)
+    val showResumeChoices: State<Boolean> = _showResumeChoices
 
     private val _lessonIssues = mutableStateOf<List<CatalogIssue>>(emptyList())
     val lessonIssues: State<List<CatalogIssue>> = _lessonIssues
@@ -107,7 +128,11 @@ class SongViewModel(
         }
     }
 
-    private data class PendingStart(val lesson: Lesson, val analysis: TuningAnalysis)
+    private data class PendingStart(
+        val lesson: Lesson,
+        val analysis: TuningAnalysis,
+        val resumeSavedProgress: Boolean
+    )
 
     private val _isConnected = mutableStateOf(false)
     private val _instrumentState = mutableStateOf(InstrumentState.DEFAULT)
@@ -120,7 +145,7 @@ class SongViewModel(
     private var sessionTransitionJob: Job? = null
     private var sessionSubscriptionsJob: Job? = null
     private var activeSongId: String? = null
-    private var lastSessionSongId: String? = null
+    private val _activeLearningSongId = mutableStateOf<String?>(null)
 
     private val currentSong: Song?
         get() = (_uiState.value as? SongUiState.Ready)?.song
@@ -156,6 +181,16 @@ class SongViewModel(
         stopSessionSubscriptions()
         sessionSubscriptionsJob = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
             launch(start = CoroutineStart.UNDISPATCHED) {
+                audioPlayer.playbackState.collect { state ->
+                    _audioPlaybackState.value = state
+                }
+            }
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                audioPlayer.playbackProgress.collect { progress ->
+                    _audioPlaybackProgress.value = progress
+                }
+            }
+            launch(start = CoroutineStart.UNDISPATCHED) {
                 instrumentState.collect { _instrumentState.value = it }
             }
             launch(start = CoroutineStart.UNDISPATCHED) {
@@ -177,7 +212,10 @@ class SongViewModel(
                     val newProgress = when (state) {
                         ConnectionState.CONNECTED ->
                             if (_pausedByUser.value) current
-                            else current.resume().also { lessonController.resume(it) }
+                            else {
+                                stopReferenceTrack()
+                                current.resume().also { lessonController.resume(it) }
+                            }
                         ConnectionState.SCANNING,
                         ConnectionState.CONNECTING,
                         ConnectionState.DISCOVERING_SERVICES,
@@ -221,19 +259,12 @@ class SongViewModel(
             return
         }
 
-        val previousSongId = lastSessionSongId
         if (activeSongId != null) endSession()
 
         activeSongId = songId
-        lastSessionSongId = songId
         startSessionSubscriptions()
         sessionTransitionJob?.cancel()
         sessionTransitionJob = viewModelScope.launch {
-            if (previousSongId != null && previousSongId != songId) {
-                progressSaveJob?.join()
-                deleteSongProgressUseCase(previousSongId)
-                lessonController.end()
-            }
             if (activeSongId == songId) {
                 loadSong(songId, forceReload = true)
             }
@@ -252,15 +283,25 @@ class SongViewModel(
         val current = _progress.value
         if (current != null && !current.isCompleted) {
             _pausedByUser.value = true
-            updateProgress(current.pause())
+            val paused = current.pause()
+            updateProgress(paused)
+            _resumableProgress.value = paused
+            _showResumeChoices.value = true
+            _activeLearningSongId.value = paused.lesson.songId
             lessonController.pause()
         } else {
             _pausedByUser.value = false
+            if (current?.isCompleted == true) {
+                _activeLearningSongId.value = null
+                _resumableProgress.value = null
+                _showResumeChoices.value = false
+            }
         }
         _lessonIssues.value = emptyList()
         _pendingStart.value = null
         audioPlayer.release()
-        _isPlaying.value = false
+        _audioPlaybackState.value = AudioPlaybackState.Idle
+        _audioPlaybackProgress.value = AudioPlaybackProgress.EMPTY
     }
 
     fun loadSong(songId: String) {
@@ -274,7 +315,6 @@ class SongViewModel(
         loadJob?.cancel()
         _uiState.value = SongUiState.Loading
         audioPlayer.release()
-        _isPlaying.value = false
         clearLessonState()
         _suggestedTuning.value = null
 
@@ -290,9 +330,16 @@ class SongViewModel(
                 _suggestedTuning.value = suggestedTuning
 
                 val savedProgress = getSongProgressUseCase.invoke(songId)
-                if (savedProgress != null && !savedProgress.isCompleted) {
+                if (
+                    savedProgress != null &&
+                    !savedProgress.isCompleted &&
+                    _activeLearningSongId.value == songId
+                ) {
+                    val paused = savedProgress.pause()
+                    _resumableProgress.value = paused
+                    _progress.value = paused
                     _pausedByUser.value = true
-                    updateProgress(savedProgress.pause())
+                    _showResumeChoices.value = true
                 }
 
                 _uiState.value = SongUiState.Ready(song)
@@ -309,33 +356,81 @@ class SongViewModel(
         if (_progress.value != null) {
             stopLearning()
         } else {
-            startLearning()
+            startLearning(resumeSavedProgress = false)
         }
     }
 
-    private fun startLearning() {
+    fun resumeLearning() {
+        val current = _progress.value
+        if (current != null && _showResumeChoices.value) {
+            _showResumeChoices.value = false
+            _pausedByUser.value = false
+            val resumed = current.resume()
+            if (lastConnectionState == ConnectionState.CONNECTED) {
+                updateProgress(resumed)
+                lessonController.resume(resumed)
+            } else {
+                updateProgress(resumed.pause())
+            }
+        } else if (current == null) {
+            startLearning(resumeSavedProgress = true)
+        }
+    }
+
+    fun restartLearningFromBeginning() {
+        if (_progress.value == null) {
+            startLearning(resumeSavedProgress = false)
+        } else {
+            restartLearning()
+        }
+    }
+
+    private fun startLearning(resumeSavedProgress: Boolean) {
         val song = currentSong ?: return
         when (val validation = prepareLessonUseCase(song)) {
             is LessonValidation.Valid -> {
                 _lessonIssues.value = emptyList()
                 val warning = tuningWarning.value
                 if (warning != null) {
-                    _pendingStart.value = PendingStart(validation.lesson, warning)
+                    _pendingStart.value = PendingStart(
+                        lesson = validation.lesson,
+                        analysis = warning,
+                        resumeSavedProgress = resumeSavedProgress
+                    )
                 } else {
-                    beginLesson(validation.lesson)
+                    beginLesson(validation.lesson, resumeSavedProgress)
                 }
             }
             is LessonValidation.Invalid -> {
                 _lessonIssues.value = validation.issues
                 _progress.value = null
+                _resumableProgress.value = null
             }
         }
     }
 
-    private fun beginLesson(lesson: Lesson) {
-        val restored = _progress.value
-            ?.takeIf { it.lesson.songId == lesson.songId && !it.isCompleted }
+    private fun beginLesson(lesson: Lesson, resumeSavedProgress: Boolean) {
+        val previousActiveSongId = _activeLearningSongId.value
+        if (previousActiveSongId != null && previousActiveSongId != lesson.songId) {
+            lessonController.end()
+            _activeLearningSongId.value = null
+            viewModelScope.launch {
+                progressSaveJob?.join()
+                deleteSongProgressUseCase(previousActiveSongId)
+            }
+        }
+
+        stopReferenceTrack()
+        val restored = _resumableProgress.value
+            ?.takeIf {
+                resumeSavedProgress &&
+                    it.lesson.songId == lesson.songId &&
+                    !it.isCompleted
+            }
+        _resumableProgress.value = null
+        _showResumeChoices.value = false
         _pausedByUser.value = false
+        _activeLearningSongId.value = lesson.songId
         val progress = restored?.resume() ?: LessonProgress.start(lesson)
         if (lastConnectionState == ConnectionState.CONNECTED) {
             updateProgress(progress)
@@ -352,7 +447,10 @@ class SongViewModel(
     fun confirmStartDespiteTuning() {
         val pending = _pendingStart.value ?: return
         _pendingStart.value = null
-        beginLesson(pending.lesson)
+        beginLesson(
+            lesson = pending.lesson,
+            resumeSavedProgress = pending.resumeSavedProgress
+        )
     }
 
     fun cancelTuningStart() {
@@ -361,13 +459,14 @@ class SongViewModel(
 
     fun restartLearning() {
         val current = _progress.value ?: return
-        beginLesson(current.lesson)
+        beginLesson(current.lesson, resumeSavedProgress = false)
     }
 
     fun toggleLessonPause() {
         val current = _progress.value ?: return
         when (current.status) {
             LessonStatus.IN_PROGRESS -> {
+                stopReferenceTrack()
                 _pausedByUser.value = true
                 updateProgress(current.pause())
                 lessonController.pause()
@@ -375,6 +474,7 @@ class SongViewModel(
             LessonStatus.PAUSED -> {
                 if (!_pausedByUser.value) return
                 _pausedByUser.value = false
+                stopReferenceTrack()
                 if (lastConnectionState == ConnectionState.CONNECTED) {
                     val resumed = current.resume()
                     updateProgress(resumed)
@@ -386,15 +486,32 @@ class SongViewModel(
     }
 
     private fun stopLearning() {
-        if (_progress.value != null) lessonController.end()
-        clearLessonState()
+        val current = _progress.value
+        if (current != null) {
+            lessonController.end()
+            _resumableProgress.value = current
+                .takeUnless { it.isCompleted }
+                ?.pause()
+            _resumableProgress.value?.let(::persistProgress)
+            _activeLearningSongId.value = null
+            _showResumeChoices.value = false
+        }
+        clearLessonState(clearResumable = false)
     }
 
-    private fun clearLessonState() {
+    private fun clearLessonState(clearResumable: Boolean = true) {
         _progress.value = null
         _pausedByUser.value = false
         _lessonIssues.value = emptyList()
         _pendingStart.value = null
+        _showResumeChoices.value = false
+        if (clearResumable) {
+            _resumableProgress.value = null
+        }
+    }
+
+    private fun stopReferenceTrack() {
+        audioPlayer.release()
     }
 
     fun dismissLearningCompleteDialog() {
@@ -407,10 +524,10 @@ class SongViewModel(
 
     fun togglePlayPause() {
         val fileName = currentSong?.midiFilePath ?: return
-        _isPlaying.value = audioPlayer.toggle(fileName) {
-            _isPlaying.value = false
-        }
+        audioPlayer.toggle(fileName) {}
     }
+
+    fun seekTo(positionMs: Long): Boolean = audioPlayer.seekTo(positionMs)
 
     override fun onCleared() {
         endSession()
