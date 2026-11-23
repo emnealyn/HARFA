@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -117,12 +118,8 @@ fun AppNavGraph(
     }
 
     fun navigateToTopLevel(route: String) {
-        if (route == Routes.HOME && navController.popBackStack(Routes.HOME, false)) {
-            return
-        }
-
         navController.navigate(route) {
-            popUpTo(Routes.HOME) {
+            popUpTo(navController.graph.findStartDestination().id) {
                 saveState = true
             }
             launchSingleTop = true
@@ -130,8 +127,38 @@ fun AppNavGraph(
         }
     }
 
+    fun navigateToSingleEntry(route: String) {
+        if (navController.popBackStack(route, false)) return
+
+        navController.navigate(route) {
+            launchSingleTop = true
+        }
+    }
+
     fun navigateToBluetooth() {
-        navController.navigate(Routes.BLUETOOTH) {
+        navigateToSingleEntry(Routes.BLUETOOTH)
+    }
+
+    fun navigateToSimulator() {
+        navigateToSingleEntry(Routes.DEV_SIMULATOR)
+    }
+
+    fun navigateToSong(songId: String) {
+        navigateToSingleEntry(Routes.createSongRoute(songId))
+    }
+
+    fun navigateToHarp(songId: String) {
+        navigateToSingleEntry(Routes.createHarpRoute(songId))
+    }
+
+    fun navigateBackToSong(songId: String) {
+        val songRoute = Routes.createSongRoute(songId)
+        if (navController.popBackStack(songRoute, false)) return
+
+        navController.navigate(songRoute) {
+            popUpTo(Routes.HARP_PATTERN) {
+                inclusive = true
+            }
             launchSingleTop = true
         }
     }
@@ -196,8 +223,7 @@ fun AppNavGraph(
                 HomeScreen(
                     viewModel = homeViewModel,
                     onNavigateToSong = { songId ->
-                        navController.navigate(Routes.createSongRoute(songId))
-
+                        navigateToSong(songId)
                     }
                 )
             }
@@ -221,9 +247,7 @@ fun AppNavGraph(
                     songId = songId,
                     viewModel = songViewModel,
                     onNavigateToHarp = {
-                        navController.navigate(Routes.createHarpRoute(songId)) {
-                            launchSingleTop = true
-                        }
+                        navigateToHarp(songId)
                     }
                 )
             }
@@ -233,9 +257,7 @@ fun AppNavGraph(
                     viewModel = settingsViewModel,
                     onNavigateToBluetooth = ::navigateToBluetooth,
                     devTools = appContainer.devTools,
-                    onNavigateToSimulator = {
-                        navController.navigate(Routes.DEV_SIMULATOR)
-                    }
+                    onNavigateToSimulator = ::navigateToSimulator
                 )
             }
 
@@ -257,12 +279,7 @@ fun AppNavGraph(
                     viewModel = harpViewModel,
                     onNavigateToBluetooth = ::navigateToBluetooth,
                     onBackToSong = {
-                        targetSongId?.let { songId ->
-                            navController.navigate(Routes.createSongRoute(songId)) {
-                                popUpTo(Routes.HARP_PATTERN) { inclusive = true }
-                                launchSingleTop = true
-                            }
-                        }
+                        targetSongId?.let(::navigateBackToSong)
                     }
                 )
             }
