@@ -8,6 +8,7 @@ import com.google.gson.JsonParseException
 import com.google.gson.reflect.TypeToken
 import java.io.IOException
 import java.io.InputStreamReader
+import java.io.Reader
 
 interface SongCatalogDataSource {
     fun getSongs(): List<SongCatalogDto>
@@ -27,7 +28,9 @@ class AssetSongCatalogDataSource(
     private val loadedSongs: List<SongCatalogDto> by lazy {
         try {
             context.assets.open(fileName).use { inputStream ->
-                InputStreamReader(inputStream, Charsets.UTF_8).use(::parseSongs)
+                InputStreamReader(inputStream, Charsets.UTF_8).use { reader ->
+                    SongCatalogParser.parse(reader, fileName)
+                }
             }
         } catch (exception: IOException) {
             throw CatalogLoadException(
@@ -46,8 +49,10 @@ class AssetSongCatalogDataSource(
 
     override fun getSong(songId: String): SongCatalogDto? =
         loadedSongs.firstOrNull { it.id == songId }
+}
+internal object SongCatalogParser {
 
-    private fun parseSongs(reader: InputStreamReader): List<SongCatalogDto> {
+    fun parse(reader: Reader, fileName: String): List<SongCatalogDto> {
         val type = object : TypeToken<List<RawSongCatalogDto?>>() {}.type
         val rawSongs: List<RawSongCatalogDto?>? = Gson().fromJson(reader, type)
 
@@ -88,7 +93,8 @@ class AssetSongCatalogDataSource(
                         syllable = note.syllable.orEmpty(),
                         note = note.note.orEmpty()
                     )
-                }
+                },
+                tuningId = song.tuningId?.takeIf { it.isNotBlank() }
             )
         }
     }
@@ -105,7 +111,8 @@ class AssetSongCatalogDataSource(
         val duration: String?,
         val midiFilePath: String?,
         val coverImage: String?,
-        val lyricsWithNotes: List<RawLyricNoteDto?>?
+        val lyricsWithNotes: List<RawLyricNoteDto?>?,
+        val tuningId: String?
     )
 
     private data class RawLyricNoteDto(
