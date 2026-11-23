@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +41,7 @@ import com.example.harpapp.presentation.ui.components.song.StepTuningHintBanner
 import com.example.harpapp.presentation.ui.components.song.TuningMismatchDialog
 import com.example.harpapp.presentation.ui.components.song.TuningWarningBanner
 import com.example.harpapp.presentation.ui.theme.HARPAppTheme
+import com.example.harpapp.presentation.viewmodel.SongUiState
 import com.example.harpapp.presentation.viewmodel.SongViewModel
 import com.example.harpapp.presentation.viewmodel.StepTuningHint
 
@@ -52,11 +52,7 @@ fun SongScreen(
     onNavigateToHarp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LaunchedEffect(songId) {
-        viewModel.loadSong(songId)
-    }
-
-    val song by viewModel.song
+    val uiState by viewModel.uiState
     val isPlaying by viewModel.isPlaying
     val isLearningMode by viewModel.isLearningMode
     val currentNoteIndex by viewModel.currentNoteIndex
@@ -70,35 +66,43 @@ fun SongScreen(
     val stepHint by viewModel.currentStepHint
     val songTuning by viewModel.songTuning
 
-    SongContent(
-        song = song,
-        isPlaying = isPlaying,
-        onPlayPauseClick = { viewModel.togglePlayPause() },
-        isLearningMode = isLearningMode,
-        onLearningModeClick = { viewModel.toggleLearningMode() },
-        currentNoteIndex = if (isLearningMode) currentNoteIndex else -1,
-        learningComplete = learningComplete,
-        onDismissDialog = { viewModel.dismissLearningCompleteDialog() },
-        lessonIssues = lessonIssues,
-        onDismissLessonIssues = { viewModel.dismissLessonIssues() },
-        isLessonPaused = isLessonPaused,
-        canToggleLessonPause = canToggleLessonPause,
-        onLessonPauseClick = { viewModel.toggleLessonPause() },
-        onPlayAgainClick = { viewModel.restartLearning() },
-        isPausedByConnection = isPausedByConnection,
-        songKey = songTuning?.name,
-        tuningWarning = tuningWarning,
-        stepHint = stepHint,
-        tuningStartWarning = tuningStartWarning,
-        onNavigateToHarp = onNavigateToHarp,
-        onStartDespiteTuning = { viewModel.confirmStartDespiteTuning() },
-        onCancelTuningStart = { viewModel.cancelTuningStart() },
-        onStartDialogGoToHarp = {
-            viewModel.cancelTuningStart()
-            onNavigateToHarp()
-        },
-        modifier = modifier
-    )
+    when (val state = uiState) {
+        SongUiState.Loading -> SongLoadingScreen(modifier)
+        SongUiState.NotFound -> SongNotFoundScreen(modifier)
+        is SongUiState.Error -> SongErrorScreen(
+            onRetry = { viewModel.loadSong(songId) },
+            modifier = modifier
+        )
+        is SongUiState.Ready -> SongContent(
+            song = state.song,
+            isPlaying = isPlaying,
+            onPlayPauseClick = { viewModel.togglePlayPause() },
+            isLearningMode = isLearningMode,
+            onLearningModeClick = { viewModel.toggleLearningMode() },
+            currentNoteIndex = if (isLearningMode) currentNoteIndex else -1,
+            learningComplete = learningComplete,
+            onDismissDialog = { viewModel.dismissLearningCompleteDialog() },
+            lessonIssues = lessonIssues,
+            onDismissLessonIssues = { viewModel.dismissLessonIssues() },
+            isLessonPaused = isLessonPaused,
+            canToggleLessonPause = canToggleLessonPause,
+            onLessonPauseClick = { viewModel.toggleLessonPause() },
+            onPlayAgainClick = { viewModel.restartLearning() },
+            isPausedByConnection = isPausedByConnection,
+            songKey = songTuning?.name,
+            tuningWarning = tuningWarning,
+            stepHint = stepHint,
+            tuningStartWarning = tuningStartWarning,
+            onNavigateToHarp = onNavigateToHarp,
+            onStartDespiteTuning = { viewModel.confirmStartDespiteTuning() },
+            onCancelTuningStart = { viewModel.cancelTuningStart() },
+            onStartDialogGoToHarp = {
+                viewModel.cancelTuningStart()
+                onNavigateToHarp()
+            },
+            modifier = modifier
+        )
+    }
 }
 
 @Composable
@@ -190,7 +194,7 @@ private fun LessonPauseButton(
 
 @Composable
 fun SongContent(
-    song: Song?,
+    song: Song,
     isPlaying: Boolean,
     onPlayPauseClick: () -> Unit,
     isLearningMode: Boolean,
@@ -219,34 +223,33 @@ fun SongContent(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val showLessonPause = isLearningMode && !learningComplete
 
-    if (song != null) {
-        val imageResId = song.getCoverResourceId()
+    val imageResId = song.getCoverResourceId()
 
-        if (isLandscape) {
-            Row(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
+    if (isLandscape) {
+        Row(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                Surface(
                     modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .size(140.dp)
+                        .aspectRatio(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    shadowElevation = 4.dp
                 ) {
-                    Surface(
-                        modifier = Modifier
-                            .size(140.dp)
-                            .aspectRatio(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        shadowElevation = 4.dp
-                    ) {
-                        Image(
-                            painter = painterResource(id = imageResId),
-                            contentDescription = "Album Cover",
-                            contentScale = ContentScale.Crop
-                        )
+                    Image(
+                        painter = painterResource(id = imageResId),
+                        contentDescription = "Album Cover",
+                        contentScale = ContentScale.Crop
+                    )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -553,30 +556,22 @@ fun SongContent(
             }
         }
 
-        if (learningComplete) {
-            CompletedSongDialog(onDismiss = onDismissDialog, onPlayAgain = onPlayAgainClick)
-        }
+    if (learningComplete) {
+        CompletedSongDialog(onDismiss = onDismissDialog, onPlayAgain = onPlayAgainClick)
+    }
 
-        if (lessonIssues.isNotEmpty()) {
-            LessonIssuesDialog(issues = lessonIssues, onDismiss = onDismissLessonIssues)
-        }
+    if (lessonIssues.isNotEmpty()) {
+        LessonIssuesDialog(issues = lessonIssues, onDismiss = onDismissLessonIssues)
+    }
 
-        tuningStartWarning?.let { analysis ->
-            TuningMismatchDialog(
-                analysis = analysis,
-                keyName = songKey,
-                onGoToHarp = onStartDialogGoToHarp,
-                onStartAnyway = onStartDespiteTuning,
-                onDismiss = onCancelTuningStart
-            )
-        }
-    } else {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-        }
+    tuningStartWarning?.let { analysis ->
+        TuningMismatchDialog(
+            analysis = analysis,
+            keyName = songKey,
+            onGoToHarp = onStartDialogGoToHarp,
+            onStartAnyway = onStartDespiteTuning,
+            onDismiss = onCancelTuningStart
+        )
     }
 }
 
