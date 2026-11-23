@@ -68,13 +68,6 @@ fun AppNavGraph(
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val isTopLevelRoute = when (currentRoute) {
-        Routes.HOME,
-        Routes.SONG,
-        Routes.SETTINGS -> true
-        Routes.HARP_PATTERN -> navBackStackEntry?.arguments?.getString("songId") == null
-        else -> false
-    }
 
     val normalizedRoute = when {
         currentRoute == Routes.HOME -> Routes.HOME
@@ -84,6 +77,19 @@ fun AppNavGraph(
         currentRoute == Routes.DEV_SIMULATOR -> Routes.DEV_SIMULATOR
         currentRoute?.startsWith("song/") == true -> Routes.SONG
         else -> currentRoute
+    }
+
+    val activeHarpSongId = navBackStackEntry
+        ?.takeIf { it.destination.route == Routes.HARP_PATTERN }
+        ?.arguments
+        ?.getString("songId")
+
+    val isTopLevelRoute = when (currentRoute) {
+        Routes.HOME,
+        Routes.SONG,
+        Routes.SETTINGS -> true
+        Routes.HARP_PATTERN -> activeHarpSongId == null
+        else -> false
     }
 
     val homeViewModel: HomeViewModel = viewModel(factory = appContainer.homeViewModelFactory)
@@ -163,6 +169,22 @@ fun AppNavGraph(
         }
     }
 
+    fun navigateBackFromCurrentRoute() {
+        when {
+            currentRoute == Routes.SONG_PATTERN -> {
+                if (!navController.popBackStack(Routes.HOME, false)) {
+                    navigateToTopLevel(Routes.HOME)
+                }
+            }
+
+            currentRoute == Routes.HARP_PATTERN && activeHarpSongId != null -> {
+                navigateBackToSong(activeHarpSongId)
+            }
+
+            !navController.popBackStack() -> navigateToTopLevel(Routes.HOME)
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -179,11 +201,7 @@ fun AppNavGraph(
             if (currentRoute != null) {
                 TopBar(
                     title = title,
-                    onBackClick = {
-                        if (navController.previousBackStackEntry != null) {
-                            navController.popBackStack()
-                        }
-                    },
+                    onBackClick = ::navigateBackFromCurrentRoute,
                     showBackButton = !isTopLevelRoute,
                     isBluetoothConnected = isBluetoothConnected,
                     onBluetoothClick = ::navigateToBluetooth,
