@@ -2,11 +2,13 @@ package com.example.harpapp
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.harpapp.di.AppContainer
 import com.example.harpapp.domain.model.ThemeMode
+import com.example.harpapp.initialization.AppInitializationState
 import com.example.harpapp.presentation.navigation.AppNavGraph
 import com.example.harpapp.presentation.viewmodel.SettingsViewModel
 import com.example.harpapp.presentation.ui.theme.HARPAppTheme
@@ -18,10 +20,14 @@ class MainActivity : AppCompatActivity() {
         get() = (application as HarpApplication).appContainer
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val harpApplication = application as HarpApplication
+        installSplashScreen().setKeepOnScreenCondition {
+            harpApplication.initializationState.value is AppInitializationState.Loading
+        }
+
         super.onCreate(savedInstanceState)
 
         setContent {
-            val harpApplication = application as HarpApplication
             val initializationState by harpApplication.initializationState.collectAsState()
             val settingsViewModel: SettingsViewModel = viewModel(
                 factory = appContainer.settingsViewModelFactory

@@ -36,6 +36,7 @@ import com.example.harpapp.presentation.ui.theme.extendedColors
 fun TopBar(
     title: String,
     onBackClick: () -> Unit,
+    showBackButton: Boolean = true,
     isBluetoothConnected: Boolean,
     onBluetoothClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -55,12 +56,14 @@ fun TopBar(
             )
         },
         navigationIcon = {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.back),
-                    tint = colors.onSurface
-                )
+            if (showBackButton) {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.back),
+                        tint = colors.onSurface
+                    )
+                }
             }
         },
         actions = {
