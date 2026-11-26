@@ -61,12 +61,38 @@ Rozważano tła z teksturą papieru. Nie wprowadzono ich, aby nie obniżać czyt
 Wybrano **Opcję D** oraz czcionkę **Lora Bold** dla tytułów. Ustalenia:
 
 * `Color.kt` i `Theme.kt` definiują pełny zestaw ról Material 3 dla obu motywów: kontenery `primary`/`secondary`/`tertiary`, `surfaceVariant`, wszystkie `surfaceContainer*`, `outline`, `outlineVariant`, `inverse*`, `error*`, a `surfaceTint` jest brązowy, nie fioletowy.
-* Kolory spoza Material 3 są w `ExtendedColors`, dostępnym jako `MaterialTheme.extendedColors` i dobieranym osobno dla trybu jasnego i ciemnego: stan połączenia, trudność utworu, kolory ♭/♮/♯ strun i przycisków strojenia, kolor nadchodzącej nuty, tytuł górnego paska i zaznaczona pozycja w dolnym pasku.
+* Kolory spoza Material 3 są w `ExtendedColors`, dostępnym jako `MaterialTheme.extendedColors` i dobieranym osobno dla trybu jasnego i ciemnego: stan połączenia z harfą, kolory komunikatów (sukces, ostrzeżenie), trudność utworu, kolory ♭/♮/♯ strun i przycisków strojenia, kolor nadchodzącej nuty, tytuł górnego paska i zaznaczona pozycja w dolnym pasku.
 * Poza pakietem `theme` nie ma literałów `Color(0x…)` ani `Color.Green` itp.
-* `errorContainer` jest półprzezroczysty i w stonowanej, ceglastej czerwieni, aby ostrzeżenia (np. niezgodne strojenie, utrata połączenia, niska bateria) nie były pastelowo różowe w trybie jasnym ani jaskrawe w ciemnym.
+* Komunikaty mają trzy rodzaje kolorów: sukces, ostrzeżenie i błąd (patrz niżej). Tła komunikatów (`successContainer`, `warningContainer`, `errorContainer`) są półprzezroczyste, aby w trybie jasnym nie były pastelowe, a w ciemnym jaskrawe.
 * Górny pasek ma kolor tła, tytuł wyrównany do lewej (Lora Bold) i status Bluetooth/baterii w zaokrąglonej pigułce. Dolny pasek jest stonowany i półprzezroczysty, a wyraźny kolor ma tylko zaznaczona ikona.
 * Paski systemowe obsługuje `enableEdgeToEdge` ze stylem jasnym lub ciemnym zgodnym z motywem wybranym w aplikacji (nie z motywem systemu), bez przestarzałych `window.statusBarColor` / `navigationBarColor`.
 * Ekrany stanu utworu (brak wybranego utworu, nie znaleziono, błąd ładowania) korzystają ze wspólnego `SongStatePlaceholder` w stylu palety.
+
+### Kolory komunikatów
+
+Rodzaj koloru zależy od tego, czy użytkownik może kontynuować, a nie od tematu komunikatu. Dlatego dwa komunikaty o strojeniu mają różne kolory.
+
+Każdy rodzaj ma ten sam zestaw trzech kolorów i używa ich w ten sam sposób:
+
+* **akcent** (`success`, `warning`, `error`): ikona, przycisk akcji i wyróżniony tekst, np. wynik analizy strojenia;
+* **tło** (`successContainer`, `warningContainer`, `errorContainer`): półprzezroczyste tło karty lub banera, bez obramowania;
+* **tekst** (`onSuccessContainer`, `onWarningContainer`, `onErrorContainer`): zwykły tekst na tym tle.
+
+| Rodzaj | Kiedy | Kolory (jasny / ciemny) | Gdzie jest używany |
+|---|---|---|---|
+| **Sukces** (zielony) | Wszystko jest gotowe, nie trzeba nic robić. | `success` `#2E8B3E` / `#43B04A`; `successContainer` ten sam kolor przy ~16% / ~22%; `onSuccessContainer` `#1E4D24` / `#C8EBC0`. | Karta „harfa gotowa” na ekranie Harfa. |
+| **Ostrzeżenie** (ochra / bursztyn) | Uprzedzenie z wyprzedzeniem: coś będzie wymagało uwagi, ale nic nie jest jeszcze zablokowane i można kontynuować. | `warning` `#845A00` / `#FDC434`; `warningContainer` `#EAA800` przy ~22% / `#F2A33A` przy ~28%; `onWarningContainer` `#573A00` / `#FFE3B0`. | Baner „Harfa nie jest nastrojona do tego utworu” na ekranie utworu (`TuningWarningBanner`): utwór da się zacząć, a część nut może nie wymagać zmiany. |
+| **Błąd** (ceglasta czerwień) | Coś blokuje dalsze działanie albo się nie udało i trzeba zareagować teraz. | `error` `#AC271C` / `#F07A66`; `errorContainer` `#D0402E` przy ~20% / `#D84A38` przy ~25%; `onErrorContainer` `#6A1208` / `#FFD2C7`. | Podpowiedź „Ta nuta wymaga innego ustawienia” w trakcie lekcji (`StepTuningHintBanner`), bo bieżącej nuty nie da się zagrać; baner utraty połączenia w trakcie lekcji; baner i ikona niskiej baterii; karta „harfa nie jest nastrojona” na ekranie Harfa; zaznaczenia przełączników i oktawy do zmiany; błędy połączenia na ekranie Bluetooth; błąd odtwarzania ścieżki referencyjnej; ekran błędu ładowania utworu. |
+
+Osobno od komunikatów istnieje kolor stanu `connected` (`#2E8B3E` / `#43B04A`). Opisuje stan połączenia z harfą, a nie wynik czynności: ikona Bluetooth i bateria w pigułce górnego paska po połączeniu oraz stan „połączono” na ekranie Bluetooth. Obecnie ma tę samą wartość co `success`, ale jest osobnym kolorem, aby zmiana jednego nie zmieniała drugiego.
+
+Zasady dla nowych komunikatów:
+
+* Ostrzeżenie stosujemy tylko wtedy, gdy użytkownik może zignorować komunikat i kontynuować. Jeśli bieżąca czynność nie może się udać (lekcja stoi, brak połączenia, błąd), używamy koloru błędu.
+* Na ekranie Harfa zaznaczenia przełączników i oktawy celowo zostają czerwone, mimo że ogólny baner na ekranie utworu jest ostrzeżeniem. Wskazują konkretną zmianę, którą trzeba wykonać, aby grać dalej.
+* Ikona i przycisk na komunikacie nigdy nie biorą domyślnego `primary`, tylko akcent swojego rodzaju.
+* Przezroczystości tła nie ustawia się w kodzie ekranu (`copy(alpha = …)`). Gotowe tła są zdefiniowane w motywie.
+* Tekst na tle (`on…Container`) spełnia kontrast co najmniej 4,5:1 we wszystkich trzech rodzajach i obu motywach. Akcent na własnym tle spełnia go dla ostrzeżenia (4,69 / 6,19) i błędu (4,63 / 4,65). Wyjątkiem jest sukces w trybie jasnym (patrz tabela kontrastu poniżej).
 
 ## Konsekwencje
 
@@ -81,7 +107,8 @@ Kryteria HARFA-36 wymagają co najmniej 4,5:1 dla tekstu i 3:1 dla ikon i elemen
 | Element | Motyw | Kontrast | Wymóg |
 |---|---|---|---|
 | Etykiety trudności: łatwy / średni / trudny (tekst na tle etykiety) | jasny | 2,89 / 2,02 / 3,70 | 4,5 |
-| Tekst „połączono” (`connected`, ekran Harfa) | jasny | 3,48 | 4,5 |
+| `connected` jako tekst: stan „połączono” na ekranie Bluetooth | jasny | 3,48 | 4,5 |
+| `success` jako tekst: wynik i przycisk na karcie „harfa gotowa” | jasny | 2,90 na tle karty | 4,5 |
 | `DarkPrimary` jako ikona/obramowanie na tle (obramowania przycisków strojenia, linia zakładek, kropka aktywnej nuty) | ciemny | 2,86 | 3 |
 | Struna ♭ na ilustracji harfy | ciemny | 2,68 | 3 |
 | `outlineVariant` (obramowania kart) | oba | 1,75 / 1,68 | 3 |
