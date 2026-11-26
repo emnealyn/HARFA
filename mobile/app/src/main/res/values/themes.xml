@@ -3,7 +3,7 @@
 
     <style name="Theme.HARPApp" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/harp</item>
-        <item name="postSplashScreenTheme">@style/Theme.AppCompat.NoActionBar</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.AppCompat.DayNight.NoActionBar</item>
     </style>
 </resources>
