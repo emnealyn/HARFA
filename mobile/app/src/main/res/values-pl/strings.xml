@@ -76,7 +76,7 @@
     <string name="nav_home">Główna</string>
     <string name="nav_song">Utwór</string>
     <string name="nav_settings">Ustawienia</string>
-    <string name="title_song_details">Szczegóły utworu</string>
+    <string name="title_song_details">Utwór</string>
     <string name="no_song_selected_title">Nie wybrano utworu</string>
     <string name="no_song_selected_message">Wybierz utwór na ekranie głównym, aby otworzyć jego szczegóły.</string>
     <string name="go_to_home">Przejdź do ekranu głównego</string>

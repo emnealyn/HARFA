@@ -10,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.Group
 import androidx.compose.ui.graphics.vector.Path
 import androidx.compose.ui.graphics.vector.addPathNodes
@@ -20,6 +19,7 @@ import com.example.harpapp.domain.model.Accidental
 import com.example.harpapp.domain.model.HarpLayout
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.StringId
+import com.example.harpapp.presentation.ui.theme.extendedColors
 
 private const val VIEWPORT_WIDTH = 156.6704f
 private const val VIEWPORT_HEIGHT = 208.8939f
@@ -68,11 +68,11 @@ private val stringPaths = listOf(
 
 @Composable
 fun tuningColor(accidental: Accidental): Color {
-    val colors = MaterialTheme.colorScheme
+    val colors = MaterialTheme.extendedColors
     return when (accidental) {
-        Accidental.SHARP -> lerp(colors.error, Color.White, 0.35f)
-        Accidental.FLAT -> lerp(colors.error, Color.Black, 0.4f)
-        Accidental.NATURAL -> colors.secondary
+        Accidental.SHARP -> colors.leverSharp
+        Accidental.FLAT -> colors.leverFlat
+        Accidental.NATURAL -> colors.leverNatural
     }
 }
 

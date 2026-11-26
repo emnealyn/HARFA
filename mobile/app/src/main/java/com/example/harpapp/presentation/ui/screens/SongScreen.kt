@@ -147,6 +147,7 @@ private fun ConnectionLostBanner(modifier: Modifier = Modifier) {
             Icon(
                 imageVector = Icons.Default.BluetoothDisabled,
                 contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
@@ -244,7 +245,7 @@ private fun LearningModeControls(
     }
     val buttonColors = ButtonDefaults.buttonColors(
         containerColor = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimary
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     )
     val showChoiceRow = canResumeLearning && (!isLearningMode || showResumeChoices)
 
