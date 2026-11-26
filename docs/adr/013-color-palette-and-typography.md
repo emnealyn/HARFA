@@ -84,8 +84,6 @@ Każdy rodzaj ma ten sam zestaw trzech kolorów i używa ich w ten sam sposób:
 | **Ostrzeżenie** (ochra / bursztyn) | Uprzedzenie z wyprzedzeniem: coś będzie wymagało uwagi, ale nic nie jest jeszcze zablokowane i można kontynuować. | `warning` `#845A00` / `#FDC434`; `warningContainer` `#EAA800` przy ~22% / `#F2A33A` przy ~28%; `onWarningContainer` `#573A00` / `#FFE3B0`. | Baner „Harfa nie jest nastrojona do tego utworu” na ekranie utworu (`TuningWarningBanner`): utwór da się zacząć, a część nut może nie wymagać zmiany. |
 | **Błąd** (ceglasta czerwień) | Coś blokuje dalsze działanie albo się nie udało i trzeba zareagować teraz. | `error` `#AC271C` / `#F07A66`; `errorContainer` `#D0402E` przy ~20% / `#D84A38` przy ~25%; `onErrorContainer` `#6A1208` / `#FFD2C7`. | Podpowiedź „Ta nuta wymaga innego ustawienia” w trakcie lekcji (`StepTuningHintBanner`), bo bieżącej nuty nie da się zagrać; baner utraty połączenia w trakcie lekcji; baner i ikona niskiej baterii; karta „harfa nie jest nastrojona” na ekranie Harfa; zaznaczenia przełączników i oktawy do zmiany; błędy połączenia na ekranie Bluetooth; błąd odtwarzania ścieżki referencyjnej; ekran błędu ładowania utworu. |
 
-Osobno od komunikatów istnieje kolor stanu `connected` (`#2E8B3E` / `#43B04A`). Opisuje stan połączenia z harfą, a nie wynik czynności: ikona Bluetooth i bateria w pigułce górnego paska po połączeniu oraz stan „połączono” na ekranie Bluetooth. Obecnie ma tę samą wartość co `success`, ale jest osobnym kolorem, aby zmiana jednego nie zmieniała drugiego.
-
 Zasady dla nowych komunikatów:
 
 * Ostrzeżenie stosujemy tylko wtedy, gdy użytkownik może zignorować komunikat i kontynuować. Jeśli bieżąca czynność nie może się udać (lekcja stoi, brak połączenia, błąd), używamy koloru błędu.
