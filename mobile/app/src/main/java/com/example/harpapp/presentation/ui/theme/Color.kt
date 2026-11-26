@@ -30,10 +30,10 @@ val LightOutlineVariant = Color(0xFFC9B59E)
 val LightInverseSurface = Color(0xFF3A2E27)
 val LightInverseOnSurface = Color(0xFFF3E9D9)
 val LightInversePrimary = Color(0xFFE3A3A0)
-val LightError = Color(0xFFA3322A)
+val LightError = Color(0xFFAC271C)
 val LightOnError = Color(0xFFF5ECDD)
-val LightErrorContainer = Color(0x2EA3402F)
-val LightOnErrorContainer = Color(0xFF5C1A14)
+val LightErrorContainer = Color(0x33D0402E)
+val LightOnErrorContainer = Color(0xFF6A1208)
 
 val DarkPrimary = Color(0xFFB32D3A)
 val DarkOnPrimary = Color(0xFFFBF1E4)
@@ -61,16 +61,17 @@ val DarkOutlineVariant = Color(0xFF4D3F36)
 val DarkInverseSurface = Color(0xFFEADFD0)
 val DarkInverseOnSurface = Color(0xFF2B221D)
 val DarkInversePrimary = Color(0xFF6B0F1A)
-val DarkError = Color(0xFFD9604F)
+val DarkError = Color(0xFFF07A66)
 val DarkOnError = Color(0xFF1C1613)
-val DarkErrorContainer = Color(0x33B5453A)
-val DarkOnErrorContainer = Color(0xFFF0C9BE)
-
-val Green = Color(0xFF295D2B)
+val DarkErrorContainer = Color(0x40D84A38)
+val DarkOnErrorContainer = Color(0xFFFFD2C7)
 
 @Immutable
 data class ExtendedColors(
     val connected: Color,
+    val success: Color,
+    val successContainer: Color,
+    val onSuccessContainer: Color,
     val topBarTitle: Color,
     val navSelected: Color,
     val difficultyEasy: Color,
@@ -80,11 +81,17 @@ data class ExtendedColors(
     val leverNatural: Color,
     val leverSharp: Color,
     val leverContent: Color,
-    val noteUpcoming: Color
+    val noteUpcoming: Color,
+    val warning: Color,
+    val warningContainer: Color,
+    val onWarningContainer: Color
 )
 
 val LightExtendedColors = ExtendedColors(
     connected = Color(0xFF2E8B3E),
+    success = Color(0xFF2E8B3E),
+    successContainer = Color(0x292E8B3E),
+    onSuccessContainer = Color(0xFF1E4D24),
     topBarTitle = LightPrimary,
     navSelected = LightPrimary,
     difficultyEasy = Color(0xFF3E9A2E),
@@ -94,11 +101,17 @@ val LightExtendedColors = ExtendedColors(
     leverNatural = Color(0xFF7A5C4A),
     leverSharp = Color(0xFFC25A3C),
     leverContent = LightPrimary,
-    noteUpcoming = LightPrimary
+    noteUpcoming = LightPrimary,
+    warning = Color(0xFF845A00),
+    warningContainer = Color(0x38EAA800),
+    onWarningContainer = Color(0xFF573A00)
 )
 
 val DarkExtendedColors = ExtendedColors(
     connected = Color(0xFF43B04A),
+    success = Color(0xFF43B04A),
+    successContainer = Color(0x3843B04A),
+    onSuccessContainer = Color(0xFFC8EBC0),
     topBarTitle = DarkOnSurface,
     navSelected = Color(0xFFE8737B),
     difficultyEasy = Color(0xFF5DBB3F),
@@ -108,7 +121,10 @@ val DarkExtendedColors = ExtendedColors(
     leverNatural = Color(0xFFB08560),
     leverSharp = Color(0xFFB85C44),
     leverContent = DarkOnSurface,
-    noteUpcoming = Color(0xFFE8737B)
+    noteUpcoming = Color(0xFFE8737B),
+    warning = Color(0xFFFDC434),
+    warningContainer = Color(0x48F2A33A),
+    onWarningContainer = Color(0xFFFFE3B0)
 )
 
 val LocalExtendedColors = staticCompositionLocalOf { LightExtendedColors }

@@ -2,7 +2,6 @@ package com.example.harpapp.presentation.ui.screens
 
 import android.content.res.Configuration
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +35,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -226,17 +224,22 @@ private fun HarpContent(
 private fun TargetCard(target: HarpTarget, onBackToSong: () -> Unit) {
     val analysis = target.analysis
     val ready = analysis == TuningAnalysis.Compatible
+    val statusColors = MaterialTheme.extendedColors
+    val accentColor = if (ready) statusColors.success else MaterialTheme.colorScheme.error
     val containerColor by animateColorAsState(
-        targetValue = if (ready) MaterialTheme.extendedColors.connected.copy(alpha = 0.1f) else MaterialTheme.colorScheme.errorContainer,
+        targetValue = if (ready) statusColors.successContainer else MaterialTheme.colorScheme.errorContainer,
         label = "targetCardColor"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (ready) statusColors.onSuccessContainer else MaterialTheme.colorScheme.onErrorContainer,
+        label = "targetCardContent"
     )
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
-            contentColor = if (ready) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onErrorContainer
-        ),
-        border = if (ready) BorderStroke(1.dp, MaterialTheme.extendedColors.connected.copy(alpha = 0.2f)) else null
+            contentColor = contentColor
+        )
     ) {
         Column(
             modifier = Modifier
@@ -263,7 +266,7 @@ private fun TargetCard(target: HarpTarget, onBackToSong: () -> Unit) {
                 Text(
                     text = tuningTitle(analysis),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (ready) MaterialTheme.extendedColors.connected else Color.Unspecified
+                    color = accentColor
                 )
                 tuningDetails(analysis).forEach { line ->
                     Text(text = line, style = MaterialTheme.typography.bodySmall)
@@ -273,7 +276,7 @@ private fun TargetCard(target: HarpTarget, onBackToSong: () -> Unit) {
                 TextButton(
                     onClick = onBackToSong,
                     contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.extendedColors.connected)
+                    colors = ButtonDefaults.textButtonColors(contentColor = accentColor)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,

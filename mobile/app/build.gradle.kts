@@ -71,7 +71,6 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.foundation.layout)
-    implementation(libs.androidx.compose.animation.graphics)
     ksp(libs.room.compiler)
 
     testImplementation(libs.junit)

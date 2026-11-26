@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,11 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import com.example.harpapp.R
 import com.example.harpapp.domain.model.Pitch
 import com.example.harpapp.domain.model.TuningAnalysis
 import com.example.harpapp.presentation.ui.components.harp.accidentalSymbol
 import com.example.harpapp.presentation.ui.components.harp.octaveShiftLabel
+import com.example.harpapp.presentation.ui.theme.extendedColors
 
 @Composable
 fun tuningTitle(analysis: TuningAnalysis): String = when (analysis) {
@@ -77,6 +80,9 @@ fun TuningWarningBanner(
         title = tuningTitle(analysis),
         details = songTuningDetails(analysis, keyName),
         onNavigateToHarp = onNavigateToHarp,
+        containerColor = MaterialTheme.extendedColors.warningContainer,
+        contentColor = MaterialTheme.extendedColors.onWarningContainer,
+        accentColor = MaterialTheme.extendedColors.warning,
         modifier = modifier
     )
 }
@@ -93,6 +99,9 @@ fun StepTuningHintBanner(
         title = stringResource(R.string.tuning_step_hint, pitch.toString()),
         details = songTuningDetails(analysis, keyName),
         onNavigateToHarp = onNavigateToHarp,
+        containerColor = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        accentColor = MaterialTheme.colorScheme.error,
         modifier = modifier
     )
 }
@@ -102,13 +111,16 @@ private fun WarningSurface(
     title: String,
     details: List<String>,
     onNavigateToHarp: () -> Unit,
+    containerColor: Color,
+    contentColor: Color,
+    accentColor: Color,
     modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer
+        color = containerColor,
+        contentColor = contentColor
     ) {
         Row(
             modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 4.dp),
@@ -117,6 +129,7 @@ private fun WarningSurface(
             Icon(
                 imageVector = Icons.Default.Warning,
                 contentDescription = null,
+                tint = accentColor,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
@@ -131,7 +144,8 @@ private fun WarningSurface(
                 }
                 TextButton(
                     onClick = onNavigateToHarp,
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = accentColor)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Tune,
