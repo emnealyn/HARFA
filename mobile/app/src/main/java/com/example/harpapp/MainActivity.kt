@@ -1,8 +1,12 @@
 package com.example.harpapp
 
+import android.graphics.Color
 import android.os.Bundle
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -34,8 +38,19 @@ class MainActivity : AppCompatActivity() {
             )
 
             val mode by settingsViewModel.themeMode.collectAsState()
+            val darkTheme = mode == ThemeMode.DARK
 
-            HARPAppTheme(darkTheme = (mode == ThemeMode.DARK)) {
+            DisposableEffect(darkTheme) {
+                val barStyle = if (darkTheme) {
+                    SystemBarStyle.dark(Color.TRANSPARENT)
+                } else {
+                    SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                }
+                enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
+                onDispose {}
+            }
+
+            HARPAppTheme(darkTheme = darkTheme) {
                 AppNavGraph(
                     appContainer = appContainer,
                     settingsViewModel = settingsViewModel,

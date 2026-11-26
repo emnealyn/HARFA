@@ -244,7 +244,7 @@ private fun LearningModeControls(
     }
     val buttonColors = ButtonDefaults.buttonColors(
         containerColor = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimary
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     )
     val showChoiceRow = canResumeLearning && (!isLearningMode || showResumeChoices)
 
