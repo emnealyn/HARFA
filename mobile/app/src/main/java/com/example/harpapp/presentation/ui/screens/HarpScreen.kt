@@ -56,7 +56,7 @@ import com.example.harpapp.presentation.ui.components.harp.LeverButtons
 import com.example.harpapp.presentation.ui.components.harp.OctaveShiftSection
 import com.example.harpapp.presentation.ui.components.song.tuningDetails
 import com.example.harpapp.presentation.ui.components.song.tuningTitle
-import com.example.harpapp.presentation.ui.theme.ConnectedGreen
+import com.example.harpapp.presentation.ui.theme.extendedColors
 import com.example.harpapp.presentation.viewmodel.HarpTarget
 import com.example.harpapp.presentation.viewmodel.HarpTab
 import com.example.harpapp.presentation.viewmodel.HarpUiState
@@ -227,7 +227,7 @@ private fun TargetCard(target: HarpTarget, onBackToSong: () -> Unit) {
     val analysis = target.analysis
     val ready = analysis == TuningAnalysis.Compatible
     val containerColor by animateColorAsState(
-        targetValue = if (ready) ConnectedGreen.copy(alpha = 0.1f) else MaterialTheme.colorScheme.errorContainer,
+        targetValue = if (ready) MaterialTheme.extendedColors.connected.copy(alpha = 0.1f) else MaterialTheme.colorScheme.errorContainer,
         label = "targetCardColor"
     )
     Card(
@@ -236,7 +236,7 @@ private fun TargetCard(target: HarpTarget, onBackToSong: () -> Unit) {
             containerColor = containerColor,
             contentColor = if (ready) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onErrorContainer
         ),
-        border = if (ready) BorderStroke(1.dp, ConnectedGreen.copy(alpha = 0.2f)) else null
+        border = if (ready) BorderStroke(1.dp, MaterialTheme.extendedColors.connected.copy(alpha = 0.2f)) else null
     ) {
         Column(
             modifier = Modifier
@@ -263,7 +263,7 @@ private fun TargetCard(target: HarpTarget, onBackToSong: () -> Unit) {
                 Text(
                     text = tuningTitle(analysis),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (ready) ConnectedGreen else Color.Unspecified
+                    color = if (ready) MaterialTheme.extendedColors.connected else Color.Unspecified
                 )
                 tuningDetails(analysis).forEach { line ->
                     Text(text = line, style = MaterialTheme.typography.bodySmall)
@@ -273,7 +273,7 @@ private fun TargetCard(target: HarpTarget, onBackToSong: () -> Unit) {
                 TextButton(
                     onClick = onBackToSong,
                     contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.textButtonColors(contentColor = ConnectedGreen)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.extendedColors.connected)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,

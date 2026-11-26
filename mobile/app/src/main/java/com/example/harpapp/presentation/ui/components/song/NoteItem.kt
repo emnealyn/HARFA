@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.harpapp.domain.model.LyricNote
 import com.example.harpapp.domain.model.NoteState
+import com.example.harpapp.presentation.ui.theme.extendedColors
 
 @Composable
 fun NoteItem(
@@ -56,7 +57,7 @@ fun NoteItem(
     val noteColor = when (state) {
         NoteState.DONE -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
         NoteState.ACTIVE -> MaterialTheme.colorScheme.primary
-        NoteState.UPCOMING -> MaterialTheme.colorScheme.primaryContainer
+        NoteState.UPCOMING -> MaterialTheme.extendedColors.noteUpcoming
     }
 
     val itemAlpha = if (state == NoteState.ACTIVE) pulseAlpha else 1f
@@ -107,8 +108,8 @@ fun NoteItem(
                 text = item.note,
                 maxLines = 1,
                 softWrap = false,
-                fontSize = 13.sp,
-                fontWeight = if (state == NoteState.ACTIVE) FontWeight.ExtraBold else FontWeight.Normal,
+                fontSize = 15.sp,
+                fontWeight = if (state == NoteState.ACTIVE) FontWeight.ExtraBold else FontWeight.Bold,
                 color = when (state) {
                     NoteState.ACTIVE -> MaterialTheme.colorScheme.onPrimary
                     NoteState.DONE -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)

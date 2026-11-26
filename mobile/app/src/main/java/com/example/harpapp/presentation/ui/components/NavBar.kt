@@ -1,5 +1,7 @@
 package com.example.harpapp.presentation.ui.components
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -9,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import com.example.harpapp.presentation.ui.theme.extendedColors
 
 @Composable
 fun NavBar(
@@ -25,41 +29,47 @@ fun NavBar(
     alwaysShowLabel: Boolean = false
 ) {
 
-    NavigationBar(
-        modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary
-    ) {
-        items.forEach { item ->
+    val colors = MaterialTheme.colorScheme
+    val accent = MaterialTheme.extendedColors.navSelected
 
-            val isSongRoute = currentRoute?.startsWith("song/") == true && item is NavBarItem.Song
-            val selected = currentRoute == item.route || isSongRoute
+    Column(modifier = modifier) {
+        HorizontalDivider(thickness = 0.5.dp, color = colors.outlineVariant.copy(alpha = 0.6f))
+        NavigationBar(
+            containerColor = colors.surface,
+            contentColor = colors.onSurfaceVariant,
+            tonalElevation = 0.dp
+        ) {
+            items.forEach { item ->
 
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = stringResource(item.titleResId)
+                val isSongRoute = currentRoute?.startsWith("song/") == true && item is NavBarItem.Song
+                val selected = currentRoute == item.route || isSongRoute
+
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = stringResource(item.titleResId)
+                        )
+                    },
+                    label = {
+                        Text(stringResource(item.titleResId))
+                    },
+                    selected = selected,
+                    onClick = {
+                        if (!selected) {
+                            onNavigate(item.route)
+                        }
+                    },
+                    alwaysShowLabel = alwaysShowLabel,
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = accent,
+                        selectedTextColor = accent,
+                        indicatorColor = accent.copy(alpha = 0.14f),
+                        unselectedIconColor = colors.onSurfaceVariant,
+                        unselectedTextColor = colors.onSurfaceVariant
                     )
-                },
-                label = {
-                    Text(stringResource(item.titleResId))
-                },
-                selected = selected,
-                onClick = {
-                    if (!selected) {
-                        onNavigate(item.route)
-                    }
-                },
-                alwaysShowLabel = alwaysShowLabel,
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                    selectedTextColor = MaterialTheme.colorScheme.onPrimary,
-                    indicatorColor = MaterialTheme.colorScheme.secondary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
-                    unselectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
                 )
-            )
+            }
         }
     }
 }

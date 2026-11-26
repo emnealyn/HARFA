@@ -72,7 +72,7 @@
     <string name="nav_home">Główna</string>
     <string name="nav_song">Utwór</string>
     <string name="nav_settings">Ustawienia</string>
-    <string name="title_song_details">Szczegóły utworu</string>
+    <string name="title_song_details">Utwór</string>
     <string name="title_bluetooth">Bluetooth</string>
     <string name="back">Cofnij</string>
     <string name="bluetooth_status">Status Połączenia</string>

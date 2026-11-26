@@ -25,6 +25,7 @@ import androidx.compose.ui.zIndex
 import com.example.harpapp.domain.model.Accidental
 import com.example.harpapp.domain.model.InstrumentState
 import com.example.harpapp.domain.model.NoteName
+import com.example.harpapp.presentation.ui.theme.extendedColors
 
 @Composable
 fun LeverButtons(
@@ -105,9 +106,13 @@ private fun LeverButton(
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
-    val tuningBackground by animateColorAsState(
-        targetValue = tuningColor(position).copy(alpha = 0.2f).compositeOver(colors.background),
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) colors.primary else tuningColor(position).copy(alpha = 0.2f).compositeOver(colors.background),
         label = "leverBackground"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) colors.onPrimary else MaterialTheme.extendedColors.leverContent,
+        label = "leverContent"
     )
 
     Surface(
@@ -115,8 +120,8 @@ private fun LeverButton(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = if (selected) colors.primary else tuningBackground,
-        contentColor = if (selected) colors.onPrimary else colors.primary,
+        color = containerColor,
+        contentColor = contentColor,
         border = if (highlighted) BorderStroke(3.dp, colors.error) else BorderStroke(1.dp, colors.primary)
     ) {
         Column(

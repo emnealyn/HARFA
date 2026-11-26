@@ -54,7 +54,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -70,6 +69,7 @@ import com.example.harpapp.domain.model.isOperationInProgress
 import com.example.harpapp.presentation.ui.connectionErrorMessage
 import com.example.harpapp.presentation.ui.connectionStateMessage
 import com.example.harpapp.presentation.ui.connectionStateTitle
+import com.example.harpapp.presentation.ui.theme.extendedColors
 import com.example.harpapp.presentation.viewmodel.BluetoothViewModel
 
 private sealed interface BluetoothPermissionAction {
@@ -175,7 +175,7 @@ fun BluetoothScreen(
 
     val statusColor = when {
         currentConnectionState == ConnectionState.CONNECTED ->
-            Color(0xFF3B8A40)
+            MaterialTheme.extendedColors.connected
         operationInProgress ->
             MaterialTheme.colorScheme.primary
         currentConnectionState == ConnectionState.DISCONNECTED ->

@@ -6,17 +6,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.harpapp.R
 import com.example.harpapp.domain.model.Difficulty
+import com.example.harpapp.presentation.ui.theme.extendedColors
 
 @Composable
 fun DifficultyBadge(
@@ -24,9 +25,9 @@ fun DifficultyBadge(
     modifier: Modifier = Modifier
 ) {
     val (difficultyText, difficultyColor) = when (difficulty) {
-        Difficulty.EASY -> stringResource(R.string.difficulty_easy) to Color(0xFF4CAF50)
-        Difficulty.MEDIUM -> stringResource(R.string.difficulty_medium) to Color(0xFFFFA726)
-        Difficulty.HARD -> stringResource(R.string.difficulty_hard) to Color(0xFFEF5350)
+        Difficulty.EASY -> stringResource(R.string.difficulty_easy) to MaterialTheme.extendedColors.difficultyEasy
+        Difficulty.MEDIUM -> stringResource(R.string.difficulty_medium) to MaterialTheme.extendedColors.difficultyMedium
+        Difficulty.HARD -> stringResource(R.string.difficulty_hard) to MaterialTheme.extendedColors.difficultyHard
     }
 
     Box(
