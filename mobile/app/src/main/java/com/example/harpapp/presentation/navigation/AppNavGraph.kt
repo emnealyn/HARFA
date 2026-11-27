@@ -27,7 +27,6 @@ import com.example.harpapp.presentation.ui.components.TopBar
 import com.example.harpapp.presentation.ui.screens.BluetoothScreen
 import com.example.harpapp.presentation.ui.screens.HarpScreen
 import com.example.harpapp.presentation.ui.screens.HomeScreen
-import com.example.harpapp.presentation.ui.screens.InitializationLoadingScreen
 import com.example.harpapp.presentation.ui.screens.InitializationErrorScreen
 import com.example.harpapp.presentation.ui.screens.SettingsScreen
 import com.example.harpapp.presentation.ui.screens.SongEmptyScreen
@@ -47,10 +46,7 @@ fun AppNavGraph(
     onRetryInitialization: () -> Unit
 ) {
     when (initializationState) {
-        AppInitializationState.Loading -> {
-            InitializationLoadingScreen()
-            return
-        }
+        AppInitializationState.Loading -> return
 
         is AppInitializationState.Error -> {
             InitializationErrorScreen(
