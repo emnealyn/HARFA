@@ -54,13 +54,16 @@ class AppContainer(
     val settingsRepository: SettingsRepository =
         DataStoreSettingsRepository(appContext.dataStore)
     val audioPlayer: AudioPlayer = AndroidAssetAudioPlayer(appContext)
-    private val instrumentSetup: InstrumentSetup? =
-        if (instrumentRepositoryOverride == null)
+    private val repositoryOverride = instrumentRepositoryOverride
+    private var instrumentSetup: InstrumentSetup? =
+        if (repositoryOverride == null)
             InstrumentModule.create(appContext) else null
-    val instrumentRepository: InstrumentRepository =
-        instrumentRepositoryOverride ?: instrumentSetup!!.repository
+    var instrumentRepository: InstrumentRepository =
+        repositoryOverride ?: instrumentSetup!!.repository
+        private set
 
-    val devTools: DevTools? = instrumentSetup?.devTools
+    val devTools: DevTools?
+        get() = instrumentSetup?.devTools
 
     private val observeSongsUseCase = ObserveSongsUseCase(songRepository)
     private val getSongUseCase = GetSongUseCase(songRepository)
@@ -80,29 +83,52 @@ class AppContainer(
         setFavoriteUseCase = setFavoriteUseCase
     )
 
-    val songViewModelFactory = SongViewModelFactory(
-        getSongUseCase = getSongUseCase,
-        prepareLessonUseCase = prepareLessonUseCase,
-        getSongProgressUseCase = getSongProgressUseCase,
-        deleteSongProgressUseCase = deleteSongProgressUseCase,
-        saveSongProgressUseCase = saveSongProgressUseCase,
-        audioPlayer = audioPlayer,
-        noteEvents = instrumentRepository.noteEvents,
-        connectionState = instrumentRepository.connectionState,
-        lessonControllerFactory = InstrumentLessonController.Factory(instrumentRepository),
-        instrumentState = instrumentRepository.instrumentState,
-        configurationKnown = instrumentRepository.configurationKnown,
-        getSongTuningUseCase = getSongTuningUseCase,
-        analyzeTuningUseCase = analyzeTuningUseCase
-    )
-
     val settingsViewModelFactory = SettingsViewModelFactory(settingsRepository)
-    val bluetoothViewModelFactory = BluetoothViewModelFactory(instrumentRepository)
-    val harpViewModelFactory = HarpViewModelFactory(
-        instrumentRepository = instrumentRepository,
-        getSongUseCase = getSongUseCase,
-        getSongTuningUseCase = getSongTuningUseCase,
-        analyzeTuningUseCase = analyzeTuningUseCase,
-        getTuningsUseCase = getTuningsUseCase
-    )
+    lateinit var songViewModelFactory: SongViewModelFactory
+        private set
+    lateinit var bluetoothViewModelFactory: BluetoothViewModelFactory
+        private set
+    lateinit var harpViewModelFactory: HarpViewModelFactory
+        private set
+
+    init {
+        rebuildInstrumentFactories()
+    }
+
+    fun recreateInstrumentDependencies() {
+        check(repositoryOverride == null) {
+            "Instrument dependencies cannot be recreated when a repository override is used"
+        }
+
+        instrumentRepository.disconnect()
+        instrumentSetup = InstrumentModule.create(appContext)
+        instrumentRepository = requireNotNull(instrumentSetup).repository
+        rebuildInstrumentFactories()
+    }
+
+    private fun rebuildInstrumentFactories() {
+        songViewModelFactory = SongViewModelFactory(
+            getSongUseCase = getSongUseCase,
+            prepareLessonUseCase = prepareLessonUseCase,
+            getSongProgressUseCase = getSongProgressUseCase,
+            deleteSongProgressUseCase = deleteSongProgressUseCase,
+            saveSongProgressUseCase = saveSongProgressUseCase,
+            audioPlayer = audioPlayer,
+            noteEvents = instrumentRepository.noteEvents,
+            connectionState = instrumentRepository.connectionState,
+            lessonControllerFactory = InstrumentLessonController.Factory(instrumentRepository),
+            instrumentState = instrumentRepository.instrumentState,
+            configurationKnown = instrumentRepository.configurationKnown,
+            getSongTuningUseCase = getSongTuningUseCase,
+            analyzeTuningUseCase = analyzeTuningUseCase
+        )
+        bluetoothViewModelFactory = BluetoothViewModelFactory(instrumentRepository)
+        harpViewModelFactory = HarpViewModelFactory(
+            instrumentRepository = instrumentRepository,
+            getSongUseCase = getSongUseCase,
+            getSongTuningUseCase = getSongTuningUseCase,
+            analyzeTuningUseCase = analyzeTuningUseCase,
+            getTuningsUseCase = getTuningsUseCase
+        )
+    }
 }

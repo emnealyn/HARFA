@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.example.harpapp.HarpApplication
 import com.example.harpapp.device.simulator.FakeInstrumentRepository
 import com.example.harpapp.domain.model.Accidental
 import com.example.harpapp.domain.model.ConnectionState
@@ -474,6 +475,7 @@ private fun Context.findActivity(): Activity? {
 }
 
 private fun Activity.restartTask() {
+    (application as HarpApplication).reloadInstrumentDependencies()
     startActivity(Intent.makeRestartActivityTask(componentName))
     finish()
 }

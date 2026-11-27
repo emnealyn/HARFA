@@ -138,6 +138,18 @@ fun AppNavGraph(
         }
     }
 
+    fun navigateToHome() {
+        if (navController.currentDestination?.route == Routes.HOME) return
+
+        navController.navigate(Routes.HOME) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = false
+            }
+            launchSingleTop = true
+            restoreState = false
+        }
+    }
+
     fun navigateToSingleEntry(route: String) {
         if (navController.popBackStack(route, false)) return
 
@@ -177,16 +189,14 @@ fun AppNavGraph(
     fun navigateBackFromCurrentRoute() {
         when {
             currentRoute == Routes.SONG_PATTERN -> {
-                if (!navController.popBackStack(Routes.HOME, false)) {
-                    navigateToTopLevel(Routes.HOME)
-                }
+                navigateToHome()
             }
 
             currentRoute == Routes.HARP_PATTERN && activeHarpSongId != null -> {
                 navigateBackToSong(activeHarpSongId)
             }
 
-            !navController.popBackStack() -> navigateToTopLevel(Routes.HOME)
+            !navController.popBackStack() -> navigateToHome()
         }
     }
 
@@ -220,17 +230,20 @@ fun AppNavGraph(
                 NavBar(
                     currentRoute = normalizedRoute,
                     onNavigate = { targetRoute ->
-
-                        val finalRoute = if (targetRoute == Routes.SONG) {
-                            songViewModel.song.value?.id
-                                ?.takeIf { it.isNotBlank() }
-                                ?.let { songId -> Routes.createSongRoute(songId) }
-                                ?: Routes.SONG
+                        if (targetRoute == Routes.HOME) {
+                            navigateToHome()
                         } else {
-                            targetRoute
-                        }
+                            val finalRoute = if (targetRoute == Routes.SONG) {
+                                songViewModel.song.value?.id
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?.let { songId -> Routes.createSongRoute(songId) }
+                                    ?: Routes.SONG
+                            } else {
+                                targetRoute
+                            }
 
-                        navigateToTopLevel(finalRoute)
+                            navigateToTopLevel(finalRoute)
+                        }
                     }
                 )
             }
