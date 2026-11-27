@@ -224,7 +224,8 @@ fun AppNavGraph(
                         navController.navigate(Routes.createHarpRoute(songId)) {
                             launchSingleTop = true
                         }
-                    }
+                    },
+                    onNavigateToBluetooth = ::navigateToBluetooth
                 )
             }
 

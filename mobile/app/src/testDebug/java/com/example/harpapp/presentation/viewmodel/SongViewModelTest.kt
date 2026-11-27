@@ -423,6 +423,129 @@ class SongViewModelTest {
     }
 
     @Test
+    fun endingLessonSendsEndLessonAndDiscardsProgress() = runTest(dispatcher) {
+        startLessonOnConnectedHarp()
+        harp.pluck(2)
+        advanceUntilIdle()
+        harp.clearRecordedCommands()
+
+        viewModel.endLearning()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLearningMode.value)
+        assertNull(viewModel.progress.value)
+        assertFalse(viewModel.canResumeLearning.value)
+        assertFalse(viewModel.showResumeChoices.value)
+        assertNull(songRepository.getProgress(LESSON_SONG_ID))
+        assertEquals(listOf(InstrumentCommand.EndLesson), harp.sentCommands)
+    }
+
+    @Test
+    fun endingPausedLessonAfterReturningToSongDiscardsProgress() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+        viewModel.toggleLearningMode()
+        harp.pluck(2)
+        advanceUntilIdle()
+        viewModel.endSession()
+        advanceUntilIdle()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        viewModel.endLearning()
+        advanceUntilIdle()
+        viewModel.endSession()
+        advanceUntilIdle()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isLearningMode.value)
+        assertFalse(viewModel.canResumeLearning.value)
+        assertNull(songRepository.getProgress(LESSON_SONG_ID))
+    }
+
+    @Test
+    fun lessonPausedByConnectionResumesAfterReconnectingAwayFromSong() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+        viewModel.toggleLearningMode()
+        harp.pluck(2)
+        advanceUntilIdle()
+        harp.simulateConnectionLoss()
+        advanceUntilIdle()
+        assertTrue(viewModel.isPausedByConnection.value)
+
+        viewModel.endSession()
+        advanceUntilIdle()
+        harp.reconnect()
+        advanceUntilIdle()
+        harp.clearRecordedCommands()
+
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertEquals(LessonStatus.IN_PROGRESS, status)
+        assertEquals(1, viewModel.currentNoteIndex.value)
+        assertFalse(viewModel.showResumeChoices.value)
+        assertEquals(
+            listOf(
+                InstrumentCommand.StartLesson(totalSteps = 2),
+                InstrumentCommand.LessonStep(index = 1, mask = 1 shl 4)
+            ),
+            harp.sentCommands
+        )
+    }
+
+    @Test
+    fun lessonPausedByConnectionStaysPausedWhenReturningStillDisconnected() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+        viewModel.toggleLearningMode()
+        harp.pluck(2)
+        advanceUntilIdle()
+        harp.simulateConnectionLoss()
+        advanceUntilIdle()
+
+        viewModel.endSession()
+        advanceUntilIdle()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertEquals(LessonStatus.PAUSED, status)
+        assertTrue(viewModel.isPausedByConnection.value)
+        assertFalse(viewModel.showResumeChoices.value)
+
+        harp.reconnect()
+        advanceUntilIdle()
+
+        assertEquals(LessonStatus.IN_PROGRESS, status)
+        assertEquals(1, viewModel.currentNoteIndex.value)
+    }
+
+    @Test
+    fun lessonPausedByUserStaysPausedAfterReturningConnected() = runTest(dispatcher) {
+        harp.reconnect()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+        viewModel.toggleLearningMode()
+        harp.pluck(2)
+        advanceUntilIdle()
+        viewModel.toggleLessonPause()
+
+        viewModel.endSession()
+        advanceUntilIdle()
+        viewModel.startSession(LESSON_SONG_ID)
+        advanceUntilIdle()
+
+        assertEquals(LessonStatus.PAUSED, status)
+        assertFalse(viewModel.isPausedByConnection.value)
+        assertTrue(viewModel.showResumeChoices.value)
+    }
+
+    @Test
     fun switchingSongsWithoutStartingKeepsActiveLesson() = runTest(dispatcher) {
         harp.reconnect()
         viewModel.startSession(LESSON_SONG_ID)

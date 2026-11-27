@@ -16,6 +16,9 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -41,8 +44,12 @@ import com.example.harpapp.domain.model.Song
 import com.example.harpapp.domain.model.TuningAnalysis
 import com.example.harpapp.presentation.ui.components.home.getCoverResourceId
 import com.example.harpapp.presentation.ui.components.song.CompletedSongDialog
+import com.example.harpapp.presentation.ui.components.song.ConnectionLostDialog
+import com.example.harpapp.presentation.ui.components.song.LessonConfirmDialog
+import com.example.harpapp.presentation.ui.components.song.LessonConfirmation
+import com.example.harpapp.presentation.ui.components.song.LessonControls
 import com.example.harpapp.presentation.ui.components.song.LessonIssuesDialog
-import com.example.harpapp.presentation.ui.components.song.LyricsDisplay
+import com.example.harpapp.presentation.ui.components.song.LyricsCard
 import com.example.harpapp.presentation.ui.components.song.StepTuningHintBanner
 import com.example.harpapp.presentation.ui.components.song.TuningMismatchDialog
 import com.example.harpapp.presentation.ui.components.song.TuningWarningBanner
@@ -64,7 +71,8 @@ fun SongScreen(
     songId: String,
     viewModel: SongViewModel,
     onNavigateToHarp: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToBluetooth: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState
     val isPlaying by viewModel.isPlaying
@@ -115,12 +123,14 @@ fun SongScreen(
             canToggleLessonPause = canToggleLessonPause,
             onLessonPauseClick = { viewModel.toggleLessonPause() },
             onPlayAgainClick = { viewModel.restartLearning() },
+            onEndLearningConfirm = { viewModel.endLearning() },
             isPausedByConnection = isPausedByConnection,
             songKey = songTuning?.name,
             tuningWarning = tuningWarning,
             stepHint = stepHint,
             tuningStartWarning = tuningStartWarning,
             onNavigateToHarp = onNavigateToHarp,
+            onNavigateToBluetooth = onNavigateToBluetooth,
             onStartDespiteTuning = { viewModel.confirmStartDespiteTuning() },
             onCancelTuningStart = { viewModel.cancelTuningStart() },
             onStartDialogGoToHarp = {
@@ -190,123 +200,6 @@ private fun TuningBanners(
             onNavigateToHarp = onNavigateToHarp,
             modifier = modifier
         )
-    }
-}
-
-/** Przycisk wstrzymania/wznowienia lekcji, widoczny tylko w trakcie nauki. */
-@Composable
-private fun LessonPauseButton(
-    isPaused: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Icon(
-            imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = if (isPaused) stringResource(R.string.resume_learning)
-            else stringResource(R.string.pause_learning)
-        )
-    }
-}
-
-@Composable
-private fun LearningModeControls(
-    isLearningMode: Boolean,
-    canResumeLearning: Boolean,
-    showResumeChoices: Boolean,
-    onLearningModeClick: () -> Unit,
-    onResumeLearningClick: () -> Unit,
-    onRestartLearningClick: () -> Unit,
-    compact: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val buttonHeight = if (compact) 44.dp else 48.dp
-    val textStyle = if (compact) {
-        MaterialTheme.typography.labelLarge
-    } else {
-        MaterialTheme.typography.titleMedium
-    }
-    val fontWeight = if (compact) null else FontWeight.SemiBold
-    val buttonShape = if (compact) {
-        MaterialTheme.shapes.medium
-    } else {
-        MaterialTheme.shapes.large
-    }
-    val buttonColors = ButtonDefaults.buttonColors(
-        containerColor = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-    )
-    val showChoiceRow = canResumeLearning && (!isLearningMode || showResumeChoices)
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        if (isLearningMode || !showChoiceRow) {
-            Button(
-                onClick = onLearningModeClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(buttonHeight),
-                colors = buttonColors,
-                shape = buttonShape
-            ) {
-                Text(
-                    text = if (isLearningMode) stringResource(R.string.stop_learning)
-                    else stringResource(R.string.start_learning),
-                    style = textStyle,
-                    fontWeight = fontWeight
-                )
-            }
-        }
-
-        if (showChoiceRow) {
-            if (isLearningMode) {
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = onResumeLearningClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(buttonHeight),
-                    colors = buttonColors,
-                    shape = buttonShape
-                ) {
-                    Text(
-                        text = stringResource(R.string.resume_learning_short),
-                        style = textStyle,
-                        fontWeight = fontWeight
-                    )
-                }
-
-                OutlinedButton(
-                    onClick = onRestartLearningClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(buttonHeight),
-                    shape = buttonShape
-                ) {
-                    Text(
-                        text = stringResource(R.string.restart_learning_short),
-                        style = textStyle,
-                        fontWeight = fontWeight
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -554,6 +447,7 @@ fun SongContent(
     canToggleLessonPause: Boolean = false,
     onLessonPauseClick: () -> Unit = {},
     onPlayAgainClick: () -> Unit = {},
+    onEndLearningConfirm: () -> Unit = {},
     isPausedByConnection: Boolean = false,
     songKey: String? = null,
     tuningWarning: TuningAnalysis? = null,
@@ -563,10 +457,38 @@ fun SongContent(
     onStartDespiteTuning: () -> Unit = {},
     onCancelTuningStart: () -> Unit = {},
     onStartDialogGoToHarp: () -> Unit = {},
+    onNavigateToBluetooth: () -> Unit = {},
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val showLessonPause = isLearningMode && !learningComplete && !showResumeChoices
+    val showPauseOverlay = isLearningMode && !learningComplete && isLessonPaused
+    var showConnectionLostDialog by rememberSaveable { mutableStateOf(false) }
+    val onPauseOverlayClick: () -> Unit = when {
+        isPausedByConnection -> {
+            { showConnectionLostDialog = true }
+        }
+        showResumeChoices -> onResumeLearningClick
+        else -> onLessonPauseClick
+    }
+    var pendingConfirmation by rememberSaveable { mutableStateOf<LessonConfirmation?>(null) }
+    val lessonControls: @Composable () -> Unit = {
+        LessonControls(
+            isLearningMode = isLearningMode,
+            learningComplete = learningComplete,
+            canResumeLearning = canResumeLearning,
+            showResumeChoices = showResumeChoices,
+            isLessonPaused = isLessonPaused,
+            canToggleLessonPause = canToggleLessonPause,
+            onStartClick = onLearningModeClick,
+            onStopClick = {
+                if (learningComplete) onDismissDialog()
+                else pendingConfirmation = LessonConfirmation.END
+            },
+            onResumeClick = onResumeLearningClick,
+            onRestartClick = { pendingConfirmation = LessonConfirmation.RESTART },
+            onPauseToggleClick = onLessonPauseClick
+        )
+    }
 
     val imageResId = song.getCoverResourceId()
 
@@ -626,27 +548,6 @@ fun SongContent(
                         onSeek = onSeek
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    LearningModeControls(
-                        isLearningMode = isLearningMode,
-                        canResumeLearning = canResumeLearning,
-                        showResumeChoices = showResumeChoices,
-                        onLearningModeClick = onLearningModeClick,
-                        onResumeLearningClick = onResumeLearningClick,
-                        onRestartLearningClick = onRestartLearningClick,
-                        compact = true
-                    )
-
-                    if (showLessonPause) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LessonPauseButton(
-                            isPaused = isLessonPaused,
-                            enabled = canToggleLessonPause,
-                            onClick = onLessonPauseClick
-                        )
-                    }
-
                     if (isPausedByConnection) {
                         Spacer(modifier = Modifier.height(8.dp))
                         ConnectionLostBanner()
@@ -675,26 +576,19 @@ fun SongContent(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Card(
+                    LyricsCard(
+                        lyrics = song.lyricsWithNotes,
+                        currentNoteIndex = currentNoteIndex,
+                        learningComplete = learningComplete,
+                        isPaused = showPauseOverlay,
+                        onPausedClick = onPauseOverlayClick,
+                        pausedByConnection = isPausedByConnection,
                         modifier = Modifier.weight(1f).fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
-                        )
-                    ) {
-                        Box(modifier = Modifier
-                            .fillMaxSize()
-                            .padding(12.dp)
-                            .verticalScroll(rememberScrollState())
-                        ) {
-                            LyricsDisplay(
-                                lyrics = song.lyricsWithNotes,
-                                currentNoteIndex = currentNoteIndex,
-                                learningComplete = learningComplete
-                            )
-                        }
-                    }
+                        fillHeight = true,
+                        containerAlpha = 0.2f,
+                        contentPadding = 12.dp,
+                        header = lessonControls
+                    )
                 }
             }
         } else {
@@ -753,25 +647,6 @@ fun SongContent(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LearningModeControls(
-                    isLearningMode = isLearningMode,
-                    canResumeLearning = canResumeLearning,
-                    showResumeChoices = showResumeChoices,
-                    onLearningModeClick = onLearningModeClick,
-                    onResumeLearningClick = onResumeLearningClick,
-                    onRestartLearningClick = onRestartLearningClick,
-                    compact = false
-                )
-
-                if (showLessonPause) {
-                    LessonPauseButton(
-                        isPaused = isLessonPaused,
-                        enabled = canToggleLessonPause,
-                        onClick = onLessonPauseClick,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-
                 if (isPausedByConnection) {
                     ConnectionLostBanner(modifier = Modifier.padding(bottom = 16.dp))
                 }
@@ -798,28 +673,52 @@ fun SongContent(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Card(
+                    LyricsCard(
+                        lyrics = song.lyricsWithNotes,
+                        currentNoteIndex = currentNoteIndex,
+                        learningComplete = learningComplete,
+                        isPaused = showPauseOverlay,
+                        onPausedClick = onPauseOverlayClick,
+                        pausedByConnection = isPausedByConnection,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Box(modifier = Modifier.padding(16.dp)) {
-                            LyricsDisplay(
-                                lyrics = song.lyricsWithNotes,
-                                currentNoteIndex = currentNoteIndex,
-                                learningComplete = learningComplete
-                            )
-                        }
-                    }
+                        header = lessonControls
+                    )
                 }
             }
         }
 
     if (learningComplete) {
         CompletedSongDialog(onDismiss = onDismissDialog, onPlayAgain = onPlayAgainClick)
+    }
+
+    if (showConnectionLostDialog && isPausedByConnection) {
+        ConnectionLostDialog(
+            onGoToBluetooth = {
+                showConnectionLostDialog = false
+                onNavigateToBluetooth()
+            },
+            onDismiss = { showConnectionLostDialog = false }
+        )
+    }
+
+    val confirmation = pendingConfirmation
+    val confirmationApplies = when (confirmation) {
+        LessonConfirmation.END -> isLearningMode && !learningComplete
+        LessonConfirmation.RESTART -> isLearningMode || canResumeLearning
+        null -> false
+    }
+    if (confirmation != null && confirmationApplies) {
+        LessonConfirmDialog(
+            confirmation = confirmation,
+            onConfirm = {
+                pendingConfirmation = null
+                when (confirmation) {
+                    LessonConfirmation.END -> onEndLearningConfirm()
+                    LessonConfirmation.RESTART -> onRestartLearningClick()
+                }
+            },
+            onDismiss = { pendingConfirmation = null }
+        )
     }
 
     if (lessonIssues.isNotEmpty()) {

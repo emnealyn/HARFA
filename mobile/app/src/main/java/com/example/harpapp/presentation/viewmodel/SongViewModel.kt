@@ -106,6 +106,7 @@ class SongViewModel(
     val lessonIssues: State<List<CatalogIssue>> = _lessonIssues
 
     private val _pausedByUser = mutableStateOf(false)
+    private var connectionPausedSongId: String? = null
 
     private var lastConnectionState: ConnectionState = ConnectionState.DISCONNECTED
 
@@ -211,7 +212,7 @@ class SongViewModel(
                     val current = _progress.value ?: return@collect
                     val newProgress = when (state) {
                         ConnectionState.CONNECTED ->
-                            if (_pausedByUser.value) current
+                            if (_pausedByUser.value || connectionPausedSongId != null) current
                             else {
                                 stopReferenceTrack()
                                 current.resume().also { lessonController.resume(it) }
@@ -282,16 +283,20 @@ class SongViewModel(
         loadJob = null
         val current = _progress.value
         if (current != null && !current.isCompleted) {
-            _pausedByUser.value = true
+            val pausedByConnection =
+                current.status == LessonStatus.PAUSED && !_pausedByUser.value
+            connectionPausedSongId = if (pausedByConnection) current.lesson.songId else null
+            _pausedByUser.value = !pausedByConnection
             val paused = current.pause()
             updateProgress(paused)
             _resumableProgress.value = paused
-            _showResumeChoices.value = true
+            _showResumeChoices.value = !pausedByConnection
             _activeLearningSongId.value = paused.lesson.songId
             lessonController.pause()
         } else {
             _pausedByUser.value = false
             if (current?.isCompleted == true) {
+                connectionPausedSongId = null
                 _activeLearningSongId.value = null
                 _resumableProgress.value = null
                 _showResumeChoices.value = false
@@ -336,10 +341,15 @@ class SongViewModel(
                     _activeLearningSongId.value == songId
                 ) {
                     val paused = savedProgress.pause()
+                    val pausedByConnection = connectionPausedSongId == songId
+                    connectionPausedSongId = null
                     _resumableProgress.value = paused
                     _progress.value = paused
-                    _pausedByUser.value = true
-                    _showResumeChoices.value = true
+                    _pausedByUser.value = !pausedByConnection
+                    _showResumeChoices.value = !pausedByConnection
+                    if (pausedByConnection && lastConnectionState == ConnectionState.CONNECTED) {
+                        resumeAfterReconnect(paused)
+                    }
                 }
 
                 _uiState.value = SongUiState.Ready(song)
@@ -350,6 +360,15 @@ class SongViewModel(
                 logError("Nie udało się załadować utworu $songId", exception)
             }
         }
+    }
+
+    private fun resumeAfterReconnect(progress: LessonProgress) {
+        connectionPausedSongId = null
+        stopReferenceTrack()
+        _resumableProgress.value = null
+        val resumed = progress.resume()
+        updateProgress(resumed)
+        lessonController.resume(resumed)
     }
 
     fun toggleLearningMode() {
@@ -430,6 +449,7 @@ class SongViewModel(
         _resumableProgress.value = null
         _showResumeChoices.value = false
         _pausedByUser.value = false
+        connectionPausedSongId = null
         _activeLearningSongId.value = lesson.songId
         val progress = restored?.resume() ?: LessonProgress.start(lesson)
         if (lastConnectionState == ConnectionState.CONNECTED) {
@@ -460,6 +480,18 @@ class SongViewModel(
     fun restartLearning() {
         val current = _progress.value ?: return
         beginLesson(current.lesson, resumeSavedProgress = false)
+    }
+
+    fun endLearning() {
+        val current = _progress.value ?: return
+        val songId = current.lesson.songId
+        lessonController.end()
+        _activeLearningSongId.value = null
+        clearLessonState()
+        viewModelScope.launch {
+            progressSaveJob?.join()
+            deleteSongProgressUseCase(songId)
+        }
     }
 
     fun toggleLessonPause() {
