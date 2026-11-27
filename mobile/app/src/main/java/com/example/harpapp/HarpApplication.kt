@@ -33,6 +33,10 @@ class HarpApplication : Application() {
         retryInitialization()
     }
 
+    fun reloadInstrumentDependencies() {
+        appContainer.recreateInstrumentDependencies()
+    }
+
     fun retryInitialization() {
         if (initializationJob?.isActive == true) return
 
