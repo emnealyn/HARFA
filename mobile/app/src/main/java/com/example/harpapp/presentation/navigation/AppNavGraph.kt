@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -67,13 +68,6 @@ fun AppNavGraph(
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val isTopLevelRoute = when (currentRoute) {
-        Routes.HOME,
-        Routes.SONG,
-        Routes.SETTINGS -> true
-        Routes.HARP_PATTERN -> navBackStackEntry?.arguments?.getString("songId") == null
-        else -> false
-    }
 
     val normalizedRoute = when {
         currentRoute == Routes.HOME -> Routes.HOME
@@ -83,6 +77,19 @@ fun AppNavGraph(
         currentRoute == Routes.DEV_SIMULATOR -> Routes.DEV_SIMULATOR
         currentRoute?.startsWith("song/") == true -> Routes.SONG
         else -> currentRoute
+    }
+
+    val activeHarpSongId = navBackStackEntry
+        ?.takeIf { it.destination.route == Routes.HARP_PATTERN }
+        ?.arguments
+        ?.getString("songId")
+
+    val isTopLevelRoute = when (currentRoute) {
+        Routes.HOME,
+        Routes.SONG,
+        Routes.SETTINGS -> true
+        Routes.HARP_PATTERN -> activeHarpSongId == null
+        else -> false
     }
 
     val homeViewModel: HomeViewModel = viewModel(factory = appContainer.homeViewModelFactory)
@@ -117,22 +124,69 @@ fun AppNavGraph(
     }
 
     fun navigateToTopLevel(route: String) {
-        if (route == Routes.HOME && navController.popBackStack(Routes.HOME, false)) {
-            return
-        }
+        val isTopLevelDestination = route == Routes.HOME ||
+            route == Routes.SONG ||
+            route == Routes.HARP ||
+            route == Routes.SETTINGS
 
         navController.navigate(route) {
-            popUpTo(Routes.HOME) {
-                saveState = true
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = isTopLevelRoute
             }
             launchSingleTop = true
-            restoreState = true
+            restoreState = isTopLevelDestination
+        }
+    }
+
+    fun navigateToSingleEntry(route: String) {
+        if (navController.popBackStack(route, false)) return
+
+        navController.navigate(route) {
+            launchSingleTop = true
         }
     }
 
     fun navigateToBluetooth() {
-        navController.navigate(Routes.BLUETOOTH) {
+        navigateToSingleEntry(Routes.BLUETOOTH)
+    }
+
+    fun navigateToSimulator() {
+        navigateToSingleEntry(Routes.DEV_SIMULATOR)
+    }
+
+    fun navigateToSong(songId: String) {
+        navigateToSingleEntry(Routes.createSongRoute(songId))
+    }
+
+    fun navigateToHarp(songId: String) {
+        navigateToSingleEntry(Routes.createHarpRoute(songId))
+    }
+
+    fun navigateBackToSong(songId: String) {
+        val songRoute = Routes.createSongRoute(songId)
+        if (navController.popBackStack(songRoute, false)) return
+
+        navController.navigate(songRoute) {
+            popUpTo(Routes.HARP_PATTERN) {
+                inclusive = true
+            }
             launchSingleTop = true
+        }
+    }
+
+    fun navigateBackFromCurrentRoute() {
+        when {
+            currentRoute == Routes.SONG_PATTERN -> {
+                if (!navController.popBackStack(Routes.HOME, false)) {
+                    navigateToTopLevel(Routes.HOME)
+                }
+            }
+
+            currentRoute == Routes.HARP_PATTERN && activeHarpSongId != null -> {
+                navigateBackToSong(activeHarpSongId)
+            }
+
+            !navController.popBackStack() -> navigateToTopLevel(Routes.HOME)
         }
     }
 
@@ -152,11 +206,7 @@ fun AppNavGraph(
             if (currentRoute != null) {
                 TopBar(
                     title = title,
-                    onBackClick = {
-                        if (navController.previousBackStackEntry != null) {
-                            navController.popBackStack()
-                        }
-                    },
+                    onBackClick = ::navigateBackFromCurrentRoute,
                     showBackButton = !isTopLevelRoute,
                     isBluetoothConnected = isBluetoothConnected,
                     onBluetoothClick = ::navigateToBluetooth,
@@ -196,8 +246,7 @@ fun AppNavGraph(
                 HomeScreen(
                     viewModel = homeViewModel,
                     onNavigateToSong = { songId ->
-                        navController.navigate(Routes.createSongRoute(songId))
-
+                        navigateToSong(songId)
                     }
                 )
             }
@@ -221,9 +270,7 @@ fun AppNavGraph(
                     songId = songId,
                     viewModel = songViewModel,
                     onNavigateToHarp = {
-                        navController.navigate(Routes.createHarpRoute(songId)) {
-                            launchSingleTop = true
-                        }
+                        navigateToHarp(songId)
                     }
                 )
             }
@@ -233,9 +280,7 @@ fun AppNavGraph(
                     viewModel = settingsViewModel,
                     onNavigateToBluetooth = ::navigateToBluetooth,
                     devTools = appContainer.devTools,
-                    onNavigateToSimulator = {
-                        navController.navigate(Routes.DEV_SIMULATOR)
-                    }
+                    onNavigateToSimulator = ::navigateToSimulator
                 )
             }
 
@@ -257,12 +302,7 @@ fun AppNavGraph(
                     viewModel = harpViewModel,
                     onNavigateToBluetooth = ::navigateToBluetooth,
                     onBackToSong = {
-                        targetSongId?.let { songId ->
-                            navController.navigate(Routes.createSongRoute(songId)) {
-                                popUpTo(Routes.HARP_PATTERN) { inclusive = true }
-                                launchSingleTop = true
-                            }
-                        }
+                        targetSongId?.let(::navigateBackToSong)
                     }
                 )
             }
