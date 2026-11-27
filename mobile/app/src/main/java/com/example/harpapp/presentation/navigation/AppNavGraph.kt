@@ -124,12 +124,17 @@ fun AppNavGraph(
     }
 
     fun navigateToTopLevel(route: String) {
+        val isTopLevelDestination = route == Routes.HOME ||
+            route == Routes.SONG ||
+            route == Routes.HARP ||
+            route == Routes.SETTINGS
+
         navController.navigate(route) {
             popUpTo(navController.graph.findStartDestination().id) {
-                saveState = true
+                saveState = isTopLevelRoute
             }
             launchSingleTop = true
-            restoreState = true
+            restoreState = isTopLevelDestination
         }
     }
 

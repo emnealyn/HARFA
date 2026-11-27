@@ -46,11 +46,7 @@ fun NavBar(
                     Text(stringResource(item.titleResId))
                 },
                 selected = selected,
-                onClick = {
-                    if (!selected) {
-                        onNavigate(item.route)
-                    }
-                },
+                onClick = { onNavigate(item.route) },
                 alwaysShowLabel = alwaysShowLabel,
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.onPrimary,
